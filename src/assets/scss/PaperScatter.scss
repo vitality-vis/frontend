@@ -1,0 +1,81 @@
+#parent-wrapper {
+    position:relative;
+    border: 1px solid #999;
+}
+
+#canvas {
+    // width: 700px;
+    height: 400px;
+    width: 100%;    
+    // height: 100%;
+}
+
+#detailTooltip{
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fefefe;
+    // border: 1px solid #999;
+    color:black;
+    max-width: 100%;
+}
+
+#detailTooltip table{
+    width: 100%;
+    max-width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+#detailTooltip table td div{
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+}
+
+#detailTooltip > table tr, #detailTooltip > table tr td{
+    border-top: 1px solid #999 !important;
+}
+
+.axis path, .tick line{
+    stroke: #999;
+    visibility: hidden;
+}
+
+.tick line{
+    stroke-width: 0.5px;
+}
+
+.tick text{
+    font-size: 0.8rem;
+}
+
+.detailsTable td, .detailsTable, th{
+    padding: 8px;
+    border: 1px solid #999;
+}
+
+.horizontalList{
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    white-space: nowrap;
+    overflow-x: auto;
+}
+
+.horizontalList li{
+    float: left;
+}
+
+.horizontalList li:not(:first-child){
+    margin-left: 12px;
+}
+
+.showOnlyThreeLi li:not(:nth-child(-n+3)){
+    display: none;
+}
