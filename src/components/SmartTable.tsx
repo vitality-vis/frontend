@@ -112,6 +112,14 @@ const Styles = styled.div`
     .th{
       padding: 0.5rem;
     }
+    
+    .th, .td{
+      overflow-x: hidden!important;
+    }
+  
+    .th:hover, .td:hover{
+      overflow-x: auto!important;
+    }
 
     .th,
     .td {
@@ -119,7 +127,7 @@ const Styles = styled.div`
       border-bottom: 1px solid #aaa;
       border-right: 1px solid #aaa;
       white-space: nowrap;
-      overflow-x: auto;
+      /*overflow-x: auto;*/
       overflow-y: hidden;
 
       :last-child {
