@@ -1,0 +1,139 @@
+@import url('https://fonts.googleapis.com/css?family=Titillium+Web');
+
+body{
+    margin: 0;
+}
+
+body, .ms-Label, .ms-Pivot, .ms-Dropdown, .ms-Button, .ms-SearchBox, text{
+    font-family: 'Titillium Web';
+}
+
+.text-center{
+    text-align: center;
+}
+
+.Select-placeholder{
+    text-align: left;
+}
+
+.Select-multi-value-wrapper{
+    text-align: left;
+}
+
+.Select-control{
+    text-align: left;
+    white-space: normal;
+    overflow: none;
+}
+
+.Select-menu-outer div{
+    text-align: left;
+    white-space: nowrap;
+    overflow-x: auto;
+}
+
+.gutter {
+    background-color: #eee;
+    background-repeat: no-repeat;
+    background-position: 50%;
+}
+
+.gutter.gutter-vertical {
+    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAFAQMAAABo7865AAAABlBMVEVHcEzMzMzyAv2sAAAAAXRSTlMAQObYZgAAABBJREFUeF5jOAMEEAIEEFwAn3kMwcB6I2AAAAAASUVORK5CYII=');
+}
+
+.gutter.gutter-horizontal {
+    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
+}
+
+.split {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+.split,
+.gutter.gutter-horizontal {
+    float: left;
+}
+
+.gutter.gutter-horizontal{
+    height: 60px;
+}
+
+.p-lg{
+    padding: 16px;
+}
+
+.p-md{
+    padding: 8px;
+}
+
+.p-sm{
+    padding: 4px;
+}
+
+.p-b-0{
+    padding-bottom: 0;
+} 
+
+.p-t-0{
+    padding-top: 0;
+} 
+
+.p-0{
+    padding: 0;
+} 
+
+.m-0{
+    margin: 0;
+} 
+
+.m-t-sm{
+    margin-top: 4px;
+} 
+
+.m-t-md{
+    margin-top: 8px;
+} 
+
+.m-t-lg{
+    margin-top: 16px;
+} 
+
+.float-right{
+    float: right;
+}
+
+.float-left{
+    float: left;
+}
+
+// .similarityPanelPivot *[data-content="Output Similar"]  {
+.similarityPanelPivot .ms-Pivot-link:last-child{    
+    float: right !important;
+    // background-color: #e8f5e9;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-right: 0 !important;
+}
+
+.similarityPanelPivot .ms-Pivot-link:last-child:hover::before {
+    left: 0px !important;
+    right: 0px !important;
+    background-color: #27ae60;
+}
+
+.similarityPanelPivot .is-selected:last-child::before {
+    left: 0px !important;
+    right: 0px !important;
+    background-color: #27ae60;
+}
+
+.w-100 {
+    width: 100%;
+}
+
+.iconButton{
+    color: #116EBE;
+  }
