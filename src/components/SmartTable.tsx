@@ -1137,7 +1137,7 @@ function Table({
                         {/* HIDE/SHOW Columns */}
                         {isColumn(column.id) 
                         ? <IconButton 
-                            iconProps={{iconName:"EyeSlash"}} 
+                            iconProps={{iconName:"Minus"}} 
                             onClick={() => {
                               toggleHideColumn(column.id);
                               updateVisibleColumns(column.id);

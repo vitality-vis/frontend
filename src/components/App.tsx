@@ -3,13 +3,19 @@ import { hot } from "react-hot-loader";
 import "./../assets/scss/App.scss";
 import PaperScatter from "./PaperScatter";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCaretDown, faCaretUp, faTimes, faTrash, faPlus, faPlusCircle, faSearch, faExternalLinkAlt, faClipboardList, faEyeSlash, faFileExport, faKey, faHandPointer, faKeyboard, faMouse, faGraduationCap, faMapMarkerAlt, faQuestionCircle, faCheckCircle, faArrowAltCircleRight, faExpand } from '@fortawesome/free-solid-svg-icons';
-import { CommandBar, DefaultButton, Dropdown, ICommandBarItemProps, Icon, IDropdownOption, IPivotItemProps, Label, Panel, PanelType, Pivot, PivotItem, PivotLinkFormat, PivotLinkSize, PrimaryButton, registerIcons, Stack, Text, TextField } from "@fluentui/react";
+import { faCaretDown, faCaretUp, faTimes, faTrash, faPlus, faPlusCircle, faSearch, faExternalLinkAlt, faClipboardList, faEyeSlash, faFileExport, faKey, faHandPointer, faKeyboard, faMouse, faGraduationCap, faMapMarkerAlt, faQuestionCircle, faCheckCircle, faArrowAltCircleRight, faExpand, faMinus } from '@fortawesome/free-solid-svg-icons';
+import { Callout, CommandBar, DefaultButton, DelayedRender, Dropdown, ICommandBarItemProps, Icon, IconButton, IDropdownOption, IPivotItemProps, Label, Panel, PanelType, Pivot, PivotItem, PivotLinkFormat, PivotLinkSize, PrimaryButton, registerIcons, Stack, Text, TextField } from "@fluentui/react";
 import SmartTable, { SmartTableProps } from "./SmartTable";
 import LoadingOverlay from 'react-loading-overlay';
 import Split from 'react-split';
 import { initializeIcons } from '@uifabric/icons';
 import logo from './../assets/img/vitality-logo.png';
+import gtLogo from './../assets/img/gt-logo.png';
+import northwesternLogo from './../assets/img/northwestern-logo.png';
+import unccLogo from './../assets/img/uncc-logo.png';
+import emoryLogo from './../assets/img/emory-logo.png';
+
+import visConferenceLogo from './../assets/img/ieeevis2021-logo.png';
 const baseUrl = "http://localhost:3000/";
 
 initializeIcons();
@@ -36,7 +42,8 @@ registerIcons({
     Mouse: <FontAwesomeIcon icon={faMouse} />,
     Keyboard: <FontAwesomeIcon icon={faKeyboard} />,
     Question: <FontAwesomeIcon icon={faQuestionCircle} />,
-    Expand: <FontAwesomeIcon icon={faExpand} />
+    Expand: <FontAwesomeIcon icon={faExpand} />,
+    Minus: <FontAwesomeIcon icon={faMinus} />
   }
 });
 
@@ -85,22 +92,23 @@ interface AppState {
   searchByAbstractLimit: IDropdownOption;
   checkoutLinkRef: any;
   scrollToPaperID: number;
-// Will not change
+  isCiteUsCalloutVisible: boolean;
+  // Will not change
   columnWidths: {};
   columnFilterTypes: {};
 }
 
-const  embeddingTypeDropdownOptions = [
+const embeddingTypeDropdownOptions = [
   { key: 'specter', text: 'Specter' },
   { key: 'glove', text: 'Glove' }
 ];
 
-const  similarityTypeDropdownOptions = [
+const similarityTypeDropdownOptions = [
   { key: 'nD', text: 'nD' },
   { key: '2D', text: '2D' }
 ];
 
-const  maxSimilarPapersDropdownOptions = [
+const maxSimilarPapersDropdownOptions = [
   { key: '25', text: '25' },
   { key: '50', text: '50' },
   { key: '100', text: '100' },
@@ -109,11 +117,12 @@ const  maxSimilarPapersDropdownOptions = [
 ];
 
 class App extends React.Component<{}, AppState> {
-  
-  constructor(props:any){
+
+  constructor(props: any) {
     super(props);
     this.state = {
       spinner: true,
+      isCiteUsCalloutVisible: false,
       columnFilterTypes: {
         "ID": "default",
         "Title": "default",
@@ -134,23 +143,23 @@ class App extends React.Component<{}, AppState> {
         "YearCount": "range"
       },
       columnWidths: {
-        "ID": {maxWidth: 50},
-        "Title": {minWidth: 100},
-        "Authors": {minWidth: 100},
-        "Source": {maxWidth: 200},
-        "Year": {maxWidth: 200},
-        "Abstract": {minWidth: 100},
-        "Keywords": {minWidth: 100},
-        "Sim": {maxWidth: 50},
-        "Distance": {maxWidth: 50},
-        "Sim_Rank": {maxWidth: 50},
-        "CitationCounts": {maxWidth: 50},
-        "Keyword": {minWidth: 100},
-        "KeywordCount": {maxWidth: 125},
-        "Author": {minWidth: 100},
-        "AuthorCount": {maxWidth: 125},
-        "SourceCount": {maxWidth: 125},
-        "YearCount": {maxWidth: 125},
+        "ID": { maxWidth: 50 },
+        "Title": { minWidth: 100 },
+        "Authors": { minWidth: 100 },
+        "Source": { maxWidth: 200 },
+        "Year": { maxWidth: 200 },
+        "Abstract": { minWidth: 100 },
+        "Keywords": { minWidth: 100 },
+        "Sim": { maxWidth: 50 },
+        "Distance": { maxWidth: 50 },
+        "Sim_Rank": { maxWidth: 50 },
+        "CitationCounts": { maxWidth: 50 },
+        "Keyword": { minWidth: 100 },
+        "KeywordCount": { maxWidth: 125 },
+        "Author": { minWidth: 100 },
+        "AuthorCount": { maxWidth: 125 },
+        "SourceCount": { maxWidth: 125 },
+        "YearCount": { maxWidth: 125 },
       },
       columns: {
         all: ["ID", "Title", "Authors", "Source", "Year", "Abstract", "Keywords", "CitationCounts"],
@@ -241,7 +250,7 @@ class App extends React.Component<{}, AppState> {
   }
 
   updateStateProp = (_what, _with, _where) => {
-    var _property = {...this.state[_what]};
+    var _property = { ...this.state[_what] };
     _property[_where] = _with;
     let stateObj = {};
     stateObj[_what] = _property;
@@ -249,7 +258,7 @@ class App extends React.Component<{}, AppState> {
   }
 
   getData = () => {
-    this.setState({spinner: true});
+    this.setState({ spinner: true });
     let parent = this;
 
     const requestOptions = {
@@ -257,11 +266,11 @@ class App extends React.Component<{}, AppState> {
       headers: { 'Content-Type': 'application/json' }
     };
     fetch(baseUrl + 'getPapers', requestOptions)
-      .then(function(response) {
+      .then(function (response) {
         // The response is a Response instance.
         // You parse the data into a useable format using `.json()`
         return response.text();
-      }).then(function(data) {
+      }).then(function (data) {
         // `data` is the parsed version of the JSON returned from the above endpoint.
         const _dataAll = JSON.parse(data);
         const _paperNoEmbeddings = {
@@ -269,10 +278,10 @@ class App extends React.Component<{}, AppState> {
           "glove": []
         }
         _dataAll.forEach(_d => {
-          if(!("specter_umap" in _d && Array.isArray(_d["specter_umap"]) && _d["specter_umap"].length == 2)){
+          if (!("specter_umap" in _d && Array.isArray(_d["specter_umap"]) && _d["specter_umap"].length == 2)) {
             _paperNoEmbeddings["specter"].push(_d["ID"]);
           }
-          if(!("glove_umap" in _d && Array.isArray(_d["glove_umap"]) && _d["glove_umap"].length == 2)){
+          if (!("glove_umap" in _d && Array.isArray(_d["glove_umap"]) && _d["glove_umap"].length == 2)) {
             _paperNoEmbeddings["glove"].push(_d["ID"]);
           }
         });
@@ -286,63 +295,69 @@ class App extends React.Component<{}, AppState> {
       });
   }
 
-  componentDidMount(){
+  componentDidMount() {
     this.getData();
   }
-  
+
   public render() {
+
+    const toggleIsCiteUsCalloutVisible = () => {
+      this.setState({
+        isCiteUsCalloutVisible: !this.state.isCiteUsCalloutVisible
+      });
+    }
 
     const openGScholar = (title) => {
       // Inferring+Cognitive+Models+from+Data+using+Approximate+Bayesian+Computation
       const url = "https://scholar.google.com/scholar?hl=en&q=" + encodeURI(title);
-      window.open(url, "_blank");      
+      window.open(url, "_blank");
     }
 
     const hasEmbeddings = (ID) => {
       return this.state.paperNoEmbeddings[this.state.embeddingType.key as string].indexOf(ID) === -1;
-    }  
+    }
 
     const isInSimilarInputPapers = (row) => {
-      if(Array.isArray(row)){
+      if (Array.isArray(row)) {
         let _numSimilar = 0;
         row.forEach((r) => {
-          try{
-            if(this.state.dataSimilarPayloadID.includes(r["ID"])){
+          try {
+            if (this.state.dataSimilarPayloadID.includes(r["ID"])) {
               _numSimilar += 1;
             }
-          }catch(err){
+          } catch (err) {
             // continue
           }
         });
         return _numSimilar == row.length;
-      }else{
-        try{
+      } else {
+        try {
           return this.state.dataSimilarPayloadID.includes(row["ID"]);
-        }catch(err){
+        } catch (err) {
           return false;
-        }          
+        }
       }
     }
 
     const isInSimilarPapers = (row) => {
-      if(Array.isArray(row)){
+      if (Array.isArray(row)) {
         let _numSimilar = 0;
         row.forEach((r) => {
-          try{
-            if(this.state.dataSimilarID.includes(r["ID"])){
+          try {
+            if (this.state.dataSimilarID.includes(r["ID"])) {
               _numSimilar += 1;
             }
-          }catch(err){
+          } catch (err) {
             // continue
           }
         });
         return _numSimilar == row.length;
-      }else{
-        try{
+      } else {
+        try {
           return this.state.dataSimilarID.includes(row["ID"]);
-        }catch(err){
+        } catch (err) {
           return false;
-        }          
+        }
       }
     }
 
@@ -365,22 +380,22 @@ class App extends React.Component<{}, AppState> {
     }
 
     const isInFilteredPapers = (row) => {
-      if(Array.isArray(row)){
+      if (Array.isArray(row)) {
         let _numFiltered = 0;
         row.forEach((r) => {
-          try{
-            if(this.state.dataFilteredID.includes(r["ID"])){
+          try {
+            if (this.state.dataFilteredID.includes(r["ID"])) {
               _numFiltered += 1;
             }
-          }catch(err){
+          } catch (err) {
             // continue
           }
         });
         return _numFiltered == row.length;
-      }else{
-        try{
+      } else {
+        try {
           return this.state.dataFilteredID.includes(row["ID"]);
-        }catch(err){
+        } catch (err) {
           return false;
         }
       }
@@ -391,39 +406,39 @@ class App extends React.Component<{}, AppState> {
     }
 
     const isInSavedPapers = (row) => {
-      if(Array.isArray(row)){
+      if (Array.isArray(row)) {
         let _numSaved = 0;
         row.forEach((r) => {
-          try{
-            if(this.state.dataSavedID.includes(r["ID"])){
+          try {
+            if (this.state.dataSavedID.includes(r["ID"])) {
               _numSaved += 1;
             }
-          }catch(err){
+          } catch (err) {
             // continue
           }
         });
         return _numSaved == row.length;
-      }else{
-        try{
+      } else {
+        try {
           return this.state.dataSavedID.includes(row["ID"]);
-        }catch(err){
+        } catch (err) {
           return false;
         }
       }
     }
 
-    const addToSimilarInputPapers = (row:any) => {
+    const addToSimilarInputPapers = (row: any) => {
       const _papers = [...this.state.dataSimilarPayload]
       let _similarInputPapers = [...this.state.dataSimilarPayloadID];
-      if(Array.isArray(row)){
+      if (Array.isArray(row)) {
         row.forEach((r) => {
-          if(_papers.indexOf(r) === -1){
+          if (_papers.indexOf(r) === -1) {
             _papers.push(r);
             _similarInputPapers.push(r["ID"]);
           }
         });
-      }else{
-        if(_papers.indexOf(row) === -1){
+      } else {
+        if (_papers.indexOf(row) === -1) {
           _papers.push(row);
           _similarInputPapers.push(row["ID"])
         }
@@ -434,24 +449,24 @@ class App extends React.Component<{}, AppState> {
       });
     }
 
-    const addToSavedPapers = (row:any) => {
+    const addToSavedPapers = (row: any) => {
       let _papers = [...this.state.dataSaved];
       let _savedPaperIDs = [...this.state.dataSavedID];
-      if(Array.isArray(row)){
+      if (Array.isArray(row)) {
         row.forEach((r) => {
-          if(_papers.indexOf(r) === -1){
+          if (_papers.indexOf(r) === -1) {
             _papers.push(r);
           }
-          if(_savedPaperIDs.indexOf(r["ID"]) === -1){
+          if (_savedPaperIDs.indexOf(r["ID"]) === -1) {
             _savedPaperIDs.push(r["ID"]);
-          }  
+          }
         });
       }
-      else{
-        if(_papers.indexOf(row) === -1){
+      else {
+        if (_papers.indexOf(row) === -1) {
           _papers.push(row);
         }
-        if(_savedPaperIDs.indexOf(row["ID"]) === -1){
+        if (_savedPaperIDs.indexOf(row["ID"]) === -1) {
           _savedPaperIDs.push(row["ID"]);
         }
       }
@@ -462,7 +477,7 @@ class App extends React.Component<{}, AppState> {
     }
 
     const getSimilarPapersByAbstract = () => {
-      this.setState({spinner: true});
+      this.setState({ spinner: true });
       let parent = this;
       const requestOptions = {
         method: 'POST',
@@ -488,13 +503,13 @@ class App extends React.Component<{}, AppState> {
     }
 
     const getSimilarPapers = () => {
-      this.setState({spinner: true});
+      this.setState({ spinner: true });
       let parent = this;
       const requestOptions = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          "input_data": this.state.dataSimilarPayload.map((item) => {return item["ID"]}),
+          "input_data": this.state.dataSimilarPayload.map((item) => { return item["ID"] }),
           "input_type": "ID",
           "limit": this.state.maxSimilarPapers.key == '-1' ? this.state.dataAll.length : this.state.maxSimilarPapers.key,
           "embedding": this.state.embeddingType.key,
@@ -634,20 +649,20 @@ class App extends React.Component<{}, AppState> {
     }
 
     const addToSelectNodeIDs = (IDs, _eventOrigin) => {
-      if(IDs.length == 0){
+      if (IDs.length == 0) {
         this.setState({
           eventOrigin: _eventOrigin,
           selectNodeIDs: [],
         });
-      }else{
+      } else {
         let _selectNodeIDs = [];
         _selectNodeIDs = [...this.state.selectNodeIDs];
         IDs.forEach((id) => {
           let _idx = _selectNodeIDs.indexOf(id);
-          if(_idx === -1){
-              _selectNodeIDs.push(id);
+          if (_idx === -1) {
+            _selectNodeIDs.push(id);
           }
-          else{
+          else {
             _selectNodeIDs.splice(_idx, 1);
           }
         });
@@ -660,9 +675,9 @@ class App extends React.Component<{}, AppState> {
     }
 
     const checkoutPapers = () => {
-      this.setState({spinner: true});
+      this.setState({ spinner: true });
       let parent = this;
-  
+
       const requestOptions = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -672,19 +687,19 @@ class App extends React.Component<{}, AppState> {
         })
       };
       fetch(baseUrl + 'checkoutPapers', requestOptions)
-        .then(function(response) {
+        .then(function (response) {
           // The response is a Response instance.
           // You parse the data into a useable format using `.json()`
           return response.blob();
-        }).then(function(blob) {
-  
+        }).then(function (blob) {
+
           const href = window.URL.createObjectURL(blob);
           const a = parent.state.checkoutLinkRef.current;
           a.download = 'checkedOutPapers.json';
           a.href = href;
           a.click();
           a.href = '';
-  
+
           parent.setState({
             "spinner": false
           });
@@ -714,7 +729,7 @@ class App extends React.Component<{}, AppState> {
       globalFilterValue: this.state.globalFilterValue["all"],
       updateGlobalFilterValue: (filter) => { this.updateStateProp("globalFilterValue", filter, "all"); },
       columnFilterTypes: this.state.columnFilterTypes,
-      setFilteredPapers: (dataFiltered) => { 
+      setFilteredPapers: (dataFiltered) => {
         updateKeywordCounts(dataFiltered);
         updateAuthorCounts(dataFiltered);
         updateSourcesCounts(dataFiltered);
@@ -744,11 +759,11 @@ class App extends React.Component<{}, AppState> {
 
     const deleteRows = (data, rowID) => {
       let _property = [...this.state[data]];
-      if(Array.isArray(rowID)){
+      if (Array.isArray(rowID)) {
         rowID.forEach((r) => {
           _property.splice(r, 1);
         });
-      }else{
+      } else {
         _property.splice(rowID, 1);
       }
       let obj = {};
@@ -795,24 +810,24 @@ class App extends React.Component<{}, AppState> {
     }
 
     const onChangeSearchTitle = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newText: string): void => {
-      this.setState({searchTitle: newText})
+      this.setState({ searchTitle: newText })
     };
 
     const onChangeSearchAbstract = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newText: string): void => {
-      this.setState({searchAbstract: newText})
+      this.setState({ searchAbstract: newText })
     };
 
     const updateYearsCounts = (papers) => {
       let _countsObj = {};
       papers.forEach((paper) => {
-        if(!(paper["Year"] in _countsObj)){
+        if (!(paper["Year"] in _countsObj)) {
           _countsObj[paper["Year"]] = 0;
         }
         _countsObj[paper["Year"]]++;
       });
       let _countsArr = [];
-      Object.keys(_countsObj).forEach(function(key){
-        _countsArr.push({"Year": key, "YearCount": _countsObj[key]})
+      Object.keys(_countsObj).forEach(function (key) {
+        _countsArr.push({ "Year": key, "YearCount": _countsObj[key] })
       });
       this.setState({
         dataYears: _countsArr
@@ -822,14 +837,14 @@ class App extends React.Component<{}, AppState> {
     const updateSourcesCounts = (papers) => {
       let _countsObj = {};
       papers.forEach((paper) => {
-        if(!(paper["Source"] in _countsObj)){
+        if (!(paper["Source"] in _countsObj)) {
           _countsObj[paper["Source"]] = 0;
         }
         _countsObj[paper["Source"]]++;
       });
       let _countsArr = [];
-      Object.keys(_countsObj).forEach(function(key){
-        _countsArr.push({"Source": key, "SourceCount": _countsObj[key]})
+      Object.keys(_countsObj).forEach(function (key) {
+        _countsArr.push({ "Source": key, "SourceCount": _countsObj[key] })
       });
       this.setState({
         dataSources: _countsArr
@@ -839,9 +854,9 @@ class App extends React.Component<{}, AppState> {
     const updateAuthorCounts = (papers) => {
       let _countsObj = {};
       papers.forEach((paper) => {
-        if(Array.isArray(paper["Authors"])){
+        if (Array.isArray(paper["Authors"])) {
           paper["Authors"].forEach((author) => {
-            if(!(author in _countsObj)){
+            if (!(author in _countsObj)) {
               _countsObj[author] = 0;
             }
             _countsObj[author]++;
@@ -850,8 +865,8 @@ class App extends React.Component<{}, AppState> {
       });
 
       let _countsArr = [];
-      Object.keys(_countsObj).forEach(function(key){
-        _countsArr.push({"Author": key, "AuthorCount": _countsObj[key]})
+      Object.keys(_countsObj).forEach(function (key) {
+        _countsArr.push({ "Author": key, "AuthorCount": _countsObj[key] })
       });
       this.setState({
         dataAuthors: _countsArr
@@ -861,9 +876,9 @@ class App extends React.Component<{}, AppState> {
     const updateKeywordCounts = (papers) => {
       let _countsObj = {};
       papers.forEach((paper) => {
-        if(Array.isArray(paper["Keywords"])){
+        if (Array.isArray(paper["Keywords"])) {
           paper["Keywords"].forEach((keyword) => {
-            if(!(keyword in _countsObj)){
+            if (!(keyword in _countsObj)) {
               _countsObj[keyword] = 0;
             }
             _countsObj[keyword]++;
@@ -872,8 +887,8 @@ class App extends React.Component<{}, AppState> {
       });
 
       let _countsArr = [];
-      Object.keys(_countsObj).forEach(function(key){
-        _countsArr.push({"Keyword": key, "KeywordCount": _countsObj[key]})
+      Object.keys(_countsObj).forEach(function (key) {
+        _countsArr.push({ "Keyword": key, "KeywordCount": _countsObj[key] })
       });
       this.setState({
         dataKeywords: _countsArr
@@ -881,14 +896,14 @@ class App extends React.Component<{}, AppState> {
     }
 
     const updateVisibleColumns = (columnId, tableType) => {
-      var _property = {...this.state.columnsVisible};
+      var _property = { ...this.state.columnsVisible };
       const idx = _property[tableType].indexOf(columnId);
-      if(idx === -1){
+      if (idx === -1) {
         _property[tableType].push(columnId);
-      }else{
+      } else {
         _property[tableType].splice(idx, 1);
       }
-      this.setState({columnsVisible: _property});
+      this.setState({ columnsVisible: _property });
     }
 
     const similarPapersTableProps: SmartTableProps = {
@@ -965,48 +980,122 @@ class App extends React.Component<{}, AppState> {
       openGScholar: openGScholar,
       isInSelectedNodeIDs: isInSelectedNodeIDs,
     }
-    
+
     const _items: ICommandBarItemProps[] = [
       {
-        key: 'brand',        
+        key: 'brand',
         commandBarButtonAs: () => (
-          <div style={{color: "white"}}>
+          <div style={{ color: "white" }}>
             {/* <Text variant="xLarge">vitaLITy</Text> */}
-            <img height="40" src={logo} alt="VitaLITy Logo"/>
+            <img height="30" title="VitaLITy Logo" src={logo} alt="VitaLITy Logo" />
           </div>
         )
       },
+      {
+        key: 'description',
+        commandBarButtonAs: () => (
+          <div style={{ color: "white", marginLeft: 16, maxWidth: 280 }}>
+            <Text variant="small">Promoting Serendipitous Discovery of Academic Literature with Transformers &amp; Visual Analytics</Text>
+          </div>
+        )
+      },
+      {
+        key: 'conferencebrand',
+        commandBarButtonAs: () => (
+          <div style={{ color: "white" }}>
+            <img height="30" title="IEEE VIS Logo" src={visConferenceLogo} alt="IEEE VIS Logo" />
+          </div>
+        )
+      },
+      {
+        key: 'citeus',
+        commandBarButtonAs: () => (
+          <div style={{ color: "white", marginLeft: 16, paddingLeft: 4, paddingRight: 4 }}>
+            <DefaultButton id={"citationBtnId"} onClick={toggleIsCiteUsCalloutVisible} text={'Cite Us!'}></DefaultButton>
+            {this.state.isCiteUsCalloutVisible && (
+              <Callout
+                style={{
+                  padding: '16px 16px',
+                  width: 450
+                }}
+                target={`#citationBtnId`}
+                onDismiss={toggleIsCiteUsCalloutVisible}
+                role="status"
+                aria-live="assertive"
+              >
+                <DelayedRender>
+                  <div>
+                    <Text variant="medium">
+                      A. Narechania, A. Karduni, R. Wesslen and E. Wall, <strong>"vitaLITy: Promoting Serendipitous Discovery of Academic Literature with Transformers &amp; Visual Analytics,"</strong> <i>in IEEE Transactions on Visualization and Computer Graphics</i>, vol. 28, no. 1, pp. 486-496, Jan. 2022, doi: 10.1109/TVCG.2021.3114820.
+                    </Text>
+                    <br /><br />
+                    <DefaultButton 
+                      style={{ marginLeft: 4, marginRight: 4 }}
+                      onClick={() => {
+                        const citation = `@ARTICLE{9552447,  author={Narechania, Arpit and Karduni, Alireza and Wesslen, Ryan and Wall, Emily},  journal={IEEE Transactions on Visualization and Computer Graphics},   title={VITALITY: Promoting Serendipitous Discovery of Academic Literature with Transformers  amp; Visual Analytics},   year={2022},  volume={28},  number={1},  pages={486-496},  doi={10.1109/TVCG.2021.3114820}}`
+                        navigator.clipboard.writeText(citation);
+                      }} 
+                      text={'Copy .BibTex'}>
+                    </DefaultButton>
+                    <DefaultButton
+                      style={{ marginLeft: 4, marginRight: 4 }}
+                      href="https://doi.org/10.1109/TVCG.2021.3114820"
+                      target="_blank"
+                      text="Other formats from IEEE TVCG'21"
+                      title="Other formats from IEEE TVCG'21"></DefaultButton>
+                    <br />
+                  </div>
+                </DelayedRender>
+              </Callout>
+            )}
+          </div>
+        )
+      },
+      {
+        key: 'affiliationbrands',
+        commandBarButtonAs: () => (
+          <div style={{ color: "white", marginLeft: 16, paddingLeft: 4, paddingRight: 4 }}>
+            <img height="30" src={gtLogo} title="Georgia Tech Logo" alt="Georgia Tech Logo" />
+            &nbsp;&nbsp;
+            <img height="30" src={northwesternLogo} title="Northwestern University Logo" alt="Northwestern University Logo" />
+            &nbsp;&nbsp;
+            <img height="30" src={unccLogo} title="University of North Carolina Charlotte Logo" alt="University of North Carolina Charlotte Logo" />
+            &nbsp;&nbsp;
+            <img height="30" src={emoryLogo} title="Emory University Logo" alt="Emory University Logo" />
+          </div>
+        )
+      }
     ];
-    
+
     const _farItems: ICommandBarItemProps[] = [
       {
         key: 'embedding',
         commandBarButtonAs: () => (
           <>
-              <Dropdown
-                  label=""
-                  selectedKey={this.state.embeddingType.key}
-                  // eslint-disable-next-line react/jsx-no-bind
-                  onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => {this.setState({embeddingType: item})}}
-                  // disabled={true}
-                  options={embeddingTypeDropdownOptions}
-                  styles={{root: {zIndex:2}}}
-              />
+            <Dropdown
+              label=""
+              selectedKey={this.state.embeddingType.key}
+              // eslint-disable-next-line react/jsx-no-bind
+              onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => { this.setState({ embeddingType: item }) }}
+              // disabled={true}
+              options={embeddingTypeDropdownOptions}
+              styles={{ root: { zIndex: 2, paddingLeft: 4, paddingRight: 4 } }}
+            />
           </>
         )
       },
       {
         key: 'save',
-        commandBarButtonAs: () => (<DefaultButton iconProps={{iconName: "ClipboardList"}} style={{float:"right", zIndex: 99}}  text={"Saved Papers (" + this.state.dataSaved.length + ")"} onClick={() => this.setState({isPanelOpen: true})} />)
+        commandBarButtonAs: () => (<DefaultButton iconProps={{ iconName: "ClipboardList" }} style={{ float: "right", zIndex: 99, paddingLeft: 4, paddingRight: 4 }} text={"Saved Papers (" + this.state.dataSaved.length + ")"} onClick={() => this.setState({ isPanelOpen: true })} />)
       },
     ];
 
-    
+
 
     function _inputButtonRenderer(link: IPivotItemProps, defaultRenderer: (link: IPivotItemProps) => JSX.Element): JSX.Element {
       return (
         <div>
-          &nbsp;&nbsp;{defaultRenderer(link)}&nbsp;&nbsp;<Icon iconName="ArrowRight" style={{color:"#3498db"}}></Icon>&nbsp;&nbsp;
+          &nbsp;&nbsp;{defaultRenderer(link)}&nbsp;&nbsp;<Icon iconName="ArrowRight" style={{ color: "#3498db" }}></Icon>&nbsp;&nbsp;
         </div>
       );
     }
@@ -1014,7 +1103,7 @@ class App extends React.Component<{}, AppState> {
     function _outputButtonRenderer(link: IPivotItemProps, defaultRenderer: (link: IPivotItemProps) => JSX.Element): JSX.Element {
       return (
         <div>
-          &nbsp;&nbsp;<Icon iconName="Check" style={{color:"#27ae60"}}></Icon>&nbsp;&nbsp;{defaultRenderer(link)}&nbsp;&nbsp;
+          &nbsp;&nbsp;<Icon iconName="Check" style={{ color: "#27ae60" }}></Icon>&nbsp;&nbsp;{defaultRenderer(link)}&nbsp;&nbsp;
         </div>
       );
     }
@@ -1035,25 +1124,25 @@ class App extends React.Component<{}, AppState> {
             items={_items}
             farItems={_farItems}
             styles={{
-              root: {background: "rgba(0,0,0,0.6)", padding: 12, paddingBottom: 0, borderBottom: "1px solid #ededed"},
+              root: { background: "rgba(0,0,0,0.9)", padding: 8, paddingBottom: 0, borderBottom: "1px solid #ededed" },
             }}
-          />          
+          />
           <Panel
-              headerText="Saved Papers"
-              isOpen={this.state.isPanelOpen}
-              onDismiss={() => this.setState({isPanelOpen: false})}
-              type={PanelType.large}
-              closeButtonAriaLabel="Close"
-            >
-              <br/>
-              <a ref={this.state.checkoutLinkRef}></a>
-              <SmartTable props={savedPapersTableProps}></SmartTable>
+            headerText="Saved Papers"
+            isOpen={this.state.isPanelOpen}
+            onDismiss={() => this.setState({ isPanelOpen: false })}
+            type={PanelType.large}
+            closeButtonAriaLabel="Close"
+          >
+            <br />
+            <a ref={this.state.checkoutLinkRef}></a>
+            <SmartTable props={savedPapersTableProps}></SmartTable>
           </Panel>
           <div className="m-t-md p-md">
             <SmartTable props={allPapersTableProps}></SmartTable>
           </div>
-          <Split 
-            sizes={[35,39,26]}
+          <Split
+            sizes={[35, 39, 26]}
             direction="horizontal"
             expandToMin={false}
             gutterSize={0}
@@ -1061,54 +1150,54 @@ class App extends React.Component<{}, AppState> {
             cursor="col-resize"
           >
             <div className="split p-md p-b-0">
-              <Stack horizontal horizontalAlign="space-between" verticalAlign="center" tokens={{childrenGap: 8}}>
-                <Label style={{fontSize: "1.2rem"}}>Similarity Search</Label>
+              <Stack horizontal horizontalAlign="space-between" verticalAlign="center" tokens={{ childrenGap: 8 }}>
+                <Label style={{ fontSize: "1.2rem" }}>Similarity Search</Label>
               </Stack>
               <div className="similarityPanelPivot">
-                <Pivot linkSize={PivotLinkSize.normal} linkFormat={PivotLinkFormat.links} selectedKey={String(this.state.similarityPanelSelectedKey)} onLinkClick={(pivotItem:PivotItem) => this.setState({similarityPanelSelectedKey: pivotItem["key"].split(".")[1]})}>
+                <Pivot linkSize={PivotLinkSize.normal} linkFormat={PivotLinkFormat.links} selectedKey={String(this.state.similarityPanelSelectedKey)} onLinkClick={(pivotItem: PivotItem) => this.setState({ similarityPanelSelectedKey: pivotItem["key"].split(".")[1] })}>
                   <PivotItem onRenderItemLink={_inputButtonRenderer} headerText={"By Papers"} itemCount={this.state.dataSimilarPayload.length}>
                     <div className="m-t-lg"></div>
                     {
-                    this.state.dataSimilarPayload.length > 0 ?
-                      <React.Fragment>
-                        <Stack horizontal verticalAlign="start" horizontalAlign="start" tokens={{childrenGap: 8}}>
-                          <Label>Dimensions</Label>
-                          <Dropdown
+                      this.state.dataSimilarPayload.length > 0 ?
+                        <React.Fragment>
+                          <Stack horizontal verticalAlign="start" horizontalAlign="start" tokens={{ childrenGap: 8 }}>
+                            <Label>Dimensions</Label>
+                            <Dropdown
                               label=""
                               selectedKey={this.state.similarityType.key}
                               // eslint-disable-next-line react/jsx-no-bind
-                              onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => {this.setState({similarityType: item})}}
+                              onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => { this.setState({ similarityType: item }) }}
                               options={similarityTypeDropdownOptions}
-                              styles={{root: {zIndex:2}}}
-                          />
-                          <Label>Count</Label>
-                          <Dropdown
+                              styles={{ root: { zIndex: 2 } }}
+                            />
+                            <Label>Count</Label>
+                            <Dropdown
                               label=""
                               selectedKey={this.state.maxSimilarPapers.key}
                               // eslint-disable-next-line react/jsx-no-bind
-                              onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => {this.setState({maxSimilarPapers: item})}}
+                              onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => { this.setState({ maxSimilarPapers: item }) }}
                               options={maxSimilarPapersDropdownOptions}
-                          />
-                          <PrimaryButton text="Find Similar Papers" onClick={getSimilarPapers} allowDisabledFocus />
+                            />
+                            <PrimaryButton text="Find Similar Papers" onClick={getSimilarPapers} allowDisabledFocus />
                           </Stack>
                         </React.Fragment>
-                      : null
+                        : null
                     }
                     <div className="m-t-md"></div>
                     <SmartTable props={similarPapersPayloadTableProps}></SmartTable>
                   </PivotItem>
                   <PivotItem onRenderItemLink={_inputButtonRenderer} headerText="By Abstract">
                     <div className="m-t-lg"></div>
-                    <Stack horizontal tokens={{childrenGap: 8}}>
+                    <Stack horizontal tokens={{ childrenGap: 8 }}>
                       <Label>Count</Label>
                       <Dropdown
-                          label=""
-                          selectedKey={this.state.searchByAbstractLimit.key}
-                          // eslint-disable-next-line react/jsx-no-bind
-                          onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => {this.setState({searchByAbstractLimit: item})}}
-                          options={maxSimilarPapersDropdownOptions}
+                        label=""
+                        selectedKey={this.state.searchByAbstractLimit.key}
+                        // eslint-disable-next-line react/jsx-no-bind
+                        onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => { this.setState({ searchByAbstractLimit: item }) }}
+                        options={maxSimilarPapersDropdownOptions}
                       />
-                      <PrimaryButton style={{zIndex:2}} text="Find Similar Papers" onClick={getSimilarPapersByAbstract} allowDisabledFocus />
+                      <PrimaryButton style={{ zIndex: 2 }} text="Find Similar Papers" onClick={getSimilarPapersByAbstract} allowDisabledFocus />
                     </Stack>
                     <div className="m-t-md"></div>
                     <TextField value={this.state.searchTitle || ''} placeholder="Enter your own title here" onChange={onChangeSearchTitle} defaultValue={""} />
@@ -1125,35 +1214,35 @@ class App extends React.Component<{}, AppState> {
             </div>
             <div className="split p-md p-b-0">
               {this.state.dataFiltered["all"].length > 0 && this.state.dataAll.length > 0
-                  ? 
-                    <PaperScatter props={
-                      { 
-                        setScrollToPaperID: setScrollToPaperID,
-                        addToSavedPapers: addToSavedPapers,
-                        addToSimilarInputPapers: addToSimilarInputPapers,
-                        isInSavedPapers: isInSavedPapers,
-                        isInSimilarInputPapers: isInSimilarInputPapers,
-                        isInFilteredPapers: isInFilteredPapers,
-                        isInSimilarPapers: isInSimilarPapers,
-                        dataFiltered: this.state.dataFiltered["all"],
-                        dataSaved: this.state.dataSaved,
-                        dataSimilarPayload: this.state.dataSimilarPayload,
-                        dataSimilar: this.state.dataSimilar,
-                        data: this.state.dataAll,
-                        selectNodeIDs: this.state.selectNodeIDs,
-                        addToSelectNodeIDs: addToSelectNodeIDs,
-                        embeddingType: this.state.embeddingType.key as string,
-                        openGScholar: openGScholar,
-                        eventOrigin: this.state.eventOrigin,
-                      }
-                    }
-                    ></PaperScatter>
-                  : null
+                ?
+                <PaperScatter props={
+                  {
+                    setScrollToPaperID: setScrollToPaperID,
+                    addToSavedPapers: addToSavedPapers,
+                    addToSimilarInputPapers: addToSimilarInputPapers,
+                    isInSavedPapers: isInSavedPapers,
+                    isInSimilarInputPapers: isInSimilarInputPapers,
+                    isInFilteredPapers: isInFilteredPapers,
+                    isInSimilarPapers: isInSimilarPapers,
+                    dataFiltered: this.state.dataFiltered["all"],
+                    dataSaved: this.state.dataSaved,
+                    dataSimilarPayload: this.state.dataSimilarPayload,
+                    dataSimilar: this.state.dataSimilar,
+                    data: this.state.dataAll,
+                    selectNodeIDs: this.state.selectNodeIDs,
+                    addToSelectNodeIDs: addToSelectNodeIDs,
+                    embeddingType: this.state.embeddingType.key as string,
+                    openGScholar: openGScholar,
+                    eventOrigin: this.state.eventOrigin,
+                  }
                 }
+                ></PaperScatter>
+                : null
+              }
             </div>
             <div className="split p-md p-b-0">
-              <Stack horizontal horizontalAlign="space-between" verticalAlign="center" tokens={{childrenGap: 8}}>
-                  <Label style={{fontSize: "1.2rem"}}>Meta</Label>
+              <Stack horizontal horizontalAlign="space-between" verticalAlign="center" tokens={{ childrenGap: 8 }}>
+                <Label style={{ fontSize: "1.2rem" }}>Meta</Label>
               </Stack>
               <Pivot linkSize={PivotLinkSize.normal} linkFormat={PivotLinkFormat.links}>
                 <PivotItem headerText={"Keywords"}>
