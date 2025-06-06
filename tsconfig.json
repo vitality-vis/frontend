@@ -1,28 +1,28 @@
 {
-    "compilerOptions": {
-      "experimentalDecorators": true,
-      "outDir": "./dist/",
-      "sourceMap": true,
-      "noImplicitAny": false,
-      "module": "commonjs",
-      "target": "es2015",
-      "jsx": "react",
-      "lib": [
-        "es5",
-        "es6",
-        "dom"
-      ],
-      "types": [
-        "node"
-      ]
-    },
-    "include": [
-      "./src/**/*",
-      "index.d.ts"
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "outDir": "./dist/",
+    "sourceMap": true,
+    "noImplicitAny": false,
+    "module": "commonjs",
+    "target": "es2015",
+    "jsx": "react",
+    "lib": [
+      "es5",
+      "es6",
+      "dom"
     ],
-    "awesomeTypescriptLoaderOptions": {
-      "reportFiles": [
-        "./src/**/*"
-      ]
-    }
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "./src/**/*",
+    "index.d.ts"
+  ],
+  "awesomeTypescriptLoaderOptions": {
+    "reportFiles": [
+      "./src/**/*"
+    ]
   }
+}

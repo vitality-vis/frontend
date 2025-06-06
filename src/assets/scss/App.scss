@@ -137,3 +137,41 @@ body, .ms-Label, .ms-Pivot, .ms-Dropdown, .ms-Button, .ms-SearchBox, text{
 .iconButton{
     color: #116EBE;
   }
+
+.add-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #e0e0e0; /* Gray circle */
+}
+
+.add-icon {
+    width: 30px;
+    height: 30px;
+}
+
+.add-button:hover .add-icon line {
+    stroke: #007bff; /* Change color on hover */
+}
+
+.add-button:hover {
+    background-color: #d0d0d0; /* Change background on hover */
+}
+.dialog-container {
+    min-height: 320px;
+    max-height: 440px; // Adjust this height to match the visualization block
+    overflow-y: auto;
+    border: 1px solid #ddd; // Optional: Add border for visual separation
+    padding: 10px; // Optional: Padding for the content
+}
+
+.dialog-content {
+    height: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
