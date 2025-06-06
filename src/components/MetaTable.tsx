@@ -1,5 +1,5 @@
 /* eslint no-console: 0 */
-import "./../assets/scss/SmartTable.scss";
+import "./../assets/scss/MetaTable.scss";
 import * as React from "react";
 import {VariableSizeList} from 'react-window';
 import * as JsSearch from 'js-search';
@@ -218,7 +218,8 @@ const EditableCell = ({
     } catch (e) {
     }
 
-    if (["KeywordCount", "AuthorCount", "YearCount", "SourceCount"].indexOf(id) !== -1) {
+    if (["KeywordCount", "AuthorCount", "YearCount", "SourceCount","Count"].indexOf(id) !== -1) {
+        // console.log("barCalculating");
         const val = initialValue / metaMax[id];
         const color = metaColorScale[id](initialValue);
 
@@ -231,34 +232,14 @@ const EditableCell = ({
 
     if (["Sim"].indexOf(id) !== -1) {
 
-        // const val = initialValue / 1 // Max Similarity Value = 1
-        // const color = metaColorScale[id](initialValue);
-        //
-        // const backgroundSize = `${val * 100}% 100%, ${100 - val * 100}% 100%`;
-        // const backgroundImage = `linear-gradient(${color}, ${color}), linear-gradient(white, white)`;
-        //
-        // return <div className="p-td"
-        //             style={{color: val > 0.8 ? "white" : "black", backgroundRepeat: "no-repeat", backgroundImage: backgroundImage, backgroundSize: backgroundSize}}>{initialValue}</div>;
-        const floatVal = parseFloat(initialValue);
-        const oneDecVal = floatVal.toFixed(2); // "0.8", "0.5", etc.
+        const val = initialValue / 1; // Max Similarity Value = 1
+        const color = metaColorScale[id](initialValue);
 
-        // Optionally build color scale:
-        const color = metaColorScale[id](floatVal);
-        const percent = floatVal * 100;
-        const backgroundSize = `${percent}% 100%, ${100 - percent}% 100%`;
+        const backgroundSize = `${val * 100}% 100%, ${100 - val * 100}% 100%`;
         const backgroundImage = `linear-gradient(${color}, ${color}), linear-gradient(white, white)`;
 
-        return (
-            <div className="p-td"
-                 style={{
-                     color: floatVal > 0.8 ? "white" : "black",
-                     backgroundRepeat: "no-repeat",
-                     backgroundImage: backgroundImage,
-                     backgroundSize: backgroundSize
-                 }}>
-                {oneDecVal}
-            </div>
-        );
+        return <div className="p-td"
+                    style={{color: val > 0.8 ? "white" : "black", backgroundRepeat: "no-repeat", backgroundImage: backgroundImage, backgroundSize: backgroundSize}}>{initialValue}</div>;
     }
 
     if (['Source', 'Author', 'Keyword'].indexOf(id) !== -1) {
@@ -304,50 +285,37 @@ function GlobalFilter({
 }
 
 function NumberRangeColumnFilter({
-         column: { filterValue, setFilter, id },
-         min ,
-         max
-     }){
-    // const range = React.useMemo(() => {
-    //     let min = preFilteredRows.length ? preFilteredRows[0].values[id] : 0
-    //     let max = preFilteredRows.length ? preFilteredRows[0].values[id] : 0
-    //
-    //     preFilteredRows.forEach(row => {
-    //         min = Math.min(row.values[id], min)
-    //         max = Math.max(row.values[id], max)
-    //     })
-    //     return [min, max];
-    // }, [preFilteredRows]);
-    const defaultRange = [0, 1611]; // Provide general defaults if min/max are not defined
+                                     column: { filterValue, setFilter, id },
+                                     min ,
+                                     max
+                                 }){
+    const defaultRange = [1974, 2023]; // Provide general defaults if min/max are not defined
     const range = (min !== undefined && max !== undefined) ? [min, max] : defaultRange;
 
     const [value, setValue] = useState(filterValue?.length ? filterValue : range);
-    function valueText(val: number) {
-        return val.toFixed(2);  // format to 2 decimals
-    }
 
     React.useEffect(() => {
+        // console.log("trigger filterValue update ")
         if (filterValue && filterValue.length > 0) {
             setValue(filterValue);
         }
     }, [filterValue]);
 
     const [step, marks] = React.useMemo(() => {
-        const stepVal = range[1] > 2 ? 1 : 0.001;
-        // If you want the marks themselves also to show only 2 decimals:
-        const formatMark = (v) => Number(v.toFixed(2));
+        const step = range[1] > 2 ? 1 : 0.001;
         const uniqueMarks = Array.from(new Set([
-            { value: range[0], label: formatMark(range[0]).toString() },
-            { value: value[0],  label: formatMark(value[0]).toString() },
-            { value: value[1],  label: formatMark(value[1]).toString() },
-            { value: range[1],  label: formatMark(range[1]).toString() },
-        ]));
-        return [stepVal, uniqueMarks];
+            { value: range[0], label: range[0].toString() },
+            { value: value[0], label: value[0].toString() },
+            { value: value[1], label: value[1].toString() },
+            { value: range[1], label: range[1].toString() },
+        ])); // Remove duplicates to ensure unique keys
+
+        return [step, uniqueMarks];
     }, [value, range]);
 
-    // function valueText(value: number, index: number) {
-    //     return value != 0 ? `${value.toPrecision(4)}` : '';
-    // }
+    function valueText(value: number, index: number) {
+        return value != 0 ? `${value.toPrecision(4)}` : '';
+    }
 
     return (
         <div style={{marginLeft: 16, marginRight: 16, textAlign: "center"}}
@@ -391,12 +359,11 @@ function MultiSelectTokensColumnFilter({
             const options = new Set();
             preFilteredRows.forEach(row => {
                 if ("values" in row && id in row["values"] && row["values"][id] != null) {
-                    const tokens = Array.isArray(row.values[id]) ? row.values[id] : [row.values[id]];
-                        tokens.forEach((token) => {
+                    row.values[id].forEach((token) => {
                         if (token && token.length > 0) {
                             options.add(token);
                         }
-                        });
+                    });
                 }
             });
             return [...options.values()].sort(function (a: any, b: any) {
@@ -407,47 +374,37 @@ function MultiSelectTokensColumnFilter({
 
     const [multiselectTokenSelectedOptions, setMultiSelectTokenSelectedOptions]: any = React.useState([]);
 
-    const onChange = (_selOpts): void => {
-        let filteredValues = [];
-        preFilteredRows.forEach(row => {
-            if ("values" in row && id in row["values"] && row["values"][id] != null) {
-                const rowTokens = Array.isArray(row.values[id]) ? row.values[id] : [row.values[id]];
-                if (rowTokens.some(r => _selOpts.some(o => o.value === r))) {
-                  filteredValues.push(rowTokens);
-                }
-            }
-        });
-        const selectedValues = _selOpts.map(opt => opt.value);
-        // console.log("Selected OptionsInToken:", _selOpts); // Log selected options
-        // console.log("Filtered Values before SetInToken:", filteredValues); // Log values before uniqueness
-        filteredValues = [...new Set(filteredValues)];
-        // console.log("Filtered Values after SetInToken:", filteredValues); // Log unique filtered values
+    const onChange = (selectedOptions): void => {
+        const selectedValues = selectedOptions.map(option => option.value);
 
-        setMultiSelectTokenSelectedOptions(_selOpts);
-        setFilter(selectedValues.length > 0 ? selectedValues : undefined);
-        // setFilter(filteredValues.length > 0 ? filteredValues : undefined);
+        if (JSON.stringify(selectedValues) !== JSON.stringify(filterValue)) {
+            setMultiSelectTokenSelectedOptions(selectedOptions);
+            setFilter(selectedValues.length > 0 ? selectedValues : undefined);
+        }
     }
 
     React.useEffect(() => {
-        if (filterValue) {
-            if (!Array.isArray(filterValue)) {
-                let _selOptions = [];
-                _selOptions.push({label: filterValue, value: filterValue});
+        // console.log("trigger longer preFilterRows filterValue update");
+        if (filterValue && !Array.isArray(filterValue)) {
+            const _selOptions = [{ label: filterValue, value: filterValue }];
+            if (JSON.stringify(_selOptions) !== JSON.stringify(multiselectTokenSelectedOptions)) {
                 setMultiSelectTokenSelectedOptions(_selOptions);
-
-                let filteredValues = [];
-                preFilteredRows.forEach(row => {
-                    if ("values" in row && id in row["values"] && row["values"][id] != null) {
-                        if (row.values[id].some(r => filterValue == r)) {
-                            filteredValues.push(row.values[id]);
-                        }
-                    }
-                });
-                // console.log('filteredValues:',filteredValues);
-                setFilter(filteredValues.length > 0 ? filteredValues : undefined);
             }
+
+            const filteredValues = preFilteredRows
+                .filter(row =>
+                    "values" in row &&
+                    id in row["values"] &&
+                    row["values"][id] != null &&
+                    row.values[id].some(r => filterValue == r)
+                )
+                .map(row => row.values[id]);
+
+            // console.log('filteredValues:', filteredValues);
+            setFilter(filteredValues.length > 0 ? filteredValues : undefined);
         }
-    }, [filterValue]);
+    }, [filterValue, preFilteredRows, id, multiselectTokenSelectedOptions]);
+
 
     // Create Options
     const _options = React.useMemo(() => {
@@ -481,24 +438,19 @@ function MultiSelectTokensColumnFilter({
 }
 
 function MultiSelectColumnFilter({
-                                     column: {filterValue, setFilter, preFilteredRows, id}, dataAuthors, dataSources,dataKeywords, setSpinner
+                                     column: {filterValue, setFilter, preFilteredRows, id}, dataAuthors, dataSources,dataKeywords
                                  }) {
     // Calculate the options for filtering
     // using the preFilteredRows
-    // console.log("dataAuthors in MultiSelectColumnFilter:", dataAuthors);
-    // console.log("dataKeywords in MultiSelectColumnFilter:", dataKeywords);
-    // console.log("id",id);
-    // console.log("filterValue",filterValue);
-    // console.log("setFilter",setFilter);
     let options = [];
     // console.log('inner metadata', metadata)
-    if (id === 'Authors' && dataAuthors) {
+    if (id === 'Author' && dataAuthors) {
         // Use the passed set of authors
         options = [...new Set(dataAuthors)].sort();
     } else if (id === 'Source' && dataSources) {
         // Use the passed set of sources
         options = [...new Set(dataSources)].sort();
-    } else if (id==='Keywords'&& dataKeywords){
+    } else if (id==='Keyword'&& dataKeywords){
         options = [...new Set(dataKeywords)].sort();
     }
     else {
@@ -520,8 +472,6 @@ function MultiSelectColumnFilter({
     }, [options]);
     const [multiselectTokenSelectedOptions, setMultiSelectTokenSelectedOptions] = React.useState<any[]>([]);
     const onChange = (selectedOptions): void => {
-        console.log("setSpinner");
-        setSpinner(true, "Applying Filters...");
         const filteredValues = preFilteredRows
             .filter(row => {
                 const rowValues = Array.isArray(row.values[id]) ? row.values[id] : [row.values[id]];
@@ -540,6 +490,8 @@ function MultiSelectColumnFilter({
     }
 
     React.useEffect(() => {
+        // console.log('trigger filter value update on setMultiSelectTokenSelectedOptions');
+        // console.log('filterValue',filterValue);
         if (filterValue) {
             const _selOptions = Array.isArray(filterValue) ? filterValue.map(f => ({label: f, value: f})) : [];
             setMultiSelectTokenSelectedOptions(_selOptions);
@@ -583,43 +535,31 @@ function DefaultColumnFilter({
         />)
 }
 
-function filterMapping(filter, dataAuthors, dataSources, dataKeywords,
-                       setSpinner, columnId, staticMinYear = 1975,
-                       staticMaxYear = 2024, staticMinCitationCounts = 0,
-                       staticMaxCitationCounts = 1000,
-                       similarMinScore=0,
-                       similarMaxScore=1) {
+function filterMapping(filter, dataAuthors, dataSources, dataKeywords, columnId, staticMinYear = 1975, staticMaxYear = 2024, staticMinCitationCounts = 0, staticMaxCitationCounts = 1000,columnData) {
     if (filter === "multiselect") {
-        // console.log("Passing dataAuthors to MultiSelectColumnFilter:", dataAuthors);
-        // console.log("Passing dataKeywords to MultiSelectColumnFilter:", dataKeywords);
-        return { Filter: (props) => (<MultiSelectColumnFilter
-                {...props}
-                dataAuthors={dataAuthors}
-                dataSources={dataSources}
-                dataKeywords={dataKeywords}
-                setSpinner={setSpinner}
-            />),
-            filter: 'includesValue' };
+        return { Filter: (props) => <MultiSelectColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords} />, filter: 'includesValue' };
     } else if (filter === "default") {
         return { Filter: DefaultColumnFilter, filter: 'fuzzyText' };
-    } else if (filter === "range" && columnId === "Sim") {
-        console.log("similarMaxScore from props:", similarMaxScore);
-        console.log("similarMinScore from props:", similarMinScore);
-        return {
+    } else if (filter === "range") {
+        let min, max;
+        if (columnId === "Count") {
+            // Dynamically calculate min and max from the data
+            min = Math.min(...columnData);
+            max = Math.max(...columnData);
+        }return {
             Filter: (props) => (
                 <NumberRangeColumnFilter
                     {...props}
-                    // Pass the min/max from “similar” table’s props
-                    min={similarMinScore ?? 0}
-                    max={similarMaxScore ?? 1}
+                    id={columnId}
+                    min={min ?? undefined}
+                    max={max ?? undefined}
                 />
             ),
-            filter: 'between',
+            filter: "between",
         };
-    } else if (filter === "range") {
         // Check if the column is Year or CitationCount to apply specific ranges
-        const min = columnId === 'Year' ? staticMinYear : columnId === 'CitationCount' ? staticMinCitationCounts : undefined;
-        const max = columnId === 'Year' ? staticMaxYear : columnId === 'CitationCount' ? staticMaxCitationCounts : undefined;
+        min = columnId === 'Year' ? staticMinYear : columnId === 'CitationCount' ? staticMinCitationCounts : undefined;
+        max = columnId === 'Year' ? staticMaxYear : columnId === 'CitationCount' ? staticMaxCitationCounts : undefined;
         return {
             Filter: (props) => (
                 <NumberRangeColumnFilter
@@ -632,7 +572,7 @@ function filterMapping(filter, dataAuthors, dataSources, dataKeywords,
             filter: 'between',
         };
     } else if (filter === "multiselect-tokens") {
-        return { Filter: (props) => <MultiSelectTokensColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords} setSpinner={setSpinner} />, filter: 'includesValue' };
+        return { Filter: (props) => <MultiSelectTokensColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords} />, filter: 'includesValue' };
     }
 }
 
@@ -681,8 +621,7 @@ function Table({
                    loadAllData,
                    dataAuthors,
                    dataSources,
-                   dataKeywords,
-                   setSpinner,
+                   dataKeywords
                }) {
 
     const [isLoading, setIsLoading] = useState(false);
@@ -1043,18 +982,23 @@ function Table({
     };
 
     React.useEffect(() => {
-        // `filters` changed
+        // console.log('updateColumnFilterValues(filters); Triggered');
+        // console.log('filters:',filters)
         updateColumnFilterValues(filters);
+
     }, [filters]);
 
     React.useEffect(() => {
         // `sortBy` changed
-        // setSpinner(true, "Updating Filters...");
+        // console.log('updateColumnSortByValues(sortBy); Triggered');
+        // console.log(sortBy);
         updateColumnSortByValues(sortBy);
+
     }, [sortBy]);
 
     React.useEffect(() => {
         // `globalFilter` changed
+        // console.log('updateGlobalFilterValue(globalFilter); Triggered')
         updateGlobalFilterValue(globalFilter);
     }, [globalFilter]);
 
@@ -1077,6 +1021,7 @@ function Table({
     const listRef: any = React.useRef(null);
 
     React.useEffect(() => {
+        // console.log('trigger scrollToPaperID update')
         if (listRef.current && scrollToPaperID != null && scrollToPaperID != undefined) {
             // Then call the scrollToItem() API method with an item index:
             let idx = 0;
@@ -1105,6 +1050,9 @@ function Table({
         })),
         SourceCount: Math.max.apply(Math, data.map(function (o) {
             return o["SourceCount"];
+        })),
+        Count: Math.max.apply(Math, data.map(function (o) {
+            return o["Count"];
         }))
     }
 
@@ -1113,6 +1061,7 @@ function Table({
         AuthorCount: d3.scaleLinear().domain([0, metaMax["AuthorCount"]]).range(["white", "#aaaaaa"] as any),
         YearCount: d3.scaleLinear().domain([0, metaMax["YearCount"]]).range(["white", "#aaaaaa"] as any),
         SourceCount: d3.scaleLinear().domain([0, metaMax["SourceCount"]]).range(["white", "#aaaaaa"] as any),
+        Count: d3.scaleLinear().domain([0, metaMax["Count"]]).range(["white", "#aaaaaa"] as any),
         Sim: d3.scaleLinear().domain([0, 1]).range(["white", "#ff7f00"] as any),
     }
 
@@ -1280,9 +1229,8 @@ function Table({
                 <div>
                     <div className="tr">
                         <div className="th">
-                            {/*<Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/{data.length}</b>*/}
+                            <Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/{data.length}</b>
                             {/*hard coding for speed*/}
-                            <Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/66692</b>
                             </Text>
                             &nbsp;&nbsp;
                             <div style={{float: "right"}}>
@@ -1510,7 +1458,7 @@ function Table({
     )
 }
 
-export interface SmartTableProps {
+export interface MetaTableProps {
     // State
     staticMinYear?: number;  // Optional properties for min and max years
     staticMaxYear?: number;
@@ -1565,14 +1513,15 @@ export interface SmartTableProps {
     dataSources?: any[];
     dataKeywords?: any[];
     applyLocalFilters?: Function;
-    similarMinScore?: number;
-    similarMaxScore?: number;
+    authorsSummary?: Array<{ _id: string; count: number }>;
+    sourcesSummary?: Array<{ _id: string; count: number }>;
+    keywordsSummary?: Array<{ _id: string; count: number }>;
+    yearsSummary?: Array<{ _id: number; count: number }>;
 }
 
-export const SmartTable: React.FC<{
-    props: SmartTableProps;
-    setSpinner: (isSpinnerActive: boolean, loadingText?: string) => void;
-}> = observer(({props,setSpinner}) => {
+export const MetaTable: React.FC<{
+    props: MetaTableProps
+}> = observer(({props}) => {
     let {
         tableData, dataFiltered=[], tableType, tableControls, columnIds, isInSimilarInputPapers,
         isInSavedPapers, addToSimilarInputPapers, addToSavedPapers, deleteRow, columnWidths,
@@ -1581,94 +1530,64 @@ export const SmartTable: React.FC<{
         globalFilterValue, updateGlobalFilterValue, scrollToPaperID, addToSelectNodeIDs,
         checkoutPapers, summarizePapers, literatureReviewPapers, embeddingType, hasEmbeddings, openGScholar,
         isInSelectedNodeIDs, loadMoreData, hasMoreData, loadAllData, dataAuthors, dataSources,
-        dataKeywords, staticMinYear,staticMaxYear,staticMinCitationCounts,staticMaxCitationCounts,
-         applyLocalFilters,similarMinScore,similarMaxScore
+        dataKeywords, staticMinYear,staticMaxYear,staticMinCitationCounts,staticMaxCitationCounts, applyLocalFilters
     } = props;
-    console.log("similarMinScore from props:", similarMinScore);
-    console.log("similarMaxScore from props:", similarMaxScore);
-    const minSimilarRef=useRef(similarMinScore);
-    const maxSimilarRef=useRef(similarMaxScore);
+    // console.log('columnFilterTypes:',columnFilterTypes)
     const minYearRef = useRef(staticMinYear);
     const maxYearRef = useRef(staticMaxYear);
     const minCitationCountRef = useRef(staticMinCitationCounts);
     const maxCitationCountRef = useRef(staticMaxCitationCounts);
 
-    const [minSim, setMinSim]=useState(minSimilarRef.current??null);
-    const [maxSim, setMaxSim]=useState(maxSimilarRef.current??null);
     const [minYear, setMinYear] = useState(minYearRef.current ?? null);
     const [maxYear, setMaxYear] = useState(maxYearRef.current ?? null);
     const [minCitationCount, setMinCitationCount] = useState(minCitationCountRef.current ?? null);
     const [maxCitationCount, setMaxCitationCount] = useState(maxCitationCountRef.current ?? null);
 
-    useEffect(() => {
-        if (minSimilarRef.current!==undefined) setMinSim(minSimilarRef.current);
-        if (maxSimilarRef.current!==undefined) setMaxSim(maxSimilarRef.current);
-        if (minYearRef.current !== undefined) setMinYear(minYearRef.current);
-        if (maxYearRef.current !== undefined) setMaxYear(maxYearRef.current);
-        if (minCitationCountRef.current !== undefined) setMinCitationCount(minCitationCountRef.current);
-        if (maxCitationCountRef.current !== undefined) setMaxCitationCount(maxCitationCountRef.current);
+    if (minYearRef.current !== undefined) setMinYear(minYearRef.current);
+    if (maxYearRef.current !== undefined) setMaxYear(maxYearRef.current);
+    if (minCitationCountRef.current !== undefined) setMinCitationCount(minCitationCountRef.current);
+    if (maxCitationCountRef.current !== undefined) setMaxCitationCount(maxCitationCountRef.current);
 
-    }, []);
     // console.log("minYear:", minYear, "maxYear:", maxYear);
     // console.log("minCitationCount:", minCitationCount, "maxCitationCount:", maxCitationCount);
 
     const [filteredLocalData, setFilteredLocalData] = useState([]);
     // console.log("tableType:",tableType);
-    // if (tableType === "all") {
-        // console.log("dataFiltered", dataFiltered);
-        // console.log("SmartTable dataAuthors received:", dataAuthors);
-        // console.log("SmartTable dataKeywords received:", dataKeywords);
-    // }
-    const data = tableType === "all" ? dataFiltered : tableData[tableType];
+    console.log(tableData.all);
+    // const isMetadata = tableType === "keyword" && Array.isArray(tableData.all) && tableData.all[0]?.Keyword;
+    let data;
+    data = tableData.all;
     // console.log("Data for table:", data);
     if (!Array.isArray(data)) {
         console.error("Data is not an array or is undefined:", data);
     }
 
-    const columns = React.useMemo(() => {
-        return columnIds.map((c) => {
-            let columnHeader = {
-                Header: c,
-                accessor: c,
-            };
+    const columns = React.useMemo(() => columnIds.map((c) => {
+        // console.log("Column ID:", c);
+        // console.log("Column Widths:", columnWidths[c]);
+        // console.log("Column Filter Type:", columnFilterTypes[c]);
+        const columnHeader = {Header: c, accessor: c};
+        const columnWidth = columnWidths[c];
+        const columnData = tableData.all.map(row => row[c]);
+        // console.log('columnFilterTypes passed dataSources',dataSources);
+        const columnFilter = filterMapping(
+            columnFilterTypes[c],
+            dataAuthors,
+            dataSources,
+            dataKeywords,
+            c,  // Pass column ID here
+            staticMinYear,
+            staticMaxYear,
+            staticMinCitationCounts,
+            staticMaxCitationCounts,
+            columnData
+        );
 
-            // 2) If the column is Sim, override the accessor so it points to row.score
-            if (c === "Sim") {
-                columnHeader = {
-                    Header: "Sim",
-                    // Instead of "Sim", we read row.score
-                    accessor: (row: any) => row.score} as any;
-            }
-
-            const columnWidth = columnWidths[c];
-            // console.log('columnFilterTypes passed dataSources',dataSources);
-            const columnFilter = filterMapping(
-                columnFilterTypes[c],
-                dataAuthors,
-                dataSources,
-                dataKeywords,
-                setSpinner,
-                c,  // Pass column ID here
-                staticMinYear,
-                staticMaxYear,
-                staticMinCitationCounts,
-                staticMaxCitationCounts,
-                similarMinScore,
-                similarMaxScore,
-            );
+        // console.log("Columns for Table:", columns);
 
 
-            // let columnMeta = {metadata: ''}
-            // if (tableData['metaData'] === undefined) {
-            //   columnMeta = {metadata: ''}
-            // } else {
-            //   columnMeta = {metadata: tableData['metaData'][c]}
-            // }
-
-
-            return {...columnHeader, ...columnWidth, ...columnFilter};
-        });
-    }, [
+        return { ...columnHeader, ...columnWidth, ...columnFilter };
+    }), [
         columnIds,
         columnWidths,
         columnFilterTypes,
@@ -1687,12 +1606,13 @@ export const SmartTable: React.FC<{
     // so that if data actually changes when we're not
     // editing it, the page is reset
     React.useEffect(() => {
+        // console.log('trgger data update')
         skipResetRef.current = false
     }, [data]);
 
     const initialState: any = {
         hiddenColumns: columnIds.filter(x => !columnsVisible.includes(x)),
-        sortBy: columnSortByValues,
+        sortBy: columnSortByValues?columnSortByValues:[],
         filters: columnFilterValues,
         globalFilter: globalFilterValue,
     };
@@ -1711,54 +1631,56 @@ export const SmartTable: React.FC<{
     The requirement is to compare these papers as much as possible, summarizing the similarities, differences, and connections between them.`);
 
     // @ts-ignore
-    let styles = <Styles>
-        <Table
-    tableType={tableType}
-    embeddingType={embeddingType}
-    hasEmbeddings={hasEmbeddings}
-    scrollToPaperID={scrollToPaperID}
-    paperInfo={paperInfo}
-    setPaperInfo={setPaperInfo}
-    summarizeBtnShow={summarizeBtnShow}
-    setSummarizeBtnShow={setSummarizeBtnShow}
-    literatureReviewBtnShow={literatureReviewBtnShow}
-    setLiteratureReviewBtnShow={setLiteratureReviewBtnShow}
-    summarizePrompt={summarizePrompt}
-    setSummarizePrompt={setSummarizePrompt}
-    literatureReviewPrompt={literatureReviewPrompt}
-    setLiteratureReviewPrompt={setLiteratureReviewPrompt}
-    columns={columns}
-    data={data}
-    tableControls={tableControls}
-    tableData={tableData}
-    addToSelectNodeIDs={addToSelectNodeIDs}
-    addToSimilarInputPapers={addToSimilarInputPapers}
-    addToSavedPapers={addToSavedPapers}
-    deleteRow={deleteRow}
-    isInSimilarInputPapers={isInSimilarInputPapers}
-    isInSavedPapers={isInSavedPapers}
-    isInSelectedNodeIDs={isInSelectedNodeIDs}
-    skipReset={skipResetRef.current}
-    initialState={initialState}
-    updateVisibleColumns={updateVisibleColumns}
-    updateColumnFilterValues={updateColumnFilterValues}
-    updateColumnSortByValues={updateColumnSortByValues}
-    updateGlobalFilterValue={updateGlobalFilterValue}
-    setFilteredPapers={setFilteredPapers}
-    dataFiltered={dataFiltered}
-    checkoutPapers={checkoutPapers}
-    summarizePapers={summarizePapers}
-    literatureReviewPapers={literatureReviewPapers}
-    openGScholar={openGScholar}
-    loadMoreData={loadMoreData}
-    hasMoreData={hasMoreData}
-    loadAllData={loadAllData}
-    dataAuthors={dataAuthors}  // Pass dataAuthors to Table
-    dataSources={dataSources}  // Pass dataSources to Table
-    dataKeywords={dataKeywords}
-    setSpinner={setSpinner}/>
-    </Styles>;
-    return styles
+    return (
+        <Styles>
+            <Table
+                tableType={tableType}
+                embeddingType={embeddingType}
+                hasEmbeddings={hasEmbeddings}
+                scrollToPaperID={scrollToPaperID}
+                paperInfo={paperInfo}
+                setPaperInfo={setPaperInfo}
+                summarizeBtnShow={summarizeBtnShow}
+                setSummarizeBtnShow={setSummarizeBtnShow}
+                literatureReviewBtnShow={literatureReviewBtnShow}
+                setLiteratureReviewBtnShow={setLiteratureReviewBtnShow}
+                summarizePrompt={summarizePrompt}
+                setSummarizePrompt={setSummarizePrompt}
+                literatureReviewPrompt={literatureReviewPrompt}
+                setLiteratureReviewPrompt={setLiteratureReviewPrompt}
+                columns={columns}
+                data={data}
+                tableControls={tableControls}
+                tableData={tableData}
+                addToSelectNodeIDs={addToSelectNodeIDs}
+                addToSimilarInputPapers={addToSimilarInputPapers}
+                addToSavedPapers={addToSavedPapers}
+                deleteRow={deleteRow}
+                isInSimilarInputPapers={isInSimilarInputPapers}
+                isInSavedPapers={isInSavedPapers}
+                isInSelectedNodeIDs={isInSelectedNodeIDs}
+                skipReset={skipResetRef.current}
+                initialState={initialState}
+                updateVisibleColumns={updateVisibleColumns}
+                updateColumnFilterValues={updateColumnFilterValues}
+                updateColumnSortByValues={updateColumnSortByValues}
+                updateGlobalFilterValue={updateGlobalFilterValue}
+                setFilteredPapers={setFilteredPapers}
+                dataFiltered={dataFiltered}
+                checkoutPapers={checkoutPapers}
+                summarizePapers={summarizePapers}
+                literatureReviewPapers={literatureReviewPapers}
+                openGScholar={openGScholar}
+                loadMoreData={loadMoreData}
+                hasMoreData={hasMoreData}
+                loadAllData={loadAllData}
+                dataAuthors={dataAuthors}  // Pass dataAuthors to Table
+                dataSources={dataSources}  // Pass dataSources to Table
+                dataKeywords={dataKeywords}></Table>
+        </Styles>
+    )
 });
 
-export default SmartTable
+
+export default MetaTable
+

@@ -8,6 +8,10 @@ import { scaleLinear } from 'd3-scale';
 import { select } from 'd3-selection';
 import { observer } from "mobx-react";
 import { ActionButton, DefaultButton, Dropdown, Icon, IconButton, IDropdownOption, Label, Modal, Panel, PanelType, Stack } from "@fluentui/react";
+import {useEffect, useState} from "react";
+
+const baseUrl = "http://localhost:3000/";
+
 
 interface AppProps {
     setScrollToPaperID: Function;
@@ -29,25 +33,30 @@ interface AppProps {
     eventOrigin: string;
 }
 
+
 let scatterplot;
 let datapoints = [];
 let [xMin, xMax] = [{
     "specter_umap": 1000,
-    "glove_umap": 1000
+    "glove_umap": 1000,
+    "ada_umap": 1000,
 },{
     "specter_umap": -1000,
-    "glove_umap": -1000
+    "glove_umap": -1000,
+    "ada_umap": -1000,
 }]
 let [yMin, yMax] = [{
     "specter_umap": 1000,
-    "glove_umap": 1000
+    "glove_umap": 1000,
+    "ada_umap": 1000
 },{
     "specter_umap": -1000,
-    "glove_umap": -1000
+    "glove_umap": -1000,
+    "ada_umap": 1000
 }]
 
 const hoverColor = "#bbdefb";
-const colorListTableTypes = ['#555555','#eeeeee','#e31a1c','#ff5aac','#ff7f00'];
+const colorListTableTypes = ['#3a3737','#cccccc','#e31a1c','#ff5aac','#ff7f00'];
 const colorListCategoricalType = ['#a6cee3', '#222222','#e31a1c','#ff7f00','#1f78b4','#dddddd', '#b2df8a','#33a02c','#fb9a99','#fdbf6f','#cab2d6','#6a3d9a','#ffff99','#b15928'];
 const colorListNumericalType = ['#fc8d59', '#91cf60'];
 
@@ -64,6 +73,7 @@ let axisContainer, xAxisContainer, yAxisContainer;
 let xScale:any, yScale: any;
 let selectNodes = [];
 
+
 export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
     const {data, dataFiltered, dataSimilarPayload, dataSaved, dataSimilar, isInSimilarInputPapers, isInSimilarPapers, isInSavedPapers, addToSavedPapers, addToSimilarInputPapers, selectNodeIDs, addToSelectNodeIDs, isInFilteredPapers, setScrollToPaperID, embeddingType, openGScholar, eventOrigin} = props;
     const [hoverNode, setHoverNode] = React.useState(null);
@@ -72,6 +82,11 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
     const [isColorLegendPanelOpen, setIsColorLegendPanelOpen] = React.useState(false);
     const [colorByAttribute, setColorByAttribute] = React.useState<IDropdownOption>(colorByDropdownOptions[0]);
     const embeddingKey = embeddingType + "_umap";
+    console.log("✅ PaperScatter :", props.data.length);
+    console.log("✅ PaperScatter :", props.data[0]);
+    // const [selectedPaper, setSelectedPaper] = useState(null);
+    // console.log('dataFiltered in paper Scatter',dataFiltered);
+    // console.log('data in paper Scatter',data);
 
     React.useEffect(() => {
         papersToShow = [...data];
@@ -246,7 +261,9 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
     }
 
     const update = () => {
-
+        console.log("✅ 调用了 update()");
+        console.log("✅ 当前 papersToShow 数量为：", papersToShow.length);
+        console.log("✅ embeddingKey 为：", embeddingKey);
         // Re-FILL the datapoints
         datapoints = [];
 
@@ -271,7 +288,7 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
             if(["Default"].indexOf(colorByAttribute.key as string) !== -1){
                 let colorByValue = null;
                 if(!isInFilteredPapers(papersToShow[i])){
-                    colorByValue = "Filtered";
+                    colorByValue = "UnFiltered";
                     if(!(colorByValue in colorByMap)){
                         colorByMap[colorByValue] = [colorValueIndex++, colorListTableTypes[1]];
                     }
@@ -291,7 +308,8 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                         colorByMap[colorByValue] = [colorValueIndex++, colorListTableTypes[4]];
                     }
                 }else{
-                    colorByValue = "Unfiltered";
+                    colorByValue = "Filtered";
+                    // console.log("data is in Filtered");
                     if(!(colorByValue in colorByMap)){
                         colorByMap[colorByValue] = [colorValueIndex++, colorListTableTypes[0]];
                     }
@@ -332,6 +350,15 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                     x = 0;
                     y = 0;
                 }
+            }else if(embeddingKey == "ada_umap"){
+              if("ada_umap" in papersToShow[i] && papersToShow[i]["ada_umap"] != null){
+                  x = papersToShow[i]["ada_umap"][0];
+                  y = papersToShow[i]["ada_umap"][1];
+              }else{
+                  // Put them to the origin, what else!
+                  x = 0;
+                  y = 0;
+              }
             }
             datapoint = [
                 x,
@@ -406,7 +433,38 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
 
     // Modal Open/Close
     const [isModalOpen, setModalState] = React.useState(false);
+    const [selectedPapers, setSelectedPapers] = useState([]); // For storing selected papers' details
+    const fetchPaperDetails = async (paperID) => {
+        const queryPayload = {
+            id_list: [paperID], // Specify the paper ID in the payload
+        };
 
+        try {
+            const response = await fetch(`${baseUrl}getPapers`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(queryPayload),
+            });
+            // console.log('response',response)
+
+            if (response.ok) {
+                const paperData = await response.json();
+                // console.log('paperData:',paperData)
+                return paperData.length > 0 ? paperData[0] : null; // Return the paper details
+            } else {
+                console.error("Failed to fetch paper details");
+                return null;
+            }
+        } catch (error) {
+            console.error("Error fetching paper details:", error);
+            return null;
+        }
+    };
+    const handleInfoClick = () => {
+        setModalState(true); // Open the modal without fetching beforehand
+    };
     return <div>
                 <Stack horizontal horizontalAlign="space-between" verticalAlign="center" tokens={{childrenGap: 8}}>
                     <Label style={{fontSize: "1.2rem"}}>Visualization</Label>
@@ -574,7 +632,7 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                                                     <IconButton 
                                                         styles={{root: {height: "auto", padding: 0}}}
                                                         iconProps={{iconName: "Info"}}
-                                                        onClick={() => { setModalState(true);}} 
+                                                        onClick={() =>handleInfoClick()}
                                                         allowDisabledFocus 
                                                     ></IconButton>
                                                     <IconButton 
@@ -609,70 +667,96 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                 >
                     <div className="p-lg">
                         {selectNodes.map((selectNode, idx) => {
-                            if(selectNode && "Title" in selectNode){
-                                return <div key={selectNode['Title']}>
-                                    <h2 className="p-0 m-0">
-                                        {selectNode['Title']}
-                                        <IconButton
-                                            className="float-right"
-                                            iconProps={{iconName: "Times"}}
-                                            ariaLabel="Close popup modal"
-                                            onClick={() => {setModalState(false)}}
-                                        />
-                                    </h2>
-                                    <br/>
-                                    <div>
-                                        <b>Authors</b>: {
-                                        selectNode['Authors'] 
-                                        ? selectNode['Authors'].filter(Boolean).join(", ")
-                                        : null
-                                        }<br/>
-                                        <b>Source</b>: {selectNode['Source']}<br/>
-                                        <b>Year</b>: {selectNode['Year']}<br/>
-                                        <b>No. of Citations</b>: {selectNode['CitationCounts']}<br/>
-                                        <b>ID</b>: {selectNode['ID']}<br/>
-                                    </div>
-                                    <p><b>Abstract</b>: {selectNode['Abstract']}</p>
-                                    <div><b>Keywords</b>: {
-                                        selectNode['Keywords'] 
-                                        ? selectNode['Keywords'].filter(Boolean).join(", ")
-                                        : null
-                                    }</div>
-                                    <br/>
-                                    <hr></hr>
-                                    <Stack tokens={{ childrenGap: 8 }} horizontal>
-                                        <ActionButton 
-                                            iconProps={{iconName: "PlusCircle"}}
-                                            disabled={isInSimilarInputPapers(selectNode)}
-                                            onClick={() => {addToSimilarInputPapers(selectNode);}} 
-                                            allowDisabledFocus 
-                                            >Select</ActionButton>
-                                        <ActionButton 
-                                            disabled={ isInSavedPapers(selectNode) }
-                                            iconProps={{iconName: "Save"}}
-                                            onClick={() => { addToSavedPapers(selectNode); }} 
-                                            allowDisabledFocus 
-                                        >Save</ActionButton>
-                                        <ActionButton 
-                                            iconProps={{iconName: "GraduationCap"}}
-                                            onClick={() => { openGScholar(selectNode["Title"]) }} 
-                                            allowDisabledFocus 
-                                        >Google Scholar</ActionButton>
-                                    </Stack>
-                                    {
-                                        selectNodes.length - 1 != idx
-                                        ? <>
-                                            <div className="m-t-sm"></div>
-                                            <div style={{height: 5, background: "black", width: "100%"}}></div>
-                                        </>
-                                        : null                                                                                
+                            if(selectNode && "Title" in selectNode) {
+                                // Individual component for each paper's details
+                                const PaperDetail = ({paperID}) => {
+                                    const [paperData, setPaperData] = useState(null);
+                                    const [loading, setLoading] = useState(true);
+
+                                    React.useEffect(() => {
+                                        const fetchData = async () => {
+                                            const data = await fetchPaperDetails(paperID);
+                                            // console.log('fetchedPaperDetail:',data);
+                                            setPaperData(data);
+                                            setLoading(false);
+                                        };
+                                        fetchData();
+                                    }, [paperID]);
+                                    if (loading) {
+                                        return <div>Loading details...</div>;
                                     }
-                                    <br/>
-                                </div>
+
+                                    if (!paperData) {
+                                        return <div>Failed to load paper details.</div>;
+                                    }
+                                    return (
+                                        <div key={paperData.ID}>
+                                            <h2 className="p-0 m-0">
+                                                {paperData.Title}
+                                                <IconButton
+                                                    className="float-right"
+                                                    iconProps={{iconName: "Times"}}
+                                                    ariaLabel="Close popup modal"
+                                                    onClick={() => setModalState(false)}
+                                                />
+                                            </h2>
+                                            <br/>
+                                            <div>
+                                                <b>Authors</b>: {paperData.Authors ? paperData.Authors.join(", ") : "N/A"}<br/>
+                                                <b>Source</b>: {paperData.Source || "N/A"}<br/>
+                                                <b>Year</b>: {paperData.Year || "N/A"}<br/>
+                                                <b>No. of Citations</b>: {paperData.CitationCounts || "N/A"}<br/>
+                                                <b>ID</b>: {paperData.ID}<br/>
+                                            </div>
+                                            <p><b>Abstract</b>: {paperData.Abstract || "N/A"}</p>
+                                            <div>
+                                                <b>Keywords</b>: {paperData.Keywords ? paperData.Keywords.join(", ") : "N/A"}
+                                            </div>
+                                            <br/>
+                                            <hr/>
+                                            <Stack tokens={{childrenGap: 8}} horizontal>
+                                                <ActionButton
+                                                    iconProps={{iconName: "PlusCircle"}}
+                                                    disabled={isInSimilarInputPapers(paperData)}
+                                                    onClick={() => addToSimilarInputPapers(paperData)}
+                                                    allowDisabledFocus
+                                                >
+                                                    Select
+                                                </ActionButton>
+                                                <ActionButton
+                                                    disabled={isInSavedPapers(paperData)}
+                                                    iconProps={{iconName: "Save"}}
+                                                    onClick={() => addToSavedPapers(paperData)}
+                                                    allowDisabledFocus
+                                                >
+                                                    Save
+                                                </ActionButton>
+                                                <ActionButton
+                                                    iconProps={{iconName: "GraduationCap"}}
+                                                    onClick={() => openGScholar(paperData.Title)}
+                                                    allowDisabledFocus
+                                                >
+                                                    Google Scholar
+                                                </ActionButton>
+                                            </Stack>
+                                        </div>
+                                    );
+                                };
+                                return (
+                                    <React.Fragment key={selectNode.ID}>
+                                        <PaperDetail paperID={selectNode.ID}/>
+                                        {selectNodes.length - 1 !== idx && (
+                                            <>
+                                                <div className="m-t-sm"></div>
+                                                <div style={{height: 5, background: "black", width: "100%"}}></div>
+                                            </>
+                                        )}
+                                    </React.Fragment>
+                                );
                             }else{
-                                return null;
-                            }
-                        })} 
+                                    return null;
+                                }
+                            })}
                     </div>
                 </Modal>
             </div>
