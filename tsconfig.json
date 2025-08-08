@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "esModuleInterop": true,          // <-- enables default-style imports from CommonJS modules
+    "allowSyntheticDefaultImports": true,  // <-- lets TypeScript compile `import X from "cjs-lib"` even when no default export exists
     "experimentalDecorators": true,
     "outDir": "./dist/",
     "sourceMap": true,
@@ -13,7 +15,8 @@
       "dom"
     ],
     "types": [
-      "node"
+      "node",
+      "react-joyride"
     ]
   },
   "include": [

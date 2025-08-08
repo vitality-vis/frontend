@@ -465,7 +465,7 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
     const handleInfoClick = () => {
         setModalState(true); // Open the modal without fetching beforehand
     };
-    return <div>
+    return <div id="visualizationPanel" style={{ border: "2px solid #1976d2", borderRadius: 8 }} >
                 <Stack horizontal horizontalAlign="space-between" verticalAlign="center" tokens={{childrenGap: 8}}>
                     <Label style={{fontSize: "1.2rem"}}>Visualization</Label>
                     <div className="float-right">

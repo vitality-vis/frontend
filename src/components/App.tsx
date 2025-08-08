@@ -1,5 +1,5 @@
 import * as React from "react";
-import {hot} from "react-hot-loader";
+// import {hot} from "react-hot-loader";
 import "./../assets/scss/App.scss";
 import PaperScatter from "./PaperScatter";
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
@@ -236,7 +236,11 @@ const preprocessMetadata = (metadata, keyColumn = "Keyword", valueColumn = "Coun
 };
 
 
-class App extends React.Component<{}, AppState> {
+interface AppProps {
+    onMetadataLoaded?: () => void;
+}
+
+class App extends React.Component<AppProps, AppState> {
 
     constructor(props: any) {
         super(props);
@@ -880,6 +884,14 @@ class App extends React.Component<{}, AppState> {
                 spinner: false,
                 loadingText: 'Loading...',
             });
+
+            // Call the callback if provided to notify that metadata has loaded
+            if (this.props.onMetadataLoaded) {
+                // Use setTimeout to ensure state update is complete and DOM is rendered
+                setTimeout(() => {
+                    this.props.onMetadataLoaded!();
+                }, 2500);
+            } 
         } catch (error) {
             console.error("Error fetching metadata:", error);
             this.setState({spinner: false});
@@ -1965,10 +1977,12 @@ class App extends React.Component<{}, AppState> {
                 key: 'metaTableButton',
                 commandBarButtonAs: () => (
                     <DefaultButton
+                        id = "metaTableButton"
                         text="Meta Table"
                         iconProps={{iconName: "Table"}}
                         onClick={() => this.setState({isMetaTableModalOpen: !this.state.isMetaTableModalOpen})}
-                        style={{marginLeft: 8}}
+                        // style={{marginLeft: 8}}
+                        style={{ border: "2px solid #1976d2", borderRadius: 8 }}
                     />
                 ),
             },
@@ -1977,6 +1991,7 @@ class App extends React.Component<{}, AppState> {
                 commandBarButtonAs: () => (
                     <>
                         <Dropdown
+                            id="embeddingDropdownButton"
                             label=""
                             selectedKey={this.state.embeddingType.key}
                             // eslint-disable-next-line react/jsx-no-bind
@@ -1986,18 +2001,22 @@ class App extends React.Component<{}, AppState> {
                             // disabled={true}
                             options={embeddingTypeDropdownOptions}
                             styles={{root: {zIndex: 2, paddingLeft: 4, paddingRight: 4}}}
+                            style={{ border: "2px solid #1976d2", borderRadius: 8 }}
                         />
                     </>
                 )
             },
             {
                 key: 'save',
-                commandBarButtonAs: () => (<DefaultButton iconProps={{iconName: "ClipboardList"}} style={{
+                commandBarButtonAs: () => (<DefaultButton id = "savedPapersButton" iconProps={{iconName: "ClipboardList"}} style={{
                     float: "right",
                     zIndex: 99,
                     paddingLeft: 4,
-                    paddingRight: 4
-                }} text={"Saved Papers (" + this.state.dataSaved.length + ")"}
+                    paddingRight: 4,
+                    border: "2px solid #1976d2",
+                    borderRadius: 8
+                }}
+                 text={"Saved Papers (" + this.state.dataSaved.length + ")"}
                                                           onClick={() => this.setState({isPanelOpen: true})}/>)
             },
         ];
@@ -2058,7 +2077,7 @@ class App extends React.Component<{}, AppState> {
                         farItems={_farItems}
                         styles={{
                             root: {
-                                background: "rgba(0,0,0,0.9)",
+                                background: "rgba(0, 0, 0, 0.39)",
                                 padding: 8,
                                 paddingBottom: 0,
                                 marginTop: -7,
@@ -2137,7 +2156,7 @@ class App extends React.Component<{}, AppState> {
                         gutterAlign="center"
                         cursor="col-resize"
                     >
-                        <div className="split p-md p-b-0">
+                        <div className="split p-md p-b-0" id="similaritySearchPanel" style={{ border: "2px solid #1976d2", borderRadius: 8 }}>
                             <Stack horizontal horizontalAlign="space-between" verticalAlign="center"
                                    tokens={{childrenGap: 8}}>
                                 <Label style={{fontSize: "1.2rem"}}>Similarity Search</Label>
@@ -2277,7 +2296,7 @@ class App extends React.Component<{}, AppState> {
                         {/*        </PivotItem>*/}
                         {/*    </Pivot>*/}
                         {/*</div>*/}
-                        <div className="split p-md p-b-0">
+                        <div id = "chatWindowsPanel" className="split p-md p-b-0" style={{ border: "2px solid #1976d2", borderRadius: 8 }}>
                             <div>
                                 <label style={{fontSize: "1.2rem"}}>Chat Windows</label>
                             </div>
@@ -2373,4 +2392,5 @@ class App extends React.Component<{}, AppState> {
     }
 }
 
-export default hot(module)(App);
+// export default hot(module)(App);
+export default App

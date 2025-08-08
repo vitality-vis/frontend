@@ -46,6 +46,7 @@ import createFilterOptions from "react-select-fast-filter-options";
 import * as d3 from 'd3';
 import {useCallback, useEffect, useRef, useState} from "react";
 import {uniqueId} from "lodash";
+import { style } from "d3";
 
 const indexStrategy = new JsSearch.PrefixIndexStrategy();
 
@@ -564,10 +565,14 @@ function MultiSelectColumnFilter({
 }
 
 function DefaultColumnFilter({
-                                 column: {filterValue, setFilter},
+                                 column: {filterValue, setFilter, id},
                              }) {
+    // Only add ID if this is the Title column
+    const searchBoxId = id === 'Title' ? 'titleSearchBox' : undefined;
+    
     return (
         <SearchBox
+            id={searchBoxId}
             onClear={() => {
                 setFilter(undefined) // Set undefined to remove the filter entirely
             }}
@@ -577,6 +582,7 @@ function DefaultColumnFilter({
             onSearch={(newValue) => {
                 setFilter(newValue || undefined) // Set undefined to remove the filter entirely
             }}
+            style={{ border: "2px solid #1976d2", borderRadius: 8 }}
             // onChange={(_, newValue) => {
             //   setFilter(newValue || undefined) // Set undefined to remove the filter entirely
             // }}
@@ -1285,7 +1291,7 @@ function Table({
                             <Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/66692</b>
                             </Text>
                             &nbsp;&nbsp;
-                            <div style={{float: "right"}}>
+                            <div id="globalSettingsArea" style={{float: "right", marginRight: 5, border: "2px solid #1976d2", borderRadius: 8 }}>
                                 <GlobalFilter
                                     globalFilter={globalFilter}
                                     setGlobalFilter={setGlobalFilter}
