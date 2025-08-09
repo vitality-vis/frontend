@@ -13,19 +13,10 @@
       "es5",
       "es6",
       "dom"
-    ],
-    "types": [
-      "node",
-      "react-joyride"
     ]
   },
   "include": [
     "./src/**/*",
     "index.d.ts"
-  ],
-  "awesomeTypescriptLoaderOptions": {
-    "reportFiles": [
-      "./src/**/*"
-    ]
-  }
+  ]
 }

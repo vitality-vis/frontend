@@ -15,7 +15,7 @@
 
 ### Credits
 vitaLITy was created by 
-<a target="_blank" href="https://www.cc.gatech.edu/~anarechania3">Arpit Narechania</a>, <a target="_blank" href="https://www.karduni.com/">Alireza Karduni</a>, <a target="_blank" href="https://wesslen.netlify.app/">Ryan Wesslen</a>, and <a target="_blank" href="https://emilywall.github.io/">Emily Wall</a>.
+<a target="_blank" href="https://narechania.com">Arpit Narechania</a>, <a target="_blank" href="https://www.karduni.com/">Alireza Karduni</a>, <a target="_blank" href="https://wesslen.netlify.app/">Ryan Wesslen</a>, and <a target="_blank" href="https://emilywall.github.io/">Emily Wall</a>.
 
 
 ### Citation
@@ -35,4 +35,4 @@ The software is available under the [MIT License](https://github.com/vitality-vi
 
 
 ### Contact
-If you have any questions, feel free to [open an issue](https://github.com/vitality-vis/frontend/issues/new/choose) or contact [Arpit Narechania](https://www.cc.gatech.edu/~anarechania3).
+If you have any questions, feel free to [open an issue](https://github.com/vitality-vis/frontend/issues/new/choose) or contact [Arpit Narechania](https://narechania.com).

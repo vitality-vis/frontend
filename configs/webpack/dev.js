@@ -15,7 +15,7 @@ module.exports = merge(commonConfig, {
     historyApiFallback: true,
     hot: false, // enable HMR on the server
   },
-  devtool: 'cheap-module-eval-source-map',
+  devtool: 'eval-cheap-module-source-map',
   // plugins: [
   //   new webpack.HotModuleReplacementPlugin(), // enable HMR globally
   // ],

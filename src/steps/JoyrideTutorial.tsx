@@ -59,7 +59,8 @@ export default function JoyrideTutorial() {
 
   return (
     <>
-    {/* <Joyride
+    {
+    <Joyride
         steps={steps}
         run={run}
         stepIndex={stepIndex}
@@ -71,7 +72,7 @@ export default function JoyrideTutorial() {
             primaryColor: '#000',
           }
         }}
-      />  */}
+      />}
     <StepLayout 
       title="Practice (Step 3/N)" 
       showNext 
