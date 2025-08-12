@@ -37,9 +37,7 @@ const Practice = () => {
       showPrev 
       notPractice={false}
     >
-      <div style={{ padding: "0 16px 16px" }}>
         <App />
-      </div>
     </StepLayout>
     
   );

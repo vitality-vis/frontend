@@ -582,7 +582,6 @@ function DefaultColumnFilter({
             onSearch={(newValue) => {
                 setFilter(newValue || undefined) // Set undefined to remove the filter entirely
             }}
-            style={{ border: "2px solid #1976d2", borderRadius: 8 }}
             // onChange={(_, newValue) => {
             //   setFilter(newValue || undefined) // Set undefined to remove the filter entirely
             // }}
@@ -1291,7 +1290,7 @@ function Table({
                             <Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/66692</b>
                             </Text>
                             &nbsp;&nbsp;
-                            <div id="globalSettingsArea" style={{float: "right", marginRight: 5, border: "2px solid #1976d2", borderRadius: 8 }}>
+                            <div id="globalSettingsArea" style={{float: "right", marginRight: 5,borderRadius: 8 }}>
                                 <GlobalFilter
                                     globalFilter={globalFilter}
                                     setGlobalFilter={setGlobalFilter}

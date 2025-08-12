@@ -59,6 +59,8 @@ import SmartTable, {SmartTableProps} from "./SmartTable";
 import LoadingOverlay from 'react-loading-overlay';
 import Split from 'react-split';
 import Markdown from 'react-markdown'
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import {initializeIcons} from '@uifabric/icons';
 import logo from './../assets/img/vitality-logo-2.png';
 import gtLogo from './../assets/img/gt-logo.png';
@@ -69,6 +71,7 @@ import emoryLogo from './../assets/img/emory-logo.png';
 import visConferenceLogo from './../assets/img/ieeevis2021-logo.png';
 import {Dialog} from "./Dialog";
 import {MetaTable} from "./MetaTable";
+import { NotImpactedSolidIcon } from "@fluentui/react-icons";
 
 export const baseUrl = "http://localhost:3000/";
 
@@ -181,6 +184,7 @@ interface AppState {
     dataLoaded: boolean;
     isMetaTableModalOpen: boolean;
     allDataLoaded: boolean;
+    notesContent: string;
 }
 
 interface TabType {
@@ -402,6 +406,7 @@ class App extends React.Component<AppProps, AppState> {
             isMetaTableModalOpen: false,
             similarMaxScore: 0,
             similarMinScore: 0,
+            notesContent: '',
         }
         this.setSpinner = this.setSpinner.bind(this);
     }
@@ -412,6 +417,17 @@ class App extends React.Component<AppProps, AppState> {
             loadingText: loadingText,
         });
     }
+
+    handleNotesChange = (content: string) => {
+        this.setState({ notesContent: content });
+        
+        // Auto-save to localStorage
+        try {
+            localStorage.setItem('vitality_notes_content', content);
+        } catch (error) {
+            console.warn('Failed to save notes to localStorage:', error);
+        }
+    };
 
     setMetaTableModalState = (isOpen: boolean) => {
         this.setState({isMetaTableModalOpen: isOpen});
@@ -886,12 +902,12 @@ class App extends React.Component<AppProps, AppState> {
             });
 
             // Call the callback if provided to notify that metadata has loaded
+
             if (this.props.onMetadataLoaded) {
-                // Use setTimeout to ensure state update is complete and DOM is rendered
-                setTimeout(() => {
-                    this.props.onMetadataLoaded!();
-                }, 2500);
-            } 
+                setTimeout(()=> {
+                    this.props.onMetadataLoaded!()
+                }, 1000)
+            }
         } catch (error) {
             console.error("Error fetching metadata:", error);
             this.setState({spinner: false});
@@ -901,7 +917,19 @@ class App extends React.Component<AppProps, AppState> {
 
     componentDidMount() {
         this.loadInitialData();
+        this.loadSavedNotes();
     }
+
+    loadSavedNotes = () => {
+        try {
+            const savedContent = localStorage.getItem('vitality_notes_content');
+            if (savedContent) {
+                this.setState({ notesContent: savedContent });
+            }
+        } catch (error) {
+            console.warn('Failed to load notes from localStorage:', error);
+        }
+    };
 
     loadInitialData = async () => {
         try {
@@ -1982,7 +2010,7 @@ class App extends React.Component<AppProps, AppState> {
                         iconProps={{iconName: "Table"}}
                         onClick={() => this.setState({isMetaTableModalOpen: !this.state.isMetaTableModalOpen})}
                         // style={{marginLeft: 8}}
-                        style={{ border: "2px solid #1976d2", borderRadius: 8 }}
+                        
                     />
                 ),
             },
@@ -2001,7 +2029,7 @@ class App extends React.Component<AppProps, AppState> {
                             // disabled={true}
                             options={embeddingTypeDropdownOptions}
                             styles={{root: {zIndex: 2, paddingLeft: 4, paddingRight: 4}}}
-                            style={{ border: "2px solid #1976d2", borderRadius: 8 }}
+                           
                         />
                     </>
                 )
@@ -2013,7 +2041,7 @@ class App extends React.Component<AppProps, AppState> {
                     zIndex: 99,
                     paddingLeft: 4,
                     paddingRight: 4,
-                    border: "2px solid #1976d2",
+                    
                     borderRadius: 8
                 }}
                  text={"Saved Papers (" + this.state.dataSaved.length + ")"}
@@ -2112,7 +2140,7 @@ class App extends React.Component<AppProps, AppState> {
                             </h2>
                             <div style={{marginTop: "20px"}}>
                                 <Pivot linkSize={PivotLinkSize.normal} linkFormat={PivotLinkFormat.links}>
-                                    <PivotItem headerText="Keywords">
+                                    <PivotItem headerText="keygwdiuwegoewihd">
                                         <div className="m-t-lg"></div>
                                         <MetaTable props={keywordTableProps}></MetaTable>
                                     </PivotItem>
@@ -2142,9 +2170,48 @@ class App extends React.Component<AppProps, AppState> {
                         <br/>
                         <a ref={this.state.checkoutLinkRef}></a>
                         <SmartTable props={savedPapersTableProps} setSpinner={this.setSpinner}></SmartTable>
+                        
+                        {/* Notes Editor Section */}
+                        <div style={{
+                            marginTop: '20px',
+                            // border: '1px solid #d1d1d1',
+                            // borderRadius: '4px',
+                            padding: '16px',
+                            backgroundColor: '#ffffff'
+                        }}>
+                            <h3 style={{
+                                margin: '0 0 12px 0',
+                                fontSize: '16px',
+                                fontWeight: 600,
+                                color: '#323130'
+                            }}>
+                                Research Notes
+                            </h3>
+                            <ReactQuill
+                                value={this.state.notesContent}
+                                onChange={this.handleNotesChange}
+                                // theme="snow"
+                                placeholder="Write your thoughts/literature review here..."
+                                style={{
+                                    height: '200px',
+                                    marginBottom: '50px'
+                                }}
+                                modules={{
+                                    toolbar: [
+                                        [{ 'header': [1, 2, false] }],
+                                        ['bold', 'italic', 'underline'],
+                                        ['link'],
+                                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                        ['clean']
+                                    ],
+                                }}
+                            />
+                        </div>
+                        
                         <div style={{fontSize: '1.25em', lineHeight: '1.25em'}}>
                             <Markdown>{this.state.summarizeResponse}</Markdown></div>
                     </Panel>
+
                     <div className="m-t-md p-md">
                         <SmartTable props={allPapersTableProps} setSpinner={this.setSpinner}></SmartTable>
                     </div>
@@ -2156,7 +2223,7 @@ class App extends React.Component<AppProps, AppState> {
                         gutterAlign="center"
                         cursor="col-resize"
                     >
-                        <div className="split p-md p-b-0" id="similaritySearchPanel" style={{ border: "2px solid #1976d2", borderRadius: 8 }}>
+                        <div className="split p-md p-b-0" id="similaritySearchPanel" >
                             <Stack horizontal horizontalAlign="space-between" verticalAlign="center"
                                    tokens={{childrenGap: 8}}>
                                 <Label style={{fontSize: "1.2rem"}}>Similarity Search</Label>
@@ -2296,7 +2363,7 @@ class App extends React.Component<AppProps, AppState> {
                         {/*        </PivotItem>*/}
                         {/*    </Pivot>*/}
                         {/*</div>*/}
-                        <div id = "chatWindowsPanel" className="split p-md p-b-0" style={{ border: "2px solid #1976d2", borderRadius: 8 }}>
+                        <div id = "chatWindowsPanel" className="split p-md p-b-0" >
                             <div>
                                 <label style={{fontSize: "1.2rem"}}>Chat Windows</label>
                             </div>
