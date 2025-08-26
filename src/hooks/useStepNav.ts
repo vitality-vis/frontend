@@ -9,7 +9,15 @@ export const useStepNav = () => {
   const step = parseInt(searchParams.get("step") || "0", 10);
   const studyId = parseInt(searchParams.get("studyid") || "0", 10);
   const userId = parseInt(searchParams.get("userid") || "0", 10);
-  const totalSteps = 6; // hardcoded for simplicity
+  
+  // total steps per study
+  const studyStepCounts = {
+    1: 7, // 7 steps (Consent, PreInterview, Video, Practice, LiteratureReview, Practice, JoyrideTutorial)
+    2: 9, // 9 steps (Consent, PreQuestionnaire, Task1, Task2, Task3, Video, JoyrideTutorial, Practice, Practice)
+    // add more studies as needed
+  };
+  
+  const totalSteps = studyStepCounts[studyId] || studyStepCounts[1]; // Fallback to study 1
 
   // navigation functions
   const goNext = () => {

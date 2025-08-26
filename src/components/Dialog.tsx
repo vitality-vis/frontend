@@ -80,8 +80,8 @@ export const Dialog = observer(({props}) => {
           chatHistory.map(historyItem => {
             return (
               <div>
-                <div> human: {historyItem.human} </div> 
-                <div> ai: {historyItem.ai} </div> 
+                <div> User: {historyItem.human} </div> 
+                <div> AI: {historyItem.ai} </div> 
               </div>
             )
           })

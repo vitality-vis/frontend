@@ -1,5 +1,5 @@
 import * as React from "react";
-import StepLayout from "./StepLayout"; 
+import StepLayout from "../structure/StepLayout"; 
 import { useStepNav } from "../hooks/useStepNav";
 
 const Video = () => {
@@ -115,8 +115,8 @@ const Video = () => {
                 checked={isConfirmed}
                 onChange={(e) => setIsConfirmed(e.target.checked)}
                 style={{
-                  width: '18px',
-                  height: '18px',
+                  width: '15px',
+                  height: '15px',
                   cursor: 'pointer'
                 }}
               />
@@ -126,10 +126,11 @@ const Video = () => {
                   fontSize: '14px',
                   color: '#2c3e50',
                   cursor: 'pointer',
-                  userSelect: 'none'
+                  userSelect: 'none',
+                  // textAlign: 'center'
                 }}
               >
-                I have completely watched the tutorial video and understand the content.
+                I have completely watched the tutorial video and understand.
               </label>
             </div>
 

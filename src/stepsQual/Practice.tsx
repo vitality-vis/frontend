@@ -24,7 +24,7 @@
 
 import * as React from "react";
 import App from "../components/App";
-import StepLayout from "./StepLayout";
+import StepLayout from "../structure/StepLayout";
 import { useStepNav } from "../hooks/useStepNav";
 
 const Practice = () => {

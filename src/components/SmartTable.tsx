@@ -582,9 +582,9 @@ function DefaultColumnFilter({
             onSearch={(newValue) => {
                 setFilter(newValue || undefined) // Set undefined to remove the filter entirely
             }}
-            // onChange={(_, newValue) => {
-            //   setFilter(newValue || undefined) // Set undefined to remove the filter entirely
-            // }}
+            onChange = {(_, newValue) => {
+                setFilter(newValue || undefined)
+            }}
         />)
 }
 
@@ -1005,6 +1005,34 @@ function Table({
                         minWidth: 20
                     }
                     afterColumns.push(deleteColumn);
+                }
+
+                if (tableControls.indexOf("select") !== -1) {
+                    let selectColumn = {
+                        id: 'select',
+                        Header: () => (
+                            <>
+                                <span>Select</span>
+                            </>
+                        ),
+                        Cell: ({row, column, cell}) => (
+                            cell.isAggregated ? <></> : <div className="text-center">
+                                <input
+                                    type="checkbox"
+                                    checked={isInSelectedNodeIDs ? isInSelectedNodeIDs(row.original["ID"]) : false}
+                                    onChange={(e) => {
+                                        if (addToSelectNodeIDs) {
+                                            addToSelectNodeIDs(row.original, e.target.checked);
+                                        }
+                                    }}
+                                />
+                            </div>
+                        ),
+                        width: 15,
+                        maxWidth: 15,
+                        minWidth: 15
+                    }
+                    beforeColumns.push(selectColumn);
                 }
 
                 return [

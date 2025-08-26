@@ -418,14 +418,14 @@ class App extends React.Component<AppProps, AppState> {
         });
     }
 
+
     handleNotesChange = (content: string) => {
-        this.setState({ notesContent: content });
-        
-        // Auto-save to localStorage
+        this.setState({notesContent: content})
         try {
-            localStorage.setItem('vitality_notes_content', content);
-        } catch (error) {
-            console.warn('Failed to save notes to localStorage:', error);
+            localStorage.setItem('research_notes', content)
+        }
+        catch(error) {
+            console.warn('Error with saving the research notes', error)
         }
     };
 
@@ -919,12 +919,13 @@ class App extends React.Component<AppProps, AppState> {
         this.loadInitialData();
         this.loadSavedNotes();
     }
+ 
 
     loadSavedNotes = () => {
         try {
-            const savedContent = localStorage.getItem('vitality_notes_content');
+            const savedContent = localStorage.getItem('research_notes')
             if (savedContent) {
-                this.setState({ notesContent: savedContent });
+                this.setState({notesContent:savedContent})
             }
         } catch (error) {
             console.warn('Failed to load notes from localStorage:', error);
@@ -2140,7 +2141,7 @@ class App extends React.Component<AppProps, AppState> {
                             </h2>
                             <div style={{marginTop: "20px"}}>
                                 <Pivot linkSize={PivotLinkSize.normal} linkFormat={PivotLinkFormat.links}>
-                                    <PivotItem headerText="keygwdiuwegoewihd">
+                                    <PivotItem headerText="Keywords">
                                         <div className="m-t-lg"></div>
                                         <MetaTable props={keywordTableProps}></MetaTable>
                                     </PivotItem>
@@ -2170,50 +2171,134 @@ class App extends React.Component<AppProps, AppState> {
                         <br/>
                         <a ref={this.state.checkoutLinkRef}></a>
                         <SmartTable props={savedPapersTableProps} setSpinner={this.setSpinner}></SmartTable>
-                        
-                        {/* Notes Editor Section */}
+
+
+
                         <div style={{
+                            display: 'flex',
+                            flexDirection: 'row',
+                            gap: '20px',
                             marginTop: '20px',
-                            // border: '1px solid #d1d1d1',
-                            // borderRadius: '4px',
-                            padding: '16px',
-                            backgroundColor: '#ffffff'
-                        }}>
-                            <h3 style={{
-                                margin: '0 0 12px 0',
-                                fontSize: '16px',
-                                fontWeight: 600,
-                                color: '#323130'
                             }}>
-                                Research Notes
-                            </h3>
-                            <ReactQuill
-                                value={this.state.notesContent}
-                                onChange={this.handleNotesChange}
-                                // theme="snow"
-                                placeholder="Write your thoughts/literature review here..."
+                            {/* LLM Output */}
+                            <div style={{
+                                flex: 1,
+                                padding: '16px',
+                                backgroundColor: '#ffffffba',
+                                border: '1px solid #878686ff',
+                                borderRadius: '4px',
+                                fontSize: '1.25em',
+                                lineHeight: '1.25em',
+                                minWidth: 0, // for flexbox overflow handling
+                                display: 'flex',
+                                flexDirection: 'column',
+                                }}>
+                                <h3
                                 style={{
-                                    height: '200px',
-                                    marginBottom: '50px'
+                                    margin: '0 0 12px 0',
+                                    fontSize: '16px',
+                                    fontWeight: 600,
+                                    color: '#323130',
                                 }}
-                                modules={{
-                                    toolbar: [
-                                        [{ 'header': [1, 2, false] }],
-                                        ['bold', 'italic', 'underline'],
-                                        ['link'],
-                                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                                        ['clean']
-                                    ],
-                                }}
-                            />
+                                >
+                                LLM Output
+                                </h3>
+                                <div style={{
+                                    flex: 1,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    minHeight: '200px',
+                                    maxHeight: '400px',
+                                }}>
+                                    <div style={{
+                                        flex: 1,
+                                        overflow: 'auto',
+                                        border: '1px solid #d1d1d1',
+                                        borderRadius: '4px',
+                                        padding: '12px',
+                                        backgroundColor: '#ffffff',
+                                        minHeight: 300
+                                    }}>
+                                        <Markdown>
+                                            {this.state.summarizeResponse}
+                                        </Markdown>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Research Notes */}
+                            <div style={{
+                                flex: 1,
+                                padding: '16px',
+                                backgroundColor: '#ffffffba',
+                                border: '1px solid #878686ff',
+                                borderRadius: '4px',
+                                minWidth: 0, // for flexbox overflow handling
+                                display: 'flex',
+                                flexDirection: 'column',
+                            }}>
+                                <h3 style={{
+                                    margin: '0 0 12px 0',
+                                    fontSize: '16px',
+                                    fontWeight: 600,
+                                    color: '#323130'
+                                }}>
+                                Research Notes
+                                </h3>
+                                <div style={{
+                                    flex: 1,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    minHeight: '200px',
+                                    maxHeight: '400px',
+                                }}>
+                                    <div style={{
+                                        flex: 1,
+                                        overflow: 'auto',
+                                        border: '1px solid #d1d1d1',
+                                        borderRadius: '4px',
+                                        padding: 0,
+                                        backgroundColor: '#ffffff',
+                                        minHeight: 300,
+                                    }}>
+                                        <ReactQuill
+                                            value={this.state.notesContent}
+                                            onChange={this.handleNotesChange}
+                                            placeholder="Write your preliminary literature review here..."
+                                            style={{
+                                                height: '100%',
+                                                flex: 1,
+                                                border: 'none',
+                                            }}
+                                            modules={{
+                                                toolbar: [
+                                                    [{ 'header': [1, 2, false] }],
+                                                    ['bold', 'italic', 'underline'],
+                                                    ['link'],
+                                                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                                ],
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+
                         </div>
-                        
-                        <div style={{fontSize: '1.25em', lineHeight: '1.25em'}}>
-                            <Markdown>{this.state.summarizeResponse}</Markdown></div>
+
                     </Panel>
 
-                    <div className="m-t-md p-md">
-                        <SmartTable props={allPapersTableProps} setSpinner={this.setSpinner}></SmartTable>
+                    <div className="m-t-md p-md" style={{ 
+                        borderBottom: 'none', 
+                        overflow: 'hidden',
+                        border: 'none'
+                    }}>
+                        <div style={{ 
+                            borderBottom: 'none',
+                            border: 'none'
+                        }}>
+                            <SmartTable props={allPapersTableProps} setSpinner={this.setSpinner}></SmartTable>
+                        </div>
                     </div>
                     <Split
                         sizes={[33, 39, 28]}

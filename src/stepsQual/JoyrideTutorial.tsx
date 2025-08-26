@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState, useCallback, useEffect } from 'react';
-import StepLayout from './StepLayout';
+import StepLayout from '../structure/StepLayout';
 import App from '../components/App';
 import Joyride,{ Step } from 'react-joyride';
 // import { Step } from 'react-joyride';

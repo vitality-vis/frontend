@@ -1,7 +1,7 @@
 import * as React from "react";
 import { render } from "react-dom";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import StudyWizard from "./steps/StudyWizard";
+import StudyWizard from "./structure/StudyWizard";
 
 const App = () => (
   <BrowserRouter>
