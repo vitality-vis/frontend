@@ -1,10 +1,10 @@
 import StepLayout from "../structure/StepLayout";
 import React from "react";
 
-const Task2 = () => {
+const Task2 = ({currentStep,totalSteps}) => {
     return (
-        <StepLayout title="Task 2 (Step 5/N)" showNext>
-            
+        <StepLayout title={`Task 2 (Step ${currentStep}/${totalSteps})`} showNext>
+
             <div style={{ maxWidth: 700, margin: "40px auto 0 auto" }}>
                 <h3>Instructions</h3>
                 <p>

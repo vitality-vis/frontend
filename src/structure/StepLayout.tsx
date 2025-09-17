@@ -10,6 +10,7 @@ export type StepLayoutProps = {
   onPrev?: () => void;
   disableNext?: boolean;
   notPractice?: boolean;
+  nextButtonText?: string;
   children: React.ReactNode;
 };
 
@@ -19,6 +20,7 @@ const StepLayout = ({
   showPrev = false,
   disableNext = false,
   notPractice = true,
+  nextButtonText = "Next",
   onNext: customOnNext,
   onPrev: customOnPrev, 
   children,
@@ -89,7 +91,7 @@ const StepLayout = ({
             )}
           </div>
 
-          {/* Center: Title - Now absolutely centered */}
+          {/* Center: Title */}
           <div style={{ 
             position: "absolute", 
             left: "50%", 
@@ -117,7 +119,7 @@ const StepLayout = ({
                 onClick={handleNext}
                 disabled={disableNext}
               >
-                Next
+                {nextButtonText}
               </button>
             )}
           </div>

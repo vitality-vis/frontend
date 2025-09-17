@@ -4,12 +4,12 @@ import StepLayout from "../structure/StepLayout";
 import { useStepNav } from "../hooks/useStepNav";
 import { logEvent } from "../socket/logger";
 
-const Consent = () => {
+const Consent = ({currentStep, totalSteps}) => {
   const { goNext } = useStepNav();
   const [checked, setChecked] = useState(false);
 
   return (
-    <StepLayout title="Consent (Step 0/N)">
+    <StepLayout title= {`Consent (Step ${currentStep}/${totalSteps})`}>
       <div style={{ height: "100%", overflow: "auto" }}>
         {/* Landing Page Section */}
         <div style={{ 

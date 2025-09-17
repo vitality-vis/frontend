@@ -1,29 +1,41 @@
 import * as React from "react";
 import StepLayout from "../structure/StepLayout"; 
 import { useStepNav } from "../hooks/useStepNav";
+import { logEvent } from "../socket/logger";
 
-const Video = () => {
+const Video = ({currentStep,totalSteps}) => {
   const { goNext } = useStepNav();
   const [isConfirmed, setIsConfirmed] = React.useState(false);
   const [showHonorCode, setShowHonorCode] = React.useState(false);
 
+  const startTimeRef = React.useRef(null);
+
+  React.useEffect(() => {
+    startTimeRef.current = Date.now();
+  }, [])
+  
   const handleNextClick = () => {
     setShowHonorCode(true);
   };
 
   const handleConfirm = () => {
+    const endTime = Date.now();
+    const spentTime = (endTime - startTimeRef.current) / 60000; // in minutes
+    logEvent("honor code confirmed", {"Minutes Spent": spentTime});
     setShowHonorCode(false);
     goNext();
   };
 
   const handleGoBack = () => {
+    logEvent("honor code go back to video", {"Minutes Spent": (Date.now() - startTimeRef.current) / 60000});
     setShowHonorCode(false);
     setIsConfirmed(false);
   };
-      
+
+
   return (
     <>
-      <StepLayout title="Tutorial (Step 2/N)" showNext showPrev onNext={handleNextClick}> 
+      <StepLayout title={`Tutorial (Step ${currentStep}/${totalSteps})`} showNext showPrev onNext={handleNextClick}> 
         <div style={{
           padding: '32px',
           display: 'flex',
@@ -177,6 +189,7 @@ const Video = () => {
                 }}
                 onMouseEnter={(e) => {
                   if (isConfirmed) {
+                    // logEvent("honor code hovered", {timestamp: Date.now()});
                     (e.target as HTMLButtonElement).style.backgroundColor = '#b9a829ff';
                   }
                 }}

@@ -25,7 +25,7 @@ export function logEvent(eventName:string, eventData: any) {
         sessionId: getCreateSessionId(),
         eventName,
         eventData,
-        timestamp: Date.now()
+
     })
 
 }

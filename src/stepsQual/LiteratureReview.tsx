@@ -2,29 +2,28 @@ import * as React from "react";
 import { useState } from "react";
 import StepLayout from "../structure/StepLayout";
 import { useStepNav } from "../hooks/useStepNav";
+import { logEvent } from "../socket/logger";
 
-// Placeholder logging utility
-function logSubmit(answer: { studyId: number; userId: number; response: string }) {
-  // Replace with real logging or API call 
-  console.log("logSubmit", answer);
-}
+// // Placeholder logging utility
+// function logSubmit(answer: { studyId: number; userId: number; response: string }) {
+//   // Replace with real logging or API call 
+//   console.log("logSubmit", answer);
+// }
 
-const LiteratureReview = () => {
-  const { studyId, userId } = useStepNav();
+const LiteratureReview = ({currentStep, totalSteps}) => {
   const [response, setResponse] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [showTask, setShowTask] = useState(false);
-  const { goNext } = useStepNav();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    logSubmit({ studyId, userId, response });
     setSubmitted(true);
     setShowTask(true);
+    logEvent('lit_review_experience', {response})
   };
 
   return (
-    <StepLayout title="Pre-Interview (Step 4/N)" showNext disableNext={!submitted}>
+    <StepLayout title= {`Pre-Interview (Step ${currentStep}/${totalSteps})`} showNext disableNext={!submitted}>
       <form
         onSubmit={handleSubmit}
         style={{

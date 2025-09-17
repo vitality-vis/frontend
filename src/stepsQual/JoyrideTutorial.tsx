@@ -1,10 +1,14 @@
+// logging: pressing next and back, howmuch time user spent on screen after hitting close
+
+
 import * as React from 'react';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import StepLayout from '../structure/StepLayout';
 import App from '../components/App';
 import Joyride,{ Step } from 'react-joyride';
 // import { Step } from 'react-joyride';
 import { useStepNav } from '../hooks/useStepNav';
+import { logEvent } from '../socket/logger';
 
 //style={{ border: "2px solid #1976d2", borderRadius: 8 }}
 const steps: Step[] = [
@@ -70,38 +74,99 @@ const steps: Step[] = [
   // Add more steps as needed
 ];
   
-export default function JoyrideTutorial() {
-  const { goNext, goPrev } = useStepNav();
+const JoyrideTutorial = ({currentStep, totalSteps}) => {
+  const { goNext } = useStepNav();
   const [run, setRun] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [tourCompleted, setTourCompleted] = useState(false);
+  
+  // Time tracking
+  const stepStartTimeRef = useRef<number>(0);
 
   const handleMetadataLoaded = () => {
-    setRun(true)
+    setRun(true);
+    // Start timing when tour begins
+    stepStartTimeRef.current = Date.now();
   }
+
+  const afterTutorialFinish = useRef<number>(0);
+
+  const handleNextAfterTutorial = () => {
+    // Check if user has closed the tutorial and log time spent browsing
+    if (afterTutorialFinish.current > 0) {
+      const endTime = Date.now();
+      const browseDuration = (endTime - afterTutorialFinish.current) / 1000; // in seconds
+      
+      logEvent('post_tutorial_browse_time', {
+        secondsSpent: browseDuration,
+        action: 'proceeded_to_next_step'
+      });
+      
+      // Reset the timer
+      afterTutorialFinish.current = 0;
+    }
+    
+    // Proceed to next step
+    goNext();
+  };
 
   const handleJoyrideCallback = useCallback((data: any) => {
     const { action, index, status, type } = data;
     
     if (type === 'step:after') {
+      const endTime = Date.now();
+      const duration = (endTime - stepStartTimeRef.current) / 1000; // in seconds
+
       if (action === 'next') {
-        setStepIndex(index+1)
-        if (index+1 === steps.length) {
-          setTourCompleted(true)
+        // Log time spent on current step when going to next
+        logEvent('joyride_step_timing', {
+          stepIndex: index,
+          action: 'next',
+          secondsSpent: duration,
+          stepContent: steps[index]?.content || 'Unknown step'
+        });
+        
+        setStepIndex(index + 1);
+        if (index + 1 === steps.length) {
+          setTourCompleted(true);
+        } else {
+          // Start timing for next step
+          stepStartTimeRef.current = Date.now();
         }
       }
+      
       if (action === 'prev') {
-        setStepIndex(index-1)
+        // Log time spent on current step when going back
+        logEvent('joyride_step_timing', {
+          stepIndex: index,
+          action: 'prev', 
+          secondsSpent: duration,
+          stepContent: steps[index]?.content || 'Unknown step'
+        });
+        
+        setStepIndex(index - 1);
+        // Start timing for previous step
+        stepStartTimeRef.current = Date.now();
       }
     }
     
     // Handle tour completion or skipping
     if (status === 'finished' || status === 'skipped') {
+      const endTime = Date.now();
+      const duration = (endTime - stepStartTimeRef.current) / 1000; // in seconds
+
+      logEvent('joyride_tour_completed', {
+        status: status,
+        finalStepIndex: stepIndex,
+        finalStepDuration: duration,
+        action: status === 'finished' ? 'completed' : 'skipped'
+      });
+      
       setRun(false);
       setStepIndex(0);
       setTourCompleted(true);
     }
-  }, []);
+  }, [stepIndex]);
 
   return (
     <>
@@ -126,10 +191,11 @@ export default function JoyrideTutorial() {
         }}
       />}
     <StepLayout 
-      title="Practice (Step 3/N)" 
+      title= {`Walkthrough (Step ${currentStep}/${totalSteps})`} 
       showNext 
       showPrev 
       notPractice={false}
+      onNext={handleNextAfterTutorial}
     >
         <App onMetadataLoaded={handleMetadataLoaded} />
         {tourCompleted && (
@@ -176,7 +242,10 @@ export default function JoyrideTutorial() {
               </p>
               
               <button 
-                onClick={() => setTourCompleted(false)}
+                onClick={() => {
+                  setTourCompleted(false);
+                  afterTutorialFinish.current = Date.now();
+                }}
                 style={{
                   backgroundColor: '#000000ff',
                   color: 'white',
@@ -200,3 +269,4 @@ export default function JoyrideTutorial() {
   );
 }
 
+export default JoyrideTutorial;

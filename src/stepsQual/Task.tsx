@@ -2,19 +2,18 @@ import * as React from "react";
 import App from "../components/App";
 import StepLayout from "../structure/StepLayout";
 
-const Practice = ({currentStep, totalSteps}) => {
-  
+const Task = ({currentStep, totalSteps}) => {
+
   return (
     <StepLayout 
-      title= {`Practice (Step ${currentStep}/${totalSteps})`} 
+      title = {`Task (Step ${currentStep}/${totalSteps})`}
       showNext 
       showPrev 
       notPractice={false}
     >
         <App />
     </StepLayout>
-    
   );
 };
 
-export default Practice;
+export default Task;

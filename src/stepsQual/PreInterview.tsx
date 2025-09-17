@@ -1,7 +1,6 @@
 import * as React from "react";
 import { useState } from "react";
 import StepLayout from "../structure/StepLayout";
-import { useStepNav } from "../hooks/useStepNav";
 import { logEvent } from "../socket/logger";
 
 // Placeholder logging utility
@@ -9,8 +8,7 @@ import { logEvent } from "../socket/logger";
 //   console.log("logSubmit", answer);
 // }
 
-const PreInterview = () => {
-  const { studyId, userId } = useStepNav();
+const PreInterview = ({currentStep, totalSteps}) => {
   const [response, setResponse] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
@@ -21,7 +19,7 @@ const PreInterview = () => {
   };
 
   return (
-    <StepLayout title="Pre-Interview (Step 1/N)" showNext disableNext={!submitted}>
+    <StepLayout title={`Pre-Interview (Step ${currentStep}/${totalSteps})`} showNext disableNext={!submitted}>
       <form
         onSubmit={handleSubmit}
         style={{

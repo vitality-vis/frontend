@@ -2,19 +2,19 @@ import * as React from "react";
 import { useState } from "react";
 import StepLayout from "../structure/StepLayout";
 import { useStepNav } from "../hooks/useStepNav";
+import { logEvent } from "../socket/logger";
+
 
 // Placeholder logging utility
 function logSubmit(answer: { studyId: number; userId: number; response: string }) {
-  // Replace with real logging or API call 
-  console.log("logSubmit", answer);
+  logEvent('prequestionnaire_response', answer);
 }
 
-const PreQuestionnaire = () => {
+const PreQuestionnaire = ({currentStep,totalSteps}) => {
   const { studyId, userId } = useStepNav();
   const [response, setResponse] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [showTask, setShowTask] = useState(false);
-  const { goNext } = useStepNav();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +24,7 @@ const PreQuestionnaire = () => {
   };
 
   return (
-    <StepLayout title="Pre-Questionnaire (Step 1/N)" showNext disableNext={!submitted}>
+    <StepLayout title={`Pre-Questionnaire (Step ${currentStep}/${totalSteps})`} showNext disableNext={!submitted}>
       <form
         onSubmit={handleSubmit}
         style={{

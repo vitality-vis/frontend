@@ -6,6 +6,8 @@ import Video from "../stepsQual/Video";
 import Practice from "../stepsQual/Practice";
 import LiteratureReview from "../stepsQual/LiteratureReview";
 import JoyrideTutorial from "../stepsQual/JoyrideTutorial";
+import Task from "../stepsQual/Task";
+import PostInterview from "../stepsQual/PostInterview";
 
 import Task1 from "../stepsQuan/Task1";
 import Task2 from "../stepsQuan/Task2";
@@ -14,32 +16,42 @@ import Task3 from "../stepsQuan/Task3";
 // import QuanPostInterview from "../stepsQuan/QuanPostInterview";
 
 import PreQuestionnaire from "../stepsQuan/PreQuestionnaire";
+import { useStepNav } from "../hooks/useStepNav";
 
-//define different step flows for different studies
-// const studySteps = {
-//   1: [Consent, PreInterview, Video, Practice, LiteratureReview, Practice, JoyrideTutorial, QualPostInterview],
-//   2: [Consent, PreQuestionnaire, Task1, Task2, Video, JoyrideTutorial, Practice, Task3, Practice, QuanPostInterview],
-// };
 
 const studySteps = {
-  1: [Consent, PreInterview, Video, Practice, LiteratureReview, Practice, JoyrideTutorial],
-  2: [Consent, PreQuestionnaire, Task1, Task2, Video, JoyrideTutorial, Practice, Task3, Practice],
+  1: [Consent, PreInterview, Video, Practice, LiteratureReview, Task, PostInterview],
+  2: [Consent, PreQuestionnaire, Task1, Task2, Video, JoyrideTutorial, Practice, Task3, Practice, PostInterview],
 };
+
+const generateUserId = () => {
+  const array = new Uint8Array(8);
+  window.crypto.getRandomValues(array);
+  return Array.from(array, a => a.toString(8).padStart(2,'0')).join('')
+}
 
 const StudyWizard = () => {
   const [searchParams] = useSearchParams();
-  const currentStep = parseInt(searchParams.get("step") || "0", 10);
-  const studyId = searchParams.get("studyid") || "1";      //default to "1" for now
-  const userId = searchParams.get("userid") || "12114";    
-  
-  // If required parameters are missing, redirect with defaults
-  if (!searchParams.get("studyid") || !searchParams.get("userid")) {
+  const { currentStep, totalSteps } = useStepNav();
+
+  const [userId] = React.useState(()=> {
+    const localId = localStorage.getItem("userId");
+    if (localId) return localId;
+    const newId = generateUserId();
+    localStorage.setItem("userId", newId);
+    return newId;
+  })
+
+  // const currentStep = parseInt(searchParams.get("step") || "0", 10);
+
+  const studyId = parseInt(searchParams.get("studyid") || "1");
+  // Always redirect to ensure URL matches our generated userId
+  const urlUserId = searchParams.get("userid");
+  if (!searchParams.get("studyid") || !urlUserId || urlUserId !== userId) {
     return <Navigate to={`/app?studyid=${studyId}&userid=${userId}&step=${currentStep}`} replace />;
   }
 
   React.useEffect(()=> {
-    localStorage.setItem('studyId', studyId)
-    localStorage.setItem('userId', userId)
 
     if (!localStorage.getItem('sessionId')) {
       localStorage.setItem('sessionId', 
@@ -47,10 +59,10 @@ const StudyWizard = () => {
       )
     }
 
-  },[studyId, userId])
+  },[])
   
   //get appropriate steps for this study
-  const steps = studySteps[parseInt(studyId)] || studySteps[1]; //fallback to study 1
+  const steps = studySteps[studyId] || studySteps[1]; //fallback to study 1
   const StepComponent = steps[currentStep];
   
   //handle invalid step
@@ -58,7 +70,7 @@ const StudyWizard = () => {
     return <Navigate to={`/app?studyid=${studyId}&userid=${userId}&step=0`} replace />;
   }
   
-  return <StepComponent />;
+  return <StepComponent currentStep={currentStep} totalSteps={totalSteps}/>;
 };
 
 export default StudyWizard;

@@ -5,6 +5,7 @@ import PaperScatter from "./PaperScatter";
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {Tabs, Tab, Button, Nav} from 'react-bootstrap'; // <-- Add this line
 import 'bootstrap/dist/css/bootstrap.min.css'; // <-- Ensure this line is already present for Bootstrap styles
+import { logEvent } from "../socket/logger";
 
 import {
     faCaretDown,
@@ -2009,7 +2010,12 @@ class App extends React.Component<AppProps, AppState> {
                         id = "metaTableButton"
                         text="Meta Table"
                         iconProps={{iconName: "Table"}}
-                        onClick={() => this.setState({isMetaTableModalOpen: !this.state.isMetaTableModalOpen})}
+                        onClick={() => {
+                            this.setState({isMetaTableModalOpen: !this.state.isMetaTableModalOpen})
+                            logEvent('metatable_clicked', 'true')
+                        }
+
+                        }
                         // style={{marginLeft: 8}}
                         
                     />

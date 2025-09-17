@@ -12,7 +12,7 @@ export const useStepNav = () => {
   
   // total steps per study
   const studyStepCounts = {
-    1: 7, // 7 steps (Consent, PreInterview, Video, Practice, LiteratureReview, Practice, JoyrideTutorial)
+    1: 6, // 7 steps (Consent, PreInterview, Video, Practice, LiteratureReview, Practice, JoyrideTutorial)
     2: 9, // 9 steps (Consent, PreQuestionnaire, Task1, Task2, Task3, Video, JoyrideTutorial, Practice, Practice)
     // add more studies as needed
   };
@@ -21,7 +21,7 @@ export const useStepNav = () => {
 
   // navigation functions
   const goNext = () => {
-    if (step < totalSteps - 1) {
+    if (step < totalSteps) {
       const newParams = new URLSearchParams(searchParams);
       newParams.set("step", (step + 1).toString());
       navigate(`/app?${newParams.toString()}`);
