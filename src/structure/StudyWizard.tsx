@@ -42,6 +42,15 @@ const StudyWizard = () => {
     return newId;
   })
 
+  // Move useEffect to before any conditional returns
+  React.useEffect(()=> {
+    if (!localStorage.getItem('sessionId')) {
+      localStorage.setItem('sessionId', 
+        typeof crypto?.randomUUID === "function" ? crypto.randomUUID() : String(Date.now())
+      )
+    }
+  },[])
+
   // const currentStep = parseInt(searchParams.get("step") || "0", 10);
 
   const studyId = parseInt(searchParams.get("studyid") || "1");
@@ -50,16 +59,6 @@ const StudyWizard = () => {
   if (!searchParams.get("studyid") || !urlUserId || urlUserId !== userId) {
     return <Navigate to={`/app?studyid=${studyId}&userid=${userId}&step=${currentStep}`} replace />;
   }
-
-  React.useEffect(()=> {
-
-    if (!localStorage.getItem('sessionId')) {
-      localStorage.setItem('sessionId', 
-        typeof crypto?.randomUUID === "function" ? crypto.randomUUID() : String(Date.now())
-      )
-    }
-
-  },[])
   
   //get appropriate steps for this study
   const steps = studySteps[studyId] || studySteps[1]; //fallback to study 1
