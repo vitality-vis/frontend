@@ -9,6 +9,7 @@ import { select } from 'd3-selection';
 import { observer } from "mobx-react";
 import { ActionButton, DefaultButton, Dropdown, Icon, IconButton, IDropdownOption, Label, Modal, Panel, PanelType, Stack } from "@fluentui/react";
 import {useEffect, useState} from "react";
+import { Logger } from "../socket/logger";
 
 const baseUrl = "http://localhost:3000/";
 
@@ -99,6 +100,12 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
     }, [data, dataFiltered, dataSaved, dataSimilarPayload, dataSimilar, selectNodeIDs]);
 
     const reset = () => {
+        Logger.logVisualizationInteraction({
+            component: 'PaperScatter',
+            action: 'resetView',
+            embeddingType: embeddingType,
+            previousSelectionCount: selectNodeIDs?.length || 0
+        });
         scatterplot.reset();
     }
 
@@ -141,22 +148,61 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
     }
 
     const pointoverHandler = (pointIdx) => {
-        setHoverNode(papersToShow[pointIdx]);
-        setScrollToPaperID(papersToShow[pointIdx]["ID"]);
+        const hoveredPaper = papersToShow[pointIdx];
+        // Logger.logVisualizationInteraction({
+        //     component: 'PaperScatter',
+        //     action: 'hover',
+        //     pointId: hoveredPaper?.ID,
+        //     pointIndex: pointIdx,
+        //     paperTitle: hoveredPaper?.Title,
+        //     embeddingType: embeddingType,
+        //     coordinates: hoveredPaper ? { 
+        //         x: hoveredPaper[embeddingKey + '_x'], 
+        //         y: hoveredPaper[embeddingKey + '_y'] 
+        //     } : undefined
+        // });
+        setHoverNode(hoveredPaper);
+        setScrollToPaperID(hoveredPaper?.["ID"]);
     };
 
     const pointoutHandler = (pointIdx) => {
+        const exitedPaper = papersToShow[pointIdx];
+        // Logger.logVisualizationInteraction({
+        //     component: 'PaperScatter',
+        //     action: 'unhover',
+        //     pointId: exitedPaper?.ID,
+        //     pointIndex: pointIdx,
+        //     paperTitle: exitedPaper?.Title,
+        //     embeddingType: embeddingType
+        // });
         setHoverNode(null);
         setScrollToPaperID(null);
     };
 
     const selectHandler = ({ points: selectedPoints }) => {
-        addToSelectNodeIDs(selectedPoints.map((idx) => {
-            return papersToShow[idx]["ID"];
-        }), "scatterplot");
+        const selectedPapers = selectedPoints.map((idx) => papersToShow[idx]);
+        const selectedIds = selectedPapers.map(paper => paper["ID"]);
+        
+        Logger.logVisualizationInteraction({
+            component: 'PaperScatter',
+            action: 'select',
+            selectedPoints: selectedIds,
+            selectionCount: selectedPoints.length,
+            embeddingType: embeddingType,
+            selectionType: selectedPoints.length === 1 ? 'single' : 'multiple',
+            paperTitles: selectedPapers.map(p => p.Title).slice(0, 3) // Log first 3 titles to avoid too much data
+        });
+        
+        addToSelectNodeIDs(selectedIds, "scatterplot");
     };
 
     const deselectHandler = () => {
+        Logger.logVisualizationInteraction({
+            component: 'PaperScatter',
+            action: 'deselect',
+            embeddingType: embeddingType,
+            previousSelectionCount: selectNodeIDs?.length || 0
+        });
         addToSelectNodeIDs([], "scatterplot");
     };
 
@@ -251,6 +297,17 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
         scatterplot.subscribe('pointover', pointoverHandler);
         scatterplot.subscribe('pointout', pointoutHandler);
         scatterplot.subscribe('view', ({xScale, yScale, camera, view}) => {
+            // Log zoom/pan interactions with debouncing to avoid excessive events
+            // Logger.logVisualizationInteraction({
+            //     component: 'PaperScatter',
+            //     action: 'viewChange',
+            //     embeddingType: embeddingType,
+            //     zoomLevel: camera?.k || 1,
+            //     viewCenter: camera ? { x: camera.x, y: camera.y } : undefined,
+            //     xDomain: xScale ? [xScale.domain()[0], xScale.domain()[1]] : undefined,
+            //     yDomain: yScale ? [yScale.domain()[0], yScale.domain()[1]] : undefined
+            // });
+            
             xAxisContainer.call(xAxis.scale(xScale));
             yAxisContainer.call(yAxis.scale(yScale));
         });
@@ -428,6 +485,13 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
     }, [colorByAttribute, embeddingKey]);
 
     const onChangeColorByAttribute = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption): void => {
+        Logger.logVisualizationInteraction({
+            component: 'PaperScatter',
+            action: 'changeColorAttribute',
+            value: item?.key,
+            attributeName: item?.text,
+            embeddingType: embeddingType
+        });
         setColorByAttribute(item);
     };
 
@@ -570,7 +634,14 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                             }
                         </ul>
                         &nbsp;
-                        <a href="javascript:void(0)" onClick={() => setIsColorLegendPanelOpen(true)}>see all</a>
+                        <a href="javascript:void(0)" onClick={() => {
+                            Logger.logUIInteraction({
+                                component: 'PaperScatter',
+                                action: 'openColorLegendPanel',
+                                panelName: 'colorLegend'
+                            });
+                            setIsColorLegendPanelOpen(true);
+                        }}>see all</a>
                     </>
                     }                    
                 </Stack>
@@ -588,7 +659,15 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                             />
                             <DefaultButton 
                                 className="iconButton"
-                                onClick={(e) => { scatterplot.deselect({preventDefault: true}); }}
+                                onClick={(e) => { 
+                                    Logger.logUIInteraction({
+                                        component: 'PaperScatter',
+                                        action: 'clearSelection',
+                                        elementId: 'clear_selection_button',
+                                        previousSelectionCount: selectNodeIDs?.length || 0
+                                    });
+                                    scatterplot.deselect({preventDefault: true}); 
+                                }}
                                 iconProps={{iconName:"Times"}}
                                 text="Clear"
                                 style={{position:"absolute", right: 0, top: 0, border: 0, padding: 0, minWidth: 0}}
@@ -632,21 +711,50 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                                                     <IconButton 
                                                         styles={{root: {height: "auto", padding: 0}}}
                                                         iconProps={{iconName: "Info"}}
-                                                        onClick={() =>handleInfoClick()}
+                                                        onClick={() => {
+                                                            Logger.logVisualizationInteraction({
+                                                                component: 'PaperScatter',
+                                                                action: 'openInfoModal',
+                                                                selectedPoints: selectNodes.map(n => n.ID),
+                                                                selectionCount: selectNodes.length,
+                                                                embeddingType: embeddingType
+                                                            });
+                                                            handleInfoClick();
+                                                        }}
                                                         allowDisabledFocus 
                                                     ></IconButton>
                                                     <IconButton 
                                                         styles={{root: {height: "auto", padding: 0}}}
                                                         iconProps={{iconName: "PlusCircle"}}
                                                         disabled={ isInSimilarInputPapers(selectNodes) }
-                                                        onClick={() => addToSimilarInputPapers(selectNodes)} 
+                                                        onClick={() => {
+                                                            Logger.logVisualizationInteraction({
+                                                                component: 'PaperScatter',
+                                                                action: 'addToSimilarPapers',
+                                                                selectedPoints: selectNodes.map(n => n.ID),
+                                                                selectionCount: selectNodes.length,
+                                                                embeddingType: embeddingType,
+                                                                paperTitles: selectNodes.map(n => n.Title).slice(0, 2)
+                                                            });
+                                                            addToSimilarInputPapers(selectNodes);
+                                                        }} 
                                                         allowDisabledFocus 
                                                     ></IconButton>
                                                     <IconButton 
                                                         styles={{root: {height: "auto", padding: 0}}}
                                                         iconProps={{iconName: "Save"}}
                                                         disabled={ isInSavedPapers(selectNodes) }
-                                                        onClick={() => addToSavedPapers(selectNodes)} 
+                                                        onClick={() => {
+                                                            Logger.logVisualizationInteraction({
+                                                                component: 'PaperScatter',
+                                                                action: 'savePapers',
+                                                                selectedPoints: selectNodes.map(n => n.ID),
+                                                                selectionCount: selectNodes.length,
+                                                                embeddingType: embeddingType,
+                                                                paperTitles: selectNodes.map(n => n.Title).slice(0, 2)
+                                                            });
+                                                            addToSavedPapers(selectNodes);
+                                                        }} 
                                                         allowDisabledFocus 
                                                     ></IconButton>
                                                     </Stack></div>
@@ -697,7 +805,15 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                                                     className="float-right"
                                                     iconProps={{iconName: "Times"}}
                                                     ariaLabel="Close popup modal"
-                                                    onClick={() => setModalState(false)}
+                                                    onClick={() => {
+                                                        Logger.logVisualizationInteraction({
+                                                            component: 'PaperScatter',
+                                                            action: 'closeModal',
+                                                            modalType: 'paperDetails',
+                                                            paperId: paperData?.ID
+                                                        });
+                                                        setModalState(false);
+                                                    }}
                                                 />
                                             </h2>
                                             <br/>
@@ -718,7 +834,16 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                                                 <ActionButton
                                                     iconProps={{iconName: "PlusCircle"}}
                                                     disabled={isInSimilarInputPapers(paperData)}
-                                                    onClick={() => addToSimilarInputPapers(paperData)}
+                                                    onClick={() => {
+                                                        Logger.logVisualizationInteraction({
+                                                            component: 'PaperScatter',
+                                                            action: 'addToSimilarPapersFromModal',
+                                                            paperId: paperData.ID,
+                                                            paperTitle: paperData.Title,
+                                                            embeddingType: embeddingType
+                                                        });
+                                                        addToSimilarInputPapers(paperData);
+                                                    }}
                                                     allowDisabledFocus
                                                 >
                                                     Select
@@ -726,14 +851,32 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                                                 <ActionButton
                                                     disabled={isInSavedPapers(paperData)}
                                                     iconProps={{iconName: "Save"}}
-                                                    onClick={() => addToSavedPapers(paperData)}
+                                                    onClick={() => {
+                                                        Logger.logVisualizationInteraction({
+                                                            component: 'PaperScatter',
+                                                            action: 'savePaperFromModal',
+                                                            paperId: paperData.ID,
+                                                            paperTitle: paperData.Title,
+                                                            embeddingType: embeddingType
+                                                        });
+                                                        addToSavedPapers(paperData);
+                                                    }}
                                                     allowDisabledFocus
                                                 >
                                                     Save
                                                 </ActionButton>
                                                 <ActionButton
                                                     iconProps={{iconName: "GraduationCap"}}
-                                                    onClick={() => openGScholar(paperData.Title)}
+                                                    onClick={() => {
+                                                        Logger.logVisualizationInteraction({
+                                                            component: 'PaperScatter',
+                                                            action: 'openGoogleScholar',
+                                                            paperId: paperData.ID,
+                                                            paperTitle: paperData.Title,
+                                                            embeddingType: embeddingType
+                                                        });
+                                                        openGScholar(paperData.Title);
+                                                    }}
                                                     allowDisabledFocus
                                                 >
                                                     Google Scholar

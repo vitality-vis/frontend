@@ -38,6 +38,7 @@ import {
     ITooltipStyles
 } from "@fluentui/react";
 import {observer} from "mobx-react";
+import { Logger } from "../socket/logger";
 import Slider from '@material-ui/core/Slider';
 import "react-select/dist/react-select.css";
 import "react-virtualized-select/styles.css";
@@ -267,6 +268,11 @@ function GlobalFilter({
     return (
         <SearchBox
             onClear={() => {
+                Logger.logTableInteraction({
+                    component: 'MetaTable',
+                    action: 'clearGlobalFilter',
+                    previousFilter: globalFilter || ''
+                });
                 setGlobalFilter(undefined) // Set undefined to remove the filter entirely
             }}
             clearButtonProps={{iconProps: {iconName: "Times"}}}
@@ -274,6 +280,12 @@ function GlobalFilter({
             placeholder="Search"
             value={globalFilterValue}
             onSearch={(newValue) => {
+                Logger.logTableInteraction({
+                    component: 'MetaTable',
+                    action: 'globalFilterSearch',
+                    searchTerm: newValue,
+                    // previousFilter: globalFilter || ''
+                });
                 setGlobalFilterValue(newValue);
                 onChange(newValue);
             }}
@@ -438,7 +450,7 @@ function MultiSelectTokensColumnFilter({
 }
 
 function MultiSelectColumnFilter({
-                                     column: {filterValue, setFilter, preFilteredRows, id}, dataAuthors, dataSources,dataKeywords
+                                     column: {filterValue, setFilter, preFilteredRows, id}, dataAuthors, dataSources, dataKeywords, tableType
                                  }) {
     // Calculate the options for filtering
     // using the preFilteredRows
@@ -472,18 +484,24 @@ function MultiSelectColumnFilter({
     }, [options]);
     const [multiselectTokenSelectedOptions, setMultiSelectTokenSelectedOptions] = React.useState<any[]>([]);
     const onChange = (selectedOptions): void => {
+        // Log the multi-select filter change
+        Logger.logTableInteraction({
+            component: 'MetaTable',
+            action: 'multiSelectFilter',
+            columnId: String(id),
+            filterValue: selectedOptions.map(opt => opt.value),
+            tableType: tableType,
+            visibleRows: selectedOptions.length
+        });
+        
         const filteredValues = preFilteredRows
             .filter(row => {
                 const rowValues = Array.isArray(row.values[id]) ? row.values[id] : [row.values[id]];
                 return rowValues.some(r => selectedOptions.some(option => option.value === r));
             })
             .map(row => row.values[id]);
-        // console.log("Selected Options_ColumnFilter:", selectedOptions); // Log selected options
-        // console.log("Filtered Values before Set:", filteredValues); // Log values before uniqueness
 
         const uniqueFilteredValues = [...new Set(filteredValues)];
-        // console.log("Filtered Values after Set:", uniqueFilteredValues); // Log unique filtered values
-
 
         setMultiSelectTokenSelectedOptions(selectedOptions);
         setFilter(selectedOptions.map(option => option.value));
@@ -535,9 +553,9 @@ function DefaultColumnFilter({
         />)
 }
 
-function filterMapping(filter, dataAuthors, dataSources, dataKeywords, columnId, staticMinYear = 1975, staticMaxYear = 2024, staticMinCitationCounts = 0, staticMaxCitationCounts = 1000,columnData) {
+function filterMapping(filter, dataAuthors, dataSources, dataKeywords, columnId, staticMinYear = 1975, staticMaxYear = 2024, staticMinCitationCounts = 0, staticMaxCitationCounts = 1000, columnData, tableType) {
     if (filter === "multiselect") {
-        return { Filter: (props) => <MultiSelectColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords} />, filter: 'includesValue' };
+        return { Filter: (props) => <MultiSelectColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords} tableType={tableType} />, filter: 'includesValue' };
     } else if (filter === "default") {
         return { Filter: DefaultColumnFilter, filter: 'fuzzyText' };
     } else if (filter === "range") {
@@ -758,6 +776,15 @@ function Table({
                                 <IconButton
                                     iconProps={{iconName: "Info"}}
                                     onClick={() => {
+                                        Logger.logTableInteraction({
+                                            component: 'MetaTable',
+                                            action: 'openPaperModal',
+                                            paperId: row.original.ID,
+                                            paperTitle: row.original.Title,
+                                            tableType: tableType,
+                                            rowId: row.index
+                                        });
+                                        
                                         setPaperInfo(row.original);
                                         setModalState(true);
                                     }}
@@ -803,6 +830,15 @@ function Table({
                                                 disabled={isInSelectedNodeIDs(row.original["ID"])}
                                                 iconProps={{iconName: "Locate"}}
                                                 onClick={() => {
+                                                    Logger.logTableInteraction({
+                                                        component: 'MetaTable',
+                                                        action: 'selectNode',
+                                                        paperId: row.original["ID"],
+                                                        paperTitle: row.original.Title,
+                                                        tableType: tableType,
+                                                        rowId: row.index
+                                                    });
+                                                    
                                                     addToSelectNodeIDs([row.original["ID"]], "table");
                                                 }}
                                                 className="iconButton"
@@ -845,6 +881,15 @@ function Table({
                                     iconProps={{iconName: "PlusCircle"}}
                                     disabled={isInSimilarInputPapers(row.original)}
                                     onClick={() => {
+                                        Logger.logTableInteraction({
+                                            component: 'MetaTable',
+                                            action: 'addToSimilarInputPapers',
+                                            paperId: row.original.ID,
+                                            paperTitle: row.original.Title,
+                                            tableType: tableType,
+                                            rowId: row.index
+                                        });
+                                        
                                         addToSimilarInputPapers(row.original);
                                     }}
                                     className="iconButton"
@@ -885,6 +930,15 @@ function Table({
                                     disabled={isInSavedPapers(row.original)}
                                     iconProps={{iconName: "Save"}}
                                     onClick={() => {
+                                        Logger.logTableInteraction({
+                                            component: 'MetaTable',
+                                            action: 'addToSavedPapers',
+                                            paperId: row.original.ID,
+                                            paperTitle: row.original.Title,
+                                            tableType: tableType,
+                                            rowId: row.index
+                                        });
+                                        
                                         addToSavedPapers(row.original);
                                     }}
                                     className="iconButton"
@@ -927,6 +981,15 @@ function Table({
                                 <IconButton
                                     iconProps={{iconName: "Delete"}}
                                     onClick={() => {
+                                        Logger.logTableInteraction({
+                                            component: 'MetaTable',
+                                            action: 'deleteRow',
+                                            paperId: row.original.ID,
+                                            paperTitle: row.original.Title,
+                                            tableType: tableType,
+                                            rowId: row.index
+                                        });
+                                        
                                         deleteRow(row.index)
                                     }}
                                     className="iconButton"
@@ -990,8 +1053,16 @@ function Table({
 
     React.useEffect(() => {
         // `sortBy` changed
-        // console.log('updateColumnSortByValues(sortBy); Triggered');
-        // console.log(sortBy);
+        if (sortBy.length > 0) {
+            Logger.logTableInteraction({
+                component: 'MetaTable',
+                action: 'sortColumn',
+                columnId: sortBy[0]?.id,
+                sortDirection: sortBy[0]?.desc ? 'desc' : 'asc',
+                tableType: tableType
+            });
+        }
+        
         updateColumnSortByValues(sortBy);
 
     }, [sortBy]);
@@ -1128,6 +1199,14 @@ function Table({
     const handleLoadMoreData = (event) => {
         event.persist(); // Prevents React from reusing the event object
 
+        Logger.logTableInteraction({
+            component: 'MetaTable',
+            action: 'loadMoreData',
+            tableType: tableType,
+            currentRowCount: data?.length || 0,
+            currentFilter: globalFilter || ''
+        });
+
         setIsLoading(true);
         loadMoreData().then(() => {
             setIsLoading(false);
@@ -1137,6 +1216,14 @@ function Table({
     };
     const handleLoadAllData = (event) => {
         event.persist(); // Prevent React from reusing the event object
+
+        Logger.logTableInteraction({
+            component: 'MetaTable',
+            action: 'loadAllData',
+            tableType: tableType,
+            currentRowCount: data?.length || 0,
+            currentFilter: globalFilter || ''
+        });
 
         setIsLoadingAll(true); // New state for loading all data
         loadAllData().then(() => {
@@ -1272,6 +1359,13 @@ function Table({
                                             text="All"
                                             iconProps={{iconName: "PlusCircle"}}
                                             onClick={() => {
+                                                Logger.logTableInteraction({
+                                                    component: 'MetaTable',
+                                                    action: 'addAllToSimilarInputPapers',
+                                                    tableType: tableType,
+                                                    visibleRows: dataFiltered.length
+                                                });
+                                                
                                                 addToSimilarInputPapers(dataFiltered);
                                             }}
                                             allowDisabledFocus
@@ -1286,6 +1380,13 @@ function Table({
                                             text="All"
                                             iconProps={{iconName: "Save"}}
                                             onClick={() => {
+                                                Logger.logTableInteraction({
+                                                    component: 'MetaTable',
+                                                    action: 'saveAllPapers',
+                                                    tableType: tableType,
+                                                    visibleRows: dataFiltered.length
+                                                });
+                                                
                                                 addToSavedPapers(dataFiltered);
                                             }}
                                             allowDisabledFocus
@@ -1300,6 +1401,13 @@ function Table({
                                             text="All"
                                             iconProps={{iconName: "Delete"}}
                                             onClick={() => {
+                                                Logger.logTableInteraction({
+                                                    component: 'MetaTable',
+                                                    action: 'deleteAllRows',
+                                                    tableType: tableType,
+                                                    visibleRows: dataFiltered.length
+                                                });
+                                                
                                                 deleteRow(dataFiltered);
                                             }}
                                             allowDisabledFocus
@@ -1312,7 +1420,17 @@ function Table({
                                     <>
                                         <PrimaryButton
                                             id='summarizeBtnId'
-                                            onClick={() => setSummarizeBtnShow(!summarizeBtnShow)}
+                                            onClick={() => {
+                                                Logger.logTableInteraction({
+                                                    component: 'MetaTable',
+                                                    action: 'toggleSummarizePanel',
+                                                    tableType: tableType,
+                                                    visibleRows: dataFiltered.length,
+                                                    panelOpen: !summarizeBtnShow
+                                                });
+                                                
+                                                setSummarizeBtnShow(!summarizeBtnShow);
+                                            }}
                                             text="Summarize"
                                             allowDisabledFocus
                                             styles={{root: {padding: 0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}}}
@@ -1329,6 +1447,14 @@ function Table({
                                                     <TextField value={summarizePrompt} multiline
                                                                onChange={onChangeSummarizePrompt}/>
                                                     <DefaultButton onClick={() => {
+                                                        Logger.logLLMInteraction({
+                                                            component: 'MetaTable',
+                                                            action: 'summarizePapers',
+                                                            prompt: summarizePrompt,
+                                                            paperCount: dataFiltered.length,
+                                                            tableType: tableType
+                                                        });
+                                                        
                                                         summarizePapers(summarizePrompt)
                                                     }}> Submit </DefaultButton>
                                                 </div>
@@ -1340,7 +1466,17 @@ function Table({
                                     <>
                                         <PrimaryButton
                                             id='literatureReviewBtnId'
-                                            onClick={() => setLiteratureReviewBtnShow(!literatureReviewBtnShow)}
+                                            onClick={() => {
+                                                Logger.logTableInteraction({
+                                                    component: 'MetaTable',
+                                                    action: 'toggleLiteratureReviewPanel',
+                                                    tableType: tableType,
+                                                    visibleRows: dataFiltered.length,
+                                                    panelOpen: !literatureReviewBtnShow
+                                                });
+                                                
+                                                setLiteratureReviewBtnShow(!literatureReviewBtnShow);
+                                            }}
                                             text="Literature Review"
                                             allowDisabledFocus
                                             styles={{root: {padding: 0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}}}
@@ -1357,6 +1493,14 @@ function Table({
                                                     <TextField value={literatureReviewPrompt} multiline
                                                                onChange={onChangeLiteratureReviewPrompt}/>
                                                     <DefaultButton onClick={() => {
+                                                        Logger.logLLMInteraction({
+                                                            component: 'MetaTable',
+                                                            action: 'literatureReview',
+                                                            prompt: literatureReviewPrompt,
+                                                            paperCount: dataFiltered.length,
+                                                            tableType: tableType
+                                                        });
+                                                        
                                                         literatureReviewPapers(literatureReviewPrompt)
                                                     }}> Submit </DefaultButton>
                                                 </div>
@@ -1367,7 +1511,16 @@ function Table({
                                 {tableControls.indexOf("export") !== -1 ?
                                     <>
                                         <PrimaryButton
-                                            onClick={checkoutPapers}
+                                            onClick={() => {
+                                                Logger.logTableInteraction({
+                                                    component: 'MetaTable',
+                                                    action: 'exportBib',
+                                                    tableType: tableType,
+                                                    visibleRows: dataFiltered.length
+                                                });
+                                                
+                                                checkoutPapers();
+                                            }}
                                             iconProps={{iconName: "FileExport"}}
                                             text="Export bib"
                                             allowDisabledFocus
@@ -1580,7 +1733,8 @@ export const MetaTable: React.FC<{
             staticMaxYear,
             staticMinCitationCounts,
             staticMaxCitationCounts,
-            columnData
+            columnData,
+            tableType
         );
 
         // console.log("Columns for Table:", columns);

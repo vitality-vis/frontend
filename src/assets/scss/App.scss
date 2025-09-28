@@ -175,3 +175,125 @@ body, .ms-Label, .ms-Pivot, .ms-Dropdown, .ms-Button, .ms-SearchBox, text{
     flex-direction: column;
 }
 
+
+
+////////////////////////////////////////////////////////////
+// Chat Window Styles
+  
+
+#chatWindowsPanel {
+    height: 600px;;          
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .dialog-tab-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;             
+  }
+  
+  .dialog-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;            
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+    overflow: hidden;
+  }
+  
+  .chat-messages {
+    display: flex;
+    flex-direction: column;
+    height: 290px;
+    gap: 0.5rem;
+    padding: 1rem;
+    overflow-y: auto;
+    background: #fafafa;
+  }
+  
+.chat-input-area {
+  flex-shrink: 0;           
+  border-top: 1px solid #ddd;
+  padding: 0.5rem;
+  background: #fff;
+}
+  
+  .chat-input-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+  }
+  
+  .chat-input {
+    flex: 1;
+    resize: none;
+    font-size: 1rem;
+    padding: 0.5rem;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    overflow-y: auto;
+    line-height: 1.5;
+    max-height: calc(1.5em * 3 + 1rem);
+  }
+  
+  .chat-action-row {
+    margin-top: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .chat-bubble {
+    max-width: 70%;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    word-break: break-word;
+  }
+  
+  .chat-bubble.user {
+    align-self: flex-end;
+    background: #daf1ff;
+    border-bottom-right-radius: 4px;
+  }
+  
+  .chat-bubble.ai {
+    align-self: flex-start;
+    background: #f1f1f1;
+    border-bottom-left-radius: 4px;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #ccc;
+    border-top: 2px solid #333;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 6px;
+  }
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .chat-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .chat-input {
+    flex: 1; 
+  }
+  
+  .ms-Dropdown {
+    min-width: 150px;
+  }
+
+  

@@ -54,6 +54,14 @@ const StudyWizard = () => {
   // const currentStep = parseInt(searchParams.get("step") || "0", 10);
 
   const studyId = parseInt(searchParams.get("studyid") || "1");
+  
+  // Save studyId to localStorage whenever it changes
+  React.useEffect(() => {
+    if (studyId) {
+      localStorage.setItem('studyId', String(studyId));
+    }
+  }, [studyId]);
+
   // Always redirect to ensure URL matches our generated userId
   const urlUserId = searchParams.get("userid");
   if (!searchParams.get("studyid") || !urlUserId || urlUserId !== userId) {

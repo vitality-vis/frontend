@@ -9,6 +9,9 @@ import Joyride,{ Step } from 'react-joyride';
 // import { Step } from 'react-joyride';
 import { useStepNav } from '../hooks/useStepNav';
 import { logEvent } from '../socket/logger';
+import { Logger } from "../socket/logger";
+
+
 
 //style={{ border: "2px solid #1976d2", borderRadius: 8 }}
 const steps: Step[] = [
@@ -97,10 +100,13 @@ const JoyrideTutorial = ({currentStep, totalSteps}) => {
       const endTime = Date.now();
       const browseDuration = (endTime - afterTutorialFinish.current) / 1000; // in seconds
       
-      logEvent('post_tutorial_browse_time', {
-        secondsSpent: browseDuration,
-        action: 'proceeded_to_next_step'
-      });
+      Logger.logStudyEvent(
+        {
+          secondsSpent: browseDuration,
+          action: 'proceedNextStep',
+          component: 'joyride',
+          interactionName: 'timeSpentAfterTutorial'
+        });
       
       // Reset the timer
       afterTutorialFinish.current = 0;
@@ -119,12 +125,21 @@ const JoyrideTutorial = ({currentStep, totalSteps}) => {
 
       if (action === 'next') {
         // Log time spent on current step when going to next
-        logEvent('joyride_step_timing', {
-          stepIndex: index,
-          action: 'next',
-          secondsSpent: duration,
-          stepContent: steps[index]?.content || 'Unknown step'
-        });
+        // logEvent('joyride_step_timing', {
+        //   stepIndex: index,
+        //   action: 'next',
+        //   secondsSpent: duration,
+        //   stepContent: steps[index]?.content || 'Unknown step'
+        // });
+        Logger.logStudyEvent(
+          {
+            component: 'joyride',
+            action: 'nextButton',
+            interactionName: 'timeSpentDuringStep',
+            secondsSpent: duration,
+            stepContent: steps[index]?.content || 'Unknown step'
+          }
+        )
         
         setStepIndex(index + 1);
         if (index + 1 === steps.length) {
@@ -137,12 +152,15 @@ const JoyrideTutorial = ({currentStep, totalSteps}) => {
       
       if (action === 'prev') {
         // Log time spent on current step when going back
-        logEvent('joyride_step_timing', {
-          stepIndex: index,
-          action: 'prev', 
-          secondsSpent: duration,
-          stepContent: steps[index]?.content || 'Unknown step'
-        });
+        Logger.logStudyEvent(
+          {
+            component: 'joyride',
+            action: 'prevButton',
+            interactionName: 'timeSpentDuringStep',
+            secondsSpent: duration,
+            stepContent: steps[index]?.content || 'Unknown step'
+          }
+        )
         
         setStepIndex(index - 1);
         // Start timing for previous step
@@ -155,12 +173,20 @@ const JoyrideTutorial = ({currentStep, totalSteps}) => {
       const endTime = Date.now();
       const duration = (endTime - stepStartTimeRef.current) / 1000; // in seconds
 
-      logEvent('joyride_tour_completed', {
-        status: status,
-        finalStepIndex: stepIndex,
-        finalStepDuration: duration,
-        action: status === 'finished' ? 'completed' : 'skipped'
-      });
+      // logEvent('joyride_tour_completed', {
+      //   status: status,
+      //   finalStepIndex: stepIndex,
+        
+      //   action: status === 'finished' ? 'completed' : 'skipped'
+      // });
+      Logger.logStudyEvent(
+          {
+            component: 'joyride',
+            action: status === 'finished' ? 'completed' : 'skipped',
+            interactionName: 'joyrideTourEnd',
+            finalStepDuration: duration,
+          }
+        );
       
       setRun(false);
       setStepIndex(0);

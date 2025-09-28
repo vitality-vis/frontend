@@ -5,7 +5,7 @@ import PaperScatter from "./PaperScatter";
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {Tabs, Tab, Button, Nav} from 'react-bootstrap'; // <-- Add this line
 import 'bootstrap/dist/css/bootstrap.min.css'; // <-- Ensure this line is already present for Bootstrap styles
-import { logEvent } from "../socket/logger";
+import { Logger, logEvent } from "../socket/logger";
 
 import {
     faCaretDown,
@@ -186,6 +186,11 @@ interface AppState {
     isMetaTableModalOpen: boolean;
     allDataLoaded: boolean;
     notesContent: string;
+    // Text editor tracking
+    writingSessionId: string;
+    lastWritingActivity: number;
+    writingStartTime: number;
+    isCurrentlyWriting: boolean;
 }
 
 interface TabType {
@@ -246,6 +251,7 @@ interface AppProps {
 }
 
 class App extends React.Component<AppProps, AppState> {
+    writingPauseTimeout: ReturnType<typeof setTimeout> | null = null;
 
     constructor(props: any) {
         super(props);
@@ -408,6 +414,11 @@ class App extends React.Component<AppProps, AppState> {
             similarMaxScore: 0,
             similarMinScore: 0,
             notesContent: '',
+            // Text editor tracking
+            writingSessionId: '',
+            lastWritingActivity: 0,
+            writingStartTime: 0,
+            isCurrentlyWriting: false,
         }
         this.setSpinner = this.setSpinner.bind(this);
     }
@@ -429,6 +440,17 @@ class App extends React.Component<AppProps, AppState> {
             console.warn('Error with saving the research notes', error)
         }
     };
+
+    logQuillContent = () => {
+        // const plainText = this.state.notesContent.replace(/<[^>]+>/g, "");
+        Logger.logTextEditorEvent({
+            component: 'App_ResearchNotes',
+            action: 'next',
+            actionType: 'finish_writing',
+            content: this.state.notesContent,
+            // contentLength: this.state.notesContent.length
+        })
+    }
 
     setMetaTableModalState = (isOpen: boolean) => {
         this.setState({isMetaTableModalOpen: isOpen});
@@ -709,8 +731,18 @@ class App extends React.Component<AppProps, AppState> {
                 [newId]: {chatText: "", chatHistory: [], chatResponse: "", chatSelectedPaper: ""}
             }
         }));
+        
+        // New tab creation
+        Logger.logUIInteraction({
+            component: 'App',
+            action: 'chat_tab_create',
+            elementId: 'addNewTabButton',
+            value: newId,
+            totalTabs: this.state.tabs.length + 1
+        });
     };
     removeTab = (id: string) => {
+        const tabToRemove = this.state.tabs.find(tab => tab.id === id);
         const newTabs = this.state.tabs.filter((tab) => tab.id !== id);
         const newActiveKey = newTabs.length > 0 ? newTabs[0].id : "";
         const newDialogStates = {...this.state.dialogStates};
@@ -721,11 +753,31 @@ class App extends React.Component<AppProps, AppState> {
             activeKey: newActiveKey,
             dialogStates: newDialogStates
         });
+        
+        // Tab removal
+        Logger.logUIInteraction({
+            component: 'App',
+            action: 'chat_tab_remove',
+            elementId: `removeTab_${id}`,
+            value: id,
+            tabTitle: tabToRemove?.title,
+            remainingTabs: newTabs.length,
+            newActiveTab: newActiveKey
+        });
     };
 
     setActiveKey = (key: string | null) => {
         if (key !== null) {
+            const previousKey = this.state.activeKey;
             this.setState({activeKey: key});
+            
+            // Tab switch
+            Logger.logUIInteraction({
+                component: 'App',
+                action: 'chat_tab_switch',
+                value: key,
+                totalTabs: this.state.tabs.length
+            });
         }
     };
     updateDialogState = (tabId: string, updatedState: any) => {
@@ -1138,6 +1190,18 @@ class App extends React.Component<AppProps, AppState> {
 
         const getSimilarPapersByAbstract = () => {
             this.setState({spinner: true});
+            
+            // Abstract similarity search start
+            Logger.logLLMInteraction({
+                component: 'App',
+                action: 'similarity_search_by_abstract_start',
+                query: this.state.searchAbstract,
+                title: this.state.searchTitle,
+                embeddingType: this.state.embeddingType.key,
+                limit: this.state.searchByAbstractLimit.key,
+                abstractLength: this.state.searchAbstract?.length || 0
+            });
+            
             let parent = this;
             const requestOptions = {
                 method: 'POST',
@@ -1160,11 +1224,31 @@ class App extends React.Component<AppProps, AppState> {
                         "spinner": false,
                         "similarityPanelSelectedKey": String(2) // Redirect to the `Output Similar` tab.
                     });
+                    
+                    // Abstract similarity search completion
+                    Logger.logLLMInteraction({
+                        component: 'App',
+                        action: 'similarity_search_by_abstract_complete',
+                        resultsCount: data?.length || 0,
+                        embeddingType: parent.state.embeddingType.key
+                    });
                 });
         }
 
         const getSimilarPapers = () => {
             this.setState({spinner: true});
+            
+            // Similarity search by papers
+            Logger.logLLMInteraction({
+                component: 'App',
+                action: 'similarity_search_by_papers_start',
+                inputPapersCount: this.state.dataSimilarPayload.length,
+                embeddingType: this.state.embeddingType.key,
+                dimensions: this.state.similarityType.key,
+                limit: this.state.maxSimilarPapers.key,
+                inputPaperIds: this.state.dataSimilarPayload.map(item => item["ID"])
+            });
+            
             let parent = this;
             const requestOptions = {
                 method: 'POST',
@@ -1195,12 +1279,33 @@ class App extends React.Component<AppProps, AppState> {
                         similarMaxScore: maxScore
                     }, () => {
                         console.log("Updated State:", this.state.dataSimilar); // Log updated state
+                        
+                        // Similarity search completion
+                        Logger.logLLMInteraction({
+                            component: 'App',
+                            action: 'similarity_search_by_papers_complete',
+                            resultsCount: data?.length || 0,
+                            minScore: minScore,
+                            maxScore: maxScore,
+                            embeddingType: parent.state.embeddingType.key
+                        });
                     });
                 });
         }
 
         const summarizePapers = (prompt) => {
+            // Summarization start
+            Logger.logLLMInteraction({
+                component: 'App',
+                action: 'summarize_papers_start',
+                query: prompt,
+                paperCount: this.state.dataSavedID.length,
+                paperIds: this.state.dataSavedID
+            });
+            
             this.setState({summarizeResponse: 'SUMMARIZING ... ...'})
+            const startTime = Date.now();
+            
             fetch(`${baseUrl}summarize`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -1216,6 +1321,15 @@ class App extends React.Component<AppProps, AppState> {
                         if (partial) {
                             this.setState({summarizeResponse: `${partial}`})
                         }
+                        
+                        // Summarization completion
+                        Logger.logLLMInteraction({
+                            component: 'App',
+                            action: 'summarize_papers_complete',
+                            responseLength: partial?.length || 0,
+                            duration: Date.now() - startTime,
+                            paperCount: this.state.dataSavedID.length
+                        });
                         return
                     }
                     partial += decoder.decode(value)
@@ -1227,7 +1341,18 @@ class App extends React.Component<AppProps, AppState> {
         }
 
         const literatureReviewPapers = (prompt) => {
+            // Literature review start
+            Logger.logLLMInteraction({
+                component: 'App',
+                action: 'literature_review_start',
+                query: prompt,
+                paperCount: this.state.dataSavedID.length,
+                paperIds: this.state.dataSavedID
+            });
+            
             this.setState({summarizeResponse: 'LITERATURE REVIEW ... ...'})
+            const startTime = Date.now();
+            
             fetch(`${baseUrl}literatureReview`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -1243,6 +1368,15 @@ class App extends React.Component<AppProps, AppState> {
                         if (partial) {
                             this.setState({summarizeResponse: `${partial}`})
                         }
+                        
+                        // Literature review completion
+                        Logger.logLLMInteraction({
+                            component: 'App',
+                            action: 'literature_review_complete',
+                            responseLength: partial?.length || 0,
+                            duration: Date.now() - startTime,
+                            paperCount: this.state.dataSavedID.length
+                        });
                         return
                     }
                     partial += decoder.decode(value)
@@ -2011,8 +2145,17 @@ class App extends React.Component<AppProps, AppState> {
                         text="Meta Table"
                         iconProps={{iconName: "Table"}}
                         onClick={() => {
-                            this.setState({isMetaTableModalOpen: !this.state.isMetaTableModalOpen})
-                            logEvent('metatable_clicked', 'true')
+                            const wasOpen = this.state.isMetaTableModalOpen;
+                            this.setState({isMetaTableModalOpen: !this.state.isMetaTableModalOpen});
+                            
+                            // Meta table interaction
+                            Logger.logUIInteraction({
+                                component: 'App',
+                                action: 'meta_table_modal_toggle',
+                                elementId: 'metaTableButton',
+                                value: !wasOpen,
+                                modalName: 'metaTable'
+                            });
                         }
 
                         }
@@ -2031,7 +2174,16 @@ class App extends React.Component<AppProps, AppState> {
                             selectedKey={this.state.embeddingType.key}
                             // eslint-disable-next-line react/jsx-no-bind
                             onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => {
-                                this.setState({embeddingType: item})
+                                const previousValue = this.state.embeddingType.key;
+                                this.setState({embeddingType: item});
+                                
+                                // Embedding type change
+                                Logger.logUIInteraction({
+                                    component: 'App',
+                                    action: 'embedding_type_change',
+                                    elementId: 'embeddingDropdownButton',
+                                    value: item?.key,
+                                });
                             }}
                             // disabled={true}
                             options={embeddingTypeDropdownOptions}
@@ -2052,7 +2204,18 @@ class App extends React.Component<AppProps, AppState> {
                     borderRadius: 8
                 }}
                  text={"Saved Papers (" + this.state.dataSaved.length + ")"}
-                                                          onClick={() => this.setState({isPanelOpen: true})}/>)
+                 onClick={() => {
+                     this.setState({isPanelOpen: true});
+                     
+                     // Saved papers panel opening
+                     Logger.logUIInteraction({
+                         component: 'App',
+                         action: 'saved_papers_panel_open',
+                         elementId: 'savedPapersButton',
+                         panelName: 'savedPapers',
+                         savedPapersCount: this.state.dataSaved.length
+                     });
+                 }}/>)
             },
         ];
 
@@ -2132,7 +2295,17 @@ class App extends React.Component<AppProps, AppState> {
                             },
                         }}
                         isOpen={this.state.isMetaTableModalOpen}
-                        onDismiss={() => this.setState({isMetaTableModalOpen: false})}
+                        onDismiss={() => {
+                            this.setState({isMetaTableModalOpen: false});
+                            
+                            // Modal dismiss
+                            Logger.logUIInteraction({
+                                component: 'App',
+                                action: 'modal_dismiss',
+                                modalName: 'metaTable',
+                                dismissMethod: 'overlay_click'
+                            });
+                        }}
                         isBlocking={false}
                     >
                         <div className="p-lg">
@@ -2142,7 +2315,17 @@ class App extends React.Component<AppProps, AppState> {
                                     className="float-right"
                                     iconProps={{iconName: "Times"}}
                                     ariaLabel="Close meta table modal"
-                                    onClick={() => this.setState({isMetaTableModalOpen: false})}
+                                    onClick={() => {
+                                        this.setState({isMetaTableModalOpen: false});
+                                        
+                                        // Modal close button
+                                        Logger.logUIInteraction({
+                                            component: 'App',
+                                            action: 'modal_close',
+                                            modalName: 'metaTable',
+                                            dismissMethod: 'close_button'
+                                        });
+                                    }}
                                 />
                             </h2>
                             <div style={{marginTop: "20px"}}>
@@ -2170,7 +2353,25 @@ class App extends React.Component<AppProps, AppState> {
                     <Panel
                         headerText="Saved Papers"
                         isOpen={this.state.isPanelOpen}
-                        onDismiss={() => this.setState({isPanelOpen: false})}
+                        onDismiss={() => {
+                            this.setState({isPanelOpen: false});
+                            
+                            // Panel dismiss
+                            Logger.logUIInteraction({
+                                component: 'App',
+                                action: 'saved_papers_panel_dismiss',
+                                panelName: 'savedPapers',
+                                savedPapersCount: this.state.dataSaved.length
+                            });
+                            // Logger.logTextEditorEvent({
+                            //     component: 'App',
+                            //     action: 'step_completion',
+                            //     actionType: 'finish_writing',
+                            //     response: this.state.notesContent,
+                            //     content: this.state.notesContent,
+                            //     contentLength: this.state.notesContent.length
+                            // })
+                        }}
                         type={PanelType.large}
                         closeButtonAriaLabel="Close"
                     >

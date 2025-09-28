@@ -3,6 +3,7 @@ import { useState } from "react";
 import StepLayout from "../structure/StepLayout";
 import { useStepNav } from "../hooks/useStepNav";
 import { logEvent } from "../socket/logger";
+import { Logger } from "../socket/logger";
 
 // // Placeholder logging utility
 // function logSubmit(answer: { studyId: number; userId: number; response: string }) {
@@ -19,7 +20,13 @@ const LiteratureReview = ({currentStep, totalSteps}) => {
     e.preventDefault();
     setSubmitted(true);
     setShowTask(true);
-    logEvent('lit_review_experience', {response})
+
+    Logger.logStudyEvent({
+      component: 'LiteratureReview',
+      action: 'submit',
+      interactionName: 'litReviewExperience',
+      response: response
+    })
   };
 
   return (

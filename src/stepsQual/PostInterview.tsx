@@ -3,6 +3,7 @@ import { useState } from "react";
 import StepLayout from "../structure/StepLayout";
 import { logEvent } from "../socket/logger";
 // import { useStepNav } from "../hooks/useStepNav";
+import { Logger } from "../socket/logger";
 
 const PostInterview = ({currentStep, totalSteps}) => {
 //   const { studyId, userId } = useStepNav();
@@ -14,7 +15,13 @@ const PostInterview = ({currentStep, totalSteps}) => {
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setSubmitted(true);
-    logEvent('postinterview_response', {response})
+
+    Logger.logStudyEvent({
+      component: 'PostInterview',
+      action: 'submit',
+      interactionName: 'postInterviewResponse',
+      response: response
+    })
   };
 
   const handleExternalFormClick = () => {

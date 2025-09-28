@@ -3,6 +3,7 @@ import { useState } from "react";
 import StepLayout from "../structure/StepLayout";
 import { useStepNav } from "../hooks/useStepNav";
 import { logEvent } from "../socket/logger";
+import { Logger } from "../socket/logger";
 
 const Consent = ({currentStep, totalSteps}) => {
   const { goNext } = useStepNav();
@@ -163,7 +164,15 @@ const Consent = ({currentStep, totalSteps}) => {
               }}
               disabled={!checked}
               onClick={()=>{
-                logEvent('consent_given', {consent: true});
+                Logger.logStudyEvent(
+                  {
+                    action: 'consentGiven',
+                    component: 'consent',
+                    interactionName: 'consentGiven',
+                    response: 'yes'
+                  }
+                );
+                // logEvent('consent_given', {consent: true});
                 goNext();
               }}
             >

@@ -2,6 +2,8 @@ import * as React from "react";
 import { useState } from "react";
 import StepLayout from "../structure/StepLayout";
 import { logEvent } from "../socket/logger";
+import { Logger } from "../socket/logger";
+
 
 // Placeholder logging utility
 // function logSubmit(answer: { studyId: number; userId: number; response: string }) {
@@ -14,7 +16,13 @@ const PreInterview = ({currentStep, totalSteps}) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    logEvent('preinterview_response', {response})
+    Logger.logStudyEvent({
+      component: 'PreInterview',
+      action: 'submit',
+      interactionName: 'preInterviewResponse',
+      response: response
+    })
+
     setSubmitted(true);
   };
 

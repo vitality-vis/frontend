@@ -5,6 +5,7 @@ import {VariableSizeList} from 'react-window';
 import * as JsSearch from 'js-search';
 import styled from 'styled-components';
 import {Button} from 'react-bootstrap';
+import { Logger } from "../socket/logger";
 
 import {
     useTable,
@@ -287,6 +288,11 @@ function GlobalFilter({
     return (
         <SearchBox
             onClear={() => {
+                Logger.logTableInteraction({
+                    component: 'SmartTable',
+                    action: 'clearGlobalFilter',
+                    previousFilter: globalFilter || ''
+                });
                 setGlobalFilter(undefined) // Set undefined to remove the filter entirely
             }}
             clearButtonProps={{iconProps: {iconName: "Times"}}}
@@ -294,6 +300,12 @@ function GlobalFilter({
             placeholder="Search"
             value={globalFilterValue}
             onSearch={(newValue) => {
+                Logger.logTableInteraction({
+                    component: 'SmartTable',
+                    action: 'globalFilterSearch',
+                    searchTerm: newValue,
+                    previousFilter: globalFilter || ''
+                });
                 setGlobalFilterValue(newValue);
                 onChange(newValue);
             }}
@@ -359,7 +371,15 @@ function NumberRangeColumnFilter({
                 step={step}
                 min={range[0]}
                 max={range[1]}
-                onChangeCommitted={(event, val) => setFilter(val)}
+                onChangeCommitted={(event, val) => {
+                    Logger.logTableInteraction({
+                        component: 'SmartTable',
+                        action: 'filterSliderChange',
+                        filterId: id,
+                        filterValue: val
+                    });
+                    setFilter(val);
+                }}
                 onChange={(event, val) => setValue(val)}
                 valueLabelDisplay="auto"
                 aria-labelledby="range-slider"
@@ -409,6 +429,14 @@ function MultiSelectTokensColumnFilter({
     const [multiselectTokenSelectedOptions, setMultiSelectTokenSelectedOptions]: any = React.useState([]);
 
     const onChange = (_selOpts): void => {
+        Logger.logTableInteraction({
+            component: 'SmartTable',
+            action: 'multiSelectTokenFilter',
+            filterId: id,
+            selectedOptions: _selOpts.map(opt => opt.value),
+            selectedCount: _selOpts.length
+        });
+
         let filteredValues = [];
         preFilteredRows.forEach(row => {
             if ("values" in row && id in row["values"] && row["values"][id] != null) {
@@ -521,6 +549,14 @@ function MultiSelectColumnFilter({
     }, [options]);
     const [multiselectTokenSelectedOptions, setMultiSelectTokenSelectedOptions] = React.useState<any[]>([]);
     const onChange = (selectedOptions): void => {
+        Logger.logTableInteraction({
+            component: 'SmartTable',
+            action: 'multiSelectColumnFilter',
+            filterId: id,
+            selectedOptions: selectedOptions.map(option => option.value),
+            selectedCount: selectedOptions.length
+        });
+
         console.log("setSpinner");
         setSpinner(true, "Applying Filters...");
         const filteredValues = preFilteredRows
@@ -826,6 +862,15 @@ function Table({
                                     onClick={() => {
                                         setPaperInfo(row.original);
                                         setModalState(true);
+                                        
+                                        // Enhanced logging for paper info modal
+                                        Logger.logTableInteraction({
+                                            component: 'SmartTable',
+                                            action: 'info_modal_open',
+                                            tableType: tableType,
+                                            rowId: row.original?.ID,
+                                            paperTitle: row.original?.Title
+                                        });
                                     }}
                                     className="iconButton"
                                     allowDisabledFocus
@@ -870,6 +915,16 @@ function Table({
                                                 iconProps={{iconName: "Locate"}}
                                                 onClick={() => {
                                                     addToSelectNodeIDs([row.original["ID"]], "table");
+                                                    
+                                                    // Enhanced logging for locate interaction
+                                                    Logger.logTableInteraction({
+                                                        component: 'SmartTable',
+                                                        action: 'locate_paper',
+                                                        tableType: tableType,
+                                                        rowId: row.original?.ID,
+                                                        paperTitle: row.original?.Title,
+                                                        hasEmbeddings: hasEmbeddings(row.original["ID"])
+                                                    });
                                                 }}
                                                 className="iconButton"
                                                 allowDisabledFocus
@@ -911,6 +966,14 @@ function Table({
                                     iconProps={{iconName: "PlusCircle"}}
                                     disabled={isInSimilarInputPapers(row.original)}
                                     onClick={() => {
+                                        Logger.logTableInteraction({
+                                            component: 'SmartTable',
+                                            action: 'addToSimilarPapers',
+                                            rowId: row.original.id,
+                                            paperTitle: row.original.title,
+                                            currentFilter: globalFilter || '',
+                                            visibleRows: rows?.length || 0
+                                        });
                                         addToSimilarInputPapers(row.original);
                                     }}
                                     className="iconButton"
@@ -993,6 +1056,15 @@ function Table({
                                 <IconButton
                                     iconProps={{iconName: "Delete"}}
                                     onClick={() => {
+                                        Logger.logTableInteraction({
+                                            component: 'SmartTable',
+                                            action: 'deleteRow',
+                                            rowId: row.original.id,
+                                            paperTitle: row.original.title,
+                                            rowIndex: row.index,
+                                            currentFilter: globalFilter || '',
+                                            visibleRows: rows?.length || 0
+                                        });
                                         deleteRow(row.index)
                                     }}
                                     className="iconButton"
@@ -1071,6 +1143,14 @@ function Table({
     });
 
     const onChange = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption): void => {
+        Logger.logTableInteraction({
+            component: 'SmartTable',
+            action: 'toggleColumnFromDropdown',
+            columnId: String(item.key),
+            columnName: String(item.text),
+            currentFilter: globalFilter || '',
+            visibleRows: rows?.length || 0
+        });
         toggleHideColumn(item.key);
         updateVisibleColumns(item.key);
     };
@@ -1212,6 +1292,13 @@ function Table({
     const handleLoadMoreData = (event) => {
         event.persist(); // Prevents React from reusing the event object
 
+        Logger.logTableInteraction({
+            component: 'SmartTable',
+            action: 'loadMoreData',
+            currentRowCount: data?.length || 0,
+            currentFilter: globalFilter || ''
+        });
+
         setIsLoading(true);
         loadMoreData().then(() => {
             setIsLoading(false);
@@ -1221,6 +1308,13 @@ function Table({
     };
     const handleLoadAllData = (event) => {
         event.persist(); // Prevent React from reusing the event object
+
+        Logger.logTableInteraction({
+            component: 'SmartTable',
+            action: 'loadAllData',
+            currentRowCount: data?.length || 0,
+            currentFilter: globalFilter || ''
+        });
 
         setIsLoadingAll(true); // New state for loading all data
         loadAllData().then(() => {
@@ -1284,6 +1378,12 @@ function Table({
                                     iconProps={{iconName: "PlusCircle"}}
                                     disabled={isInSimilarInputPapers(paperInfo)}
                                     onClick={() => {
+                                        Logger.logTableInteraction({
+                                            component: 'SmartTable',
+                                            action: 'addToSimilarPapersFromModal',
+                                            paperId: paperInfo.ID,
+                                            paperTitle: paperInfo.Title
+                                        });
                                         addToSimilarInputPapers(paperInfo);
                                     }}
                                     allowDisabledFocus
@@ -1292,6 +1392,12 @@ function Table({
                                     disabled={isInSavedPapers(paperInfo)}
                                     iconProps={{iconName: "Save"}}
                                     onClick={() => {
+                                        Logger.logTableInteraction({
+                                            component: 'SmartTable',
+                                            action: 'savePaperFromModal',
+                                            paperId: paperInfo.ID,
+                                            paperTitle: paperInfo.Title
+                                        });
                                         addToSavedPapers(paperInfo);
                                     }}
                                     allowDisabledFocus
@@ -1299,6 +1405,12 @@ function Table({
                                 <ActionButton
                                     iconProps={{iconName: "GraduationCap"}}
                                     onClick={() => {
+                                        Logger.logTableInteraction({
+                                            component: 'SmartTable',
+                                            action: 'openGoogleScholar',
+                                            paperId: paperInfo.ID,
+                                            paperTitle: paperInfo.Title
+                                        });
                                         openGScholar(paperInfo["Title"]);
                                     }}
                                     allowDisabledFocus
@@ -1341,7 +1453,7 @@ function Table({
                                     <>
                                         <DefaultButton
                                             onClick={() => {
-                                                addToSelectNodeIDs(dataFiltered.map((d) => d["ID"]), "table");
+                                                addToSelectNodeIDs(data.map((d) => d["ID"]), "table");
                                             }}
                                             iconProps={{iconName: "Locate"}}
                                             text="All"
@@ -1371,7 +1483,14 @@ function Table({
                                             text="All"
                                             iconProps={{iconName: "Save"}}
                                             onClick={() => {
-                                                addToSavedPapers(dataFiltered);
+                                                Logger.logTableInteraction({
+                                                    component: 'SmartTable',
+                                                    action: 'saveAllPapers',
+                                                    rowCount: dataFiltered?.length || 0,
+                                                    currentFilter: globalFilter || '',
+                                                    visibleRows: rows?.length || 0
+                                                });
+                                                addToSavedPapers?.(data);
                                             }}
                                             allowDisabledFocus
                                             styles={{root: {padding: 0, minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
@@ -1385,7 +1504,14 @@ function Table({
                                             text="All"
                                             iconProps={{iconName: "Delete"}}
                                             onClick={() => {
-                                                deleteRow(dataFiltered);
+                                                Logger.logTableInteraction({
+                                                    component: 'SmartTable',
+                                                    action: 'deleteAllRows',
+                                                    rowCount: dataFiltered?.length || 0,
+                                                    currentFilter: globalFilter || '',
+                                                    visibleRows: rows?.length || 0
+                                                });
+                                                deleteRow?.(data);
                                             }}
                                             allowDisabledFocus
                                             styles={{root: {padding: 0, minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
@@ -1397,7 +1523,14 @@ function Table({
                                     <>
                                         <PrimaryButton
                                             id='summarizeBtnId'
-                                            onClick={() => setSummarizeBtnShow(!summarizeBtnShow)}
+                                            onClick={() => {
+                                                Logger.logUIInteraction({
+                                                    component: 'SmartTable',
+                                                    action: 'toggleSummarizePanel',
+                                                    isOpen: !summarizeBtnShow
+                                                });
+                                                setSummarizeBtnShow(!summarizeBtnShow);
+                                            }}
                                             text="Summarize"
                                             allowDisabledFocus
                                             styles={{root: {padding: 0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}}}
@@ -1414,6 +1547,12 @@ function Table({
                                                     <TextField value={summarizePrompt} multiline
                                                                onChange={onChangeSummarizePrompt}/>
                                                     <DefaultButton onClick={() => {
+                                                        Logger.logLLMInteraction({
+                                                            component: 'SmartTable',
+                                                            action: 'submitSummarize',
+                                                            prompt: summarizePrompt,
+                                                            paperCount: dataFiltered?.length || 0
+                                                        });
                                                         summarizePapers(summarizePrompt)
                                                     }}> Submit </DefaultButton>
                                                 </div>
@@ -1425,7 +1564,14 @@ function Table({
                                     <>
                                         <PrimaryButton
                                             id='literatureReviewBtnId'
-                                            onClick={() => setLiteratureReviewBtnShow(!literatureReviewBtnShow)}
+                                            onClick={() => {
+                                                Logger.logUIInteraction({
+                                                    component: 'SmartTable',
+                                                    action: 'toggleLiteratureReviewPanel',
+                                                    isOpen: !literatureReviewBtnShow
+                                                });
+                                                setLiteratureReviewBtnShow(!literatureReviewBtnShow);
+                                            }}
                                             text="Literature Review"
                                             allowDisabledFocus
                                             styles={{root: {padding: 0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}}}
@@ -1442,6 +1588,12 @@ function Table({
                                                     <TextField value={literatureReviewPrompt} multiline
                                                                onChange={onChangeLiteratureReviewPrompt}/>
                                                     <DefaultButton onClick={() => {
+                                                        Logger.logLLMInteraction({
+                                                            component: 'SmartTable',
+                                                            action: 'submitLiteratureReview',
+                                                            prompt: literatureReviewPrompt,
+                                                            paperCount: dataFiltered?.length || 0
+                                                        });
                                                         literatureReviewPapers(literatureReviewPrompt)
                                                     }}> Submit </DefaultButton>
                                                 </div>
@@ -1452,7 +1604,16 @@ function Table({
                                 {tableControls.indexOf("export") !== -1 ?
                                     <>
                                         <PrimaryButton
-                                            onClick={checkoutPapers}
+                                            onClick={() => {
+                                                Logger.logTableInteraction({
+                                                    component: 'SmartTable',
+                                                    action: 'exportBib',
+                                                    rowCount: dataFiltered?.length || 0,
+                                                    currentFilter: globalFilter || '',
+                                                    visibleRows: rows?.length || 0
+                                                });
+                                                checkoutPapers();
+                                            }}
                                             iconProps={{iconName: "FileExport"}}
                                             text="Export bib"
                                             allowDisabledFocus
@@ -1481,6 +1642,14 @@ function Table({
                               ? <IconButton
                                   iconProps={{iconName: "Minus"}}
                                   onClick={() => {
+                                      Logger.logTableInteraction({
+                                          component: 'SmartTable',
+                                          action: 'hideColumn',
+                                          columnId: column.id,
+                                          columnName: column.render('Header'),
+                                          currentFilter: globalFilter || '',
+                                          visibleRows: rows?.length || 0
+                                      });
                                       toggleHideColumn(column.id);
                                       updateVisibleColumns(column.id);
                                   }}
