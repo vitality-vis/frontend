@@ -83,6 +83,10 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
     const [isColorLegendPanelOpen, setIsColorLegendPanelOpen] = React.useState(false);
     const [colorByAttribute, setColorByAttribute] = React.useState<IDropdownOption>(colorByDropdownOptions[0]);
     const embeddingKey = embeddingType + "_umap";
+    // Refs to manage hover logging timer/state so we log once after 500ms continuous hover
+    const hoverTimerRef = React.useRef<number | null>(null);
+    const hoverLoggedRef = React.useRef<boolean>(false);
+    const hoverIdxRef = React.useRef<number | null>(null);
     console.log("✅ PaperScatter :", props.data.length);
     console.log("✅ PaperScatter :", props.data[0]);
     // const [selectedPaper, setSelectedPaper] = useState(null);
@@ -163,6 +167,40 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
         // });
         setHoverNode(hoveredPaper);
         setScrollToPaperID(hoveredPaper?.["ID"]);
+        // Start (or restart) the 500ms timer to log a hover event only if the pointer remains on
+        // the same point continuously for >500ms. We log immediately when the threshold is reached.
+        // Clear any existing timer first
+        try{
+            if(hoverTimerRef.current){
+                window.clearTimeout(hoverTimerRef.current as number);
+                hoverTimerRef.current = null;
+            }
+        }catch(e){}
+        hoverLoggedRef.current = false;
+        hoverIdxRef.current = pointIdx;
+        // Use window.setTimeout so the returned id is of type number
+        hoverTimerRef.current = window.setTimeout(() => {
+            // Only log if still hovering the same point and we haven't already logged for this continuous hover
+            if(hoverIdxRef.current === pointIdx && !hoverLoggedRef.current){
+                try{
+                    const paper = papersToShow[pointIdx];
+                    const coords = paper && paper[embeddingKey] ? { x: paper[embeddingKey][0], y: paper[embeddingKey][1] } : undefined;
+                    Logger.logVisualizationInteraction({
+                        component: 'PaperScatter',
+                        action: 'hover',
+                        hoverType: 'long',
+                        paperTitle: paper?.Title,
+                        pointId: paper?.ID,
+                        embeddingType: embeddingType,
+                        coordinates: coords,
+                        durationMs: 500
+                    });
+                }catch(err){
+                    // swallow logging errors to avoid breaking UI
+                }
+                hoverLoggedRef.current = true;
+            }
+        }, 500) as unknown as number;
     };
 
     const pointoutHandler = (pointIdx) => {
@@ -177,6 +215,15 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
         // });
         setHoverNode(null);
         setScrollToPaperID(null);
+        // Clear any pending hover timer and reset hover tracking so we only log on continuous hover
+        try{
+            if(hoverTimerRef.current){
+                window.clearTimeout(hoverTimerRef.current as number);
+                hoverTimerRef.current = null;
+            }
+        }catch(e){}
+        hoverLoggedRef.current = false;
+        hoverIdxRef.current = null;
     };
 
     const selectHandler = ({ points: selectedPoints }) => {
