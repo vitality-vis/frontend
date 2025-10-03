@@ -966,11 +966,26 @@ class App extends React.Component<AppProps, AppState> {
             this.setState({spinner: false});
         }
     };
+    loadSavedPapers = () => {
+        try {
+            const raw = localStorage.getItem("saved_papers");
+            if (raw) {
+            const papers = JSON.parse(raw);
+            this.setState({
+                dataSaved: papers,
+                dataSavedID: papers.map((p: any) => p.ID),
+            });
+            }
+        } catch (e) {
+            console.warn("Failed to load saved papers from localStorage:", e);
+        }
+        };
 
 
     componentDidMount() {
         this.loadInitialData();
         this.loadSavedNotes();
+        this.loadSavedPapers();
     }
  
 
