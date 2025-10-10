@@ -21,6 +21,7 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
   totalSteps,
 }) => {
   const [filteredData, setFilteredData] = useState<Paper[]>([]);
+  const [baseData, setBaseData] = useState<Paper[]>([]); // Store unfiltered data from backend
   const [loading, setLoading] = useState(false);
   const [dataAuthors, setDataAuthors] = useState<string[]>([]);
   const [dataSources, setDataSources] = useState<string[]>([]);
@@ -30,9 +31,22 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
   const [minCitationCounts, setMinCitationCounts] = useState<number>(0);
   const [maxCitationCounts, setMaxCitationCounts] = useState<number>(1000);
   const [columnFilterValues, setColumnFilterValues] = useState<any[]>([]);
-  const [globalFilterValue, setGlobalFilterValue] = useState<any[]>([]);
+  const [globalFilterValue, setGlobalFilterValue] = useState<any>(undefined);
 
-  // ---- Saved papers (persist to localStorage so the App step can hydrate them) ----
+  const safeUpdateColumnFilterValues = (values: any[]) => {
+    console.log("FILTER UPDATING", JSON.stringify(values, null, 2));
+    const normalized = (values || []).map((f) => {
+      const id = f?.id;
+      const v  = f?.value;
+      if (["Authors", "Keywords"].includes(id)) {
+        return { ...f, value: Array.isArray(v) ? v : v ? [v] : [] };
+      }
+      return { ...f, value: Array.isArray(v) ? v : v ? [v] : [] };
+    });
+    setColumnFilterValues(normalized);
+  };
+
+  // ---- Saved ----
   const [saved, setSaved] = useState<Paper[]>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -49,7 +63,6 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch {}
   };
-
   const addToSaved = (paper: Paper) => {
     if (!savedIds.has(paper.ID)) persistSaved([...saved, paper]);
   };
@@ -58,17 +71,27 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
   };
   const isInSaved = (paper: Paper) => savedIds.has(paper.ID);
 
-  // -------------------------------------------------------------------------------
-
   useEffect(() => {
     void getMetaData();
   }, []);
-
-  // This effect will re-run whenever columnFilterValues changes
   useEffect(() => {
     void loadData();
   }, [columnFilterValues]);
 
+  // Apply local filtering when global filter changes
+  useEffect(() => {
+    if (globalFilterValue && globalFilterValue.trim()) {
+      const filtered = baseData.filter((row) =>
+        Object.values(row).some((value) =>
+          String(value).toLowerCase().includes(globalFilterValue.toLowerCase())
+        )
+      );
+      setFilteredData(mapForSmartTable(filtered));
+    } else {
+      // If no global filter, show all base data
+      setFilteredData(mapForSmartTable(baseData));
+    }
+  }, [globalFilterValue, baseData]);
 
   const getMetaData = async () => {
     try {
@@ -76,15 +99,28 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
 
-      const authors = (data.authors_summary || []).map((x: any) => x._id);
-      const sources = (data.sources_summary || []).map((x: any) => x._id);
-      const keywords = (data.keywords_summary || []).map((x: any) => x._id);
-      const years = (data.years_summary || []).map((x: any) => x._id);
+      const authors = (data.authors_summary || [])
+        .flatMap((x: any) =>
+          typeof x._id === "string"
+            ? x._id.split(",").map((a: string) => a.trim())
+            : []
+        )
+        .filter((a: string) => a.length > 0);
+      const sources  = (data.sources_summary || []).map((x: any) => x._id);
+      const keywords = (data.keywords_summary || [])
+        .flatMap((x: any) =>
+          typeof x._id === "string"
+            ? x._id.split(",").map((k: string) => k.trim())
+            : []
+        )
+        .filter((k: string) => k.length > 0);
+      const years    = (data.years_summary || []).map((x: any) => x._id);
       const citationCounts: number[] = data.citation_counts || [];
 
-      setDataAuthors(authors);
-      setDataSources(sources);
-      setDataKeywords(keywords);
+      setDataAuthors(authors || []);
+      setDataSources(sources || []);
+      setDataKeywords(keywords || []);
+
       setMinYear(years.length ? Math.min(...years) : 1975);
       setMaxYear(years.length ? Math.max(...years) : 2024);
       setMinCitationCounts(citationCounts.length ? Math.min(...citationCounts) : 0);
@@ -94,33 +130,60 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
     }
   };
 
+  const mapForSmartTable = (papers: Paper[]) =>
+    papers.map((p) => {
+      const authors = (p.Authors || []).reduce<string[]>((acc, a) => {
+        if (typeof a === "string") {
+          acc.push(...a.split(/[,;]+/).map((s) => s.trim()).filter(Boolean));
+        }
+        return acc;
+      }, []);
+      const keywords = (p.Keywords || []).reduce<string[]>((acc, k) => {
+        if (typeof k === "string") {
+          acc.push(...k.split(/[,;]+/).map((s) => s.trim()).filter(Boolean));
+        }
+        return acc;
+      }, []);
+      return { ...p, Authors: authors, Keywords: keywords };
+    });
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const author = columnFilterValues.find((f) => f.id === "Authors")?.value || [];
-      const source = columnFilterValues.find((f) => f.id === "Source")?.value;
-      const keyword = columnFilterValues.find((f) => f.id === "Keywords")?.value || [];
-      const yearFilter = columnFilterValues.find((f) => f.id === "Year");
-      let minY = yearFilter ? yearFilter.value[0] : undefined;
-      let maxY = yearFilter ? yearFilter.value[1] : undefined;
-      minY = minY === 1974 ? undefined : minY;
-      maxY = maxY === 2023 ? undefined : maxY;
-      const citationFilter = columnFilterValues.find((f) => f.id === "CitationCounts");
-      let minC = citationFilter ? citationFilter.value[0] : undefined;
-      let maxC = citationFilter ? citationFilter.value[1] : undefined;
-      minC = minC === 0 ? undefined : minC;
-      maxC = maxC === 1611 ? undefined : maxC;
-      const title = columnFilterValues.filter((f) => f.id === "Title").map((f) => f.value).join(" ");
-      const abstract = columnFilterValues.find((f) => f.id === "Abstract")?.value || undefined;
+      const getFilter = (id: string) =>
+        columnFilterValues.find((f) => f?.id?.toLowerCase() === id.toLowerCase());
+      const asArr = (v: any) => (Array.isArray(v) ? v : v ? [v] : []);
+
+
+      const author  = asArr(getFilter("Authors")?.value);
+      const keyword = asArr(getFilter("Keywords")?.value);
+      const source  = getFilter("Source")?.value || undefined;
+      // const title   = (getFilter("Title")?.value || "").trim();
+      const titleValue = getFilter("Title")?.value;
+      const title = (Array.isArray(titleValue) ? titleValue[0] : titleValue || "").trim();
+      const abstractValue = getFilter("Abstract")?.value;
+      const abstract = (Array.isArray(abstractValue) ? abstractValue[0] : abstractValue || "").trim() || undefined;
+
+      const yearFilter = getFilter("Year");
+      let minY = yearFilter?.value?.[0];
+      let maxY = yearFilter?.value?.[1];
+      if (minY === minYear) minY = undefined;
+      if (maxY === maxYear) maxY = undefined;
+
+      const citationFilter = getFilter("CitationCounts");
+      let minC = citationFilter?.value?.[0];
+      let maxC = citationFilter?.value?.[1];
+      if (minC === minCitationCounts) minC = undefined;
+      if (maxC === maxCitationCounts) maxC = undefined;
 
       const payload = {
         limit: 30,
         offset: 0,
         title: title || undefined,
         abstract: abstract || undefined,
-        author: author.length ? author : undefined,
+        author: author.length > 0 ? author : undefined,
         source: source || undefined,
-        keyword: keyword.length ? keyword : undefined,
+        keyword: keyword.length > 0 ? keyword : undefined,
         min_year: minY,
         max_year: maxY,
         min_citation_counts: minC,
@@ -135,8 +198,10 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
       const newData: Paper[] = await resp.json();
 
       if (Array.isArray(newData)) {
-        const limited = newData.slice(0, 30);
-        setFilteredData(limited);
+        const slicedData = newData.slice(0, 30);
+        setBaseData(slicedData); // Store the raw data
+        const mapped = mapForSmartTable(slicedData);
+        setFilteredData(mapped);
       }
     } catch (e) {
       console.error("Error loading data:", e);
@@ -145,18 +210,20 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
     }
   };
 
-  // ---- SmartTable props ----
+
   const columnFilterTypes = {
     ID: "default",
     Title: "default",
-    Authors: "multiselect-tokens",
+    Authors: "multiselect",
     Source: "multiselect",
     Year: "range",
     Abstract: "default",
-    Keywords: "multiselect-tokens",
+    Keywords: "multiselect",
+    // Keywords: "multiselect-tokens",
     CitationCounts: "range",
-  };
+  } as const;
 
+  // SmartTable props
   const searchTableProps: SmartTableProps = {
     tableType: "all",
     embeddingType: "default",
@@ -164,7 +231,7 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
 
     tableData: {
       all: filteredData,
-      saved: saved,
+      saved: mapForSmartTable(saved),
       similar: [],
       similarPayload: [],
       keyword: [],
@@ -173,34 +240,36 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
       year: [],
     },
 
+    dataFiltered: filteredData,
+
+    dataAuthors: dataAuthors ?? [],
+    dataSources: dataSources ?? [],
+    dataKeywords: dataKeywords ?? [],
+
+    columnFilterValues: columnFilterValues ?? [],
+    globalFilterValue: globalFilterValue ?? undefined,
+    columnSortByValues: [{ id: "Year", desc: true }],
+    columnFilterTypes,
+  
+
     columnsVisible: ["Title", "Authors", "Source", "Year", "Abstract", "Keywords"],
     columnIds: ["ID", "Title", "Authors", "Source", "Year", "Abstract", "Keywords"],
     tableControls: ["select"],
 
-    dataFiltered: filteredData,
-    dataAuthors,
-    dataSources,
-    dataKeywords,
-
-    columnFilterValues,
-    globalFilterValue,
-    columnSortByValues: [{ id: "Year", desc: true }],
-    columnFilterTypes,
-
     updateVisibleColumns: () => {},
-    updateColumnFilterValues: setColumnFilterValues,
+    updateColumnFilterValues: (v) => safeUpdateColumnFilterValues(v || []),
     updateGlobalFilterValue: setGlobalFilterValue,
     updateColumnSortByValues: () => {},
 
-    setFilteredPapers: (df) => setFilteredData(df || []),
+    setFilteredPapers: (df) => setFilteredData(mapForSmartTable(df || [])),
 
     addToSavedPapers: (paper: Paper) => addToSaved(paper),
     addToSimilarInputPapers: () => {},
     addToSelectNodeIDs: (paper: Paper, selected: boolean) => {
-        const paperToToggle = filteredData.find(p => p.ID === paper.ID);
-        if (paperToToggle) {
-            selected ? addToSaved(paperToToggle) : removeFromSaved(paperToToggle.ID);
-        }
+      const paperToToggle = filteredData.find((p) => p.ID === paper.ID);
+      if (paperToToggle) {
+        selected ? addToSaved(paperToToggle) : removeFromSaved(paperToToggle.ID);
+      }
     },
 
     isInSavedPapers: (paper: Paper) => isInSaved(paper),
@@ -234,7 +303,7 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
   return (
     <StepLayout title={`Task 1 (Step ${currentStep}/${totalSteps})`} showNext>
       <div style={{ height: "calc(100vh - 120px)", display: "flex", flexDirection: "column", padding: 20 }}>
-        <div style={{ maxWidth: 700, margin: "0 auto 20px auto" }}>
+        <div style={{ maxWidth: 700, margin: "0 auto 20px auto", textAlign: "center" }}>
           <h3>Instructions</h3>
           <p>
             Using the table below, check the papers you already know in this topic. Checked papers are saved and
@@ -243,22 +312,22 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
         </div>
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 20 }}>
-          {/* Search + select */}
           <div style={{ flex: 1, border: "1px solid #ccc", borderRadius: 4, display: "flex", flexDirection: "column" }}>
-            {/* <div style={{ background: "#f5f5f5", padding: 10, borderBottom: "1px solid #ccc", flexShrink: 0 }}>
-              <h4 style={{ margin: 0 }}>Search Papers</h4>
-            </div> */}
             <div style={{ flex: 1, minHeight: 0 }}>
-              <SmartTable
-                props={searchTableProps}
-                setSpinner={(active) => {
-                  setLoading(active);
-                }}
-              />
+              <div className="task1-table-container">
+                <style>{`
+                  .task1-table-container .table .tr:not(:first-child) .th:first-child { 
+                    visibility: hidden; 
+                  }
+                `}</style>
+                <SmartTable
+                  props={searchTableProps}
+                  setSpinner={(active) => setLoading(active)}
+                />
+              </div>
             </div>
           </div>
 
-          {/* Selected (Saved) papers */}
           <div style={{ flexShrink: 0, border: "1px solid #ccc", borderRadius: 4, display: "flex", flexDirection: "column" }}>
             <div style={{ background: "#f5f5f5", padding: 10, borderBottom: "1px solid #ccc" }}>
               <h4 style={{ margin: 0 }}>Selected Papers ({saved.length})</h4>

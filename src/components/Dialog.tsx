@@ -360,12 +360,15 @@ export const Dialog = observer(({ props }) => {
 
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const prevMessageCountRef = React.useRef(0);
 
-  // Auto scroll to the latest message
+  // Auto scroll to the latest message only when new messages are added
   React.useEffect(() => {
-    if (messagesEndRef.current) {
+    // Only scroll if messages were actually added (not on initial render)
+    if (displayMessages.length > prevMessageCountRef.current && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
+    prevMessageCountRef.current = displayMessages.length;
   }, [displayMessages, isWaiting]);
 
   const onChangeChatText = (e: React.ChangeEvent<HTMLTextAreaElement>) => {

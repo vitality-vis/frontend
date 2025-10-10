@@ -1,4 +1,7 @@
 /* eslint no-console: 0 */
+
+import 'regenerator-runtime/runtime';  // modified
+
 import "./../assets/scss/SmartTable.scss";
 import * as React from "react";
 import {VariableSizeList} from 'react-window';
@@ -16,7 +19,8 @@ import {
     useRowSelect,
     useGlobalFilter,
     useFlexLayout,
-    useResizeColumns
+    useResizeColumns,
+    useAsyncDebounce   //modified
 } from 'react-table';
 import {
     DefaultButton,
@@ -509,120 +513,224 @@ function MultiSelectTokensColumnFilter({
     )
 }
 
+
+// function MultiSelectColumnFilter({
+//                                      column: {filterValue, setFilter, preFilteredRows, id}, dataAuthors, dataSources,dataKeywords, setSpinner
+//                                  }) {
+//     // Calculate the options for filtering
+//     // using the preFilteredRows
+//     // console.log("dataAuthors in MultiSelectColumnFilter:", dataAuthors);
+//     // console.log("dataKeywords in MultiSelectColumnFilter:", dataKeywords);
+//     // console.log("id",id);
+//     // console.log("filterValue",filterValue);
+//     // console.log("setFilter",setFilter);
+//     let options = [];
+//     // console.log('inner metadata', metadata)
+//     if (id === 'Authors' && dataAuthors) {
+//         // Use the passed set of authors
+//         options = [...new Set(dataAuthors)].sort();
+//     } else if (id === 'Source' && dataSources) {
+//         // Use the passed set of sources
+//         options = [...new Set(dataSources)].sort();
+//     } else if (id==='Keywords'&& dataKeywords){
+//         options = [...new Set(dataKeywords)].sort();
+//     }
+//     else {
+//         // Default behavior for other columns or if dataAuthors/dataSources are not available
+//         options = React.useMemo(() => {
+//             const options = new Set();
+//             preFilteredRows.forEach(row => {
+//                 if ("values" in row && id in row["values"] && row["values"][id] != null) {
+//                     options.add(row.values[id]);
+//                 }
+//             });
+//             return [...options.values()].sort(function (a: any, b: any) {
+//                 return (a < b) ? -1 : (a > b) ? 1 : 0;
+//             });
+//         }, [preFilteredRows]);
+//     }
+//     const _options = React.useMemo(() => {
+//         return options.map((o: string) => ({label: o, value: o}));
+//     }, [options]);
+//     const [multiselectTokenSelectedOptions, setMultiSelectTokenSelectedOptions] = React.useState<any[]>([]);
+//     const onChange = (selectedOptions): void => {
+//         Logger.logTableInteraction({
+//             component: 'SmartTable',
+//             action: 'multiSelectColumnFilter',
+//             filterId: id,
+//             selectedOptions: selectedOptions.map(option => option.value),
+//             selectedCount: selectedOptions.length
+//         });
+
+//         console.log("setSpinner");
+//         setSpinner(true, "Applying Filters...");
+//         const filteredValues = preFilteredRows
+//             .filter(row => {
+//                 const rowValues = Array.isArray(row.values[id]) ? row.values[id] : [row.values[id]];
+//                 return rowValues.some(r => selectedOptions.some(option => option.value === r));
+//             })
+//             .map(row => row.values[id]);
+//         // console.log("Selected Options_ColumnFilter:", selectedOptions); // Log selected options
+//         // console.log("Filtered Values before Set:", filteredValues); // Log values before uniqueness
+
+//         const uniqueFilteredValues = [...new Set(filteredValues)];
+//         // console.log("Filtered Values after Set:", uniqueFilteredValues); // Log unique filtered values
+
+
+//         setMultiSelectTokenSelectedOptions(selectedOptions);
+//         setFilter(selectedOptions.map(option => option.value));
+//     }
+
+//     React.useEffect(() => {
+//         if (filterValue) {
+//             const _selOptions = Array.isArray(filterValue) ? filterValue.map(f => ({label: f, value: f})) : [];
+//             setMultiSelectTokenSelectedOptions(_selOptions);
+//         }
+//     }, [filterValue]);
+
+//     // Render a multi-select box
+//     return (
+//         <VirtualizedSelect
+//             options={_options}
+//             // filterOptions={_filterOptions}
+//             multi
+//             isSearchable={true}
+//             clearable={true}
+//             placeholder={"Search"}
+//             maxHeight={100}
+//             value={multiselectTokenSelectedOptions}
+//             onChange={onChange}
+//             defaultValue={multiselectTokenSelectedOptions}
+//         />
+//     )
+// }
+
+
+ // modified
 function MultiSelectColumnFilter({
-                                     column: {filterValue, setFilter, preFilteredRows, id}, dataAuthors, dataSources,dataKeywords, setSpinner
-                                 }) {
-    // Calculate the options for filtering
-    // using the preFilteredRows
-    // console.log("dataAuthors in MultiSelectColumnFilter:", dataAuthors);
-    // console.log("dataKeywords in MultiSelectColumnFilter:", dataKeywords);
-    // console.log("id",id);
-    // console.log("filterValue",filterValue);
-    // console.log("setFilter",setFilter);
-    let options = [];
-    // console.log('inner metadata', metadata)
-    if (id === 'Authors' && dataAuthors) {
-        // Use the passed set of authors
-        options = [...new Set(dataAuthors)].sort();
-    } else if (id === 'Source' && dataSources) {
-        // Use the passed set of sources
-        options = [...new Set(dataSources)].sort();
-    } else if (id==='Keywords'&& dataKeywords){
-        options = [...new Set(dataKeywords)].sort();
-    }
-    else {
-        // Default behavior for other columns or if dataAuthors/dataSources are not available
-        options = React.useMemo(() => {
-            const options = new Set();
-            preFilteredRows.forEach(row => {
-                if ("values" in row && id in row["values"] && row["values"][id] != null) {
-                    options.add(row.values[id]);
-                }
-            });
-            return [...options.values()].sort(function (a: any, b: any) {
-                return (a < b) ? -1 : (a > b) ? 1 : 0;
-            });
-        }, [preFilteredRows]);
-    }
+    column: { filterValue, setFilter, preFilteredRows, id },
+    dataAuthors,
+    dataSources,
+    dataKeywords,
+    setSpinner,
+  }) {
+    // Generate options from props passed by the parent, not preFilteredRows.
+    const options = React.useMemo(() => {
+      let opts = [];
+      if (id === 'Authors' && dataAuthors) {
+        opts = [...new Set(dataAuthors)].sort();
+      } else if (id === 'Source' && dataSources) {
+        opts = [...new Set(dataSources)].sort();
+      } else if (id === 'Keywords' && dataKeywords) {
+        opts = [...new Set(dataKeywords)].sort();
+      }
+      return opts;
+    }, [id, dataAuthors, dataSources, dataKeywords]);
+  
+    // Map options for the VirtualizedSelect component
     const _options = React.useMemo(() => {
-        return options.map((o: string) => ({label: o, value: o}));
+      return options.map((o: string) => ({ label: o, value: o }));
     }, [options]);
-    const [multiselectTokenSelectedOptions, setMultiSelectTokenSelectedOptions] = React.useState<any[]>([]);
-    const onChange = (selectedOptions): void => {
-        Logger.logTableInteraction({
-            component: 'SmartTable',
-            action: 'multiSelectColumnFilter',
-            filterId: id,
-            selectedOptions: selectedOptions.map(option => option.value),
-            selectedCount: selectedOptions.length
-        });
-
-        console.log("setSpinner");
-        setSpinner(true, "Applying Filters...");
-        const filteredValues = preFilteredRows
-            .filter(row => {
-                const rowValues = Array.isArray(row.values[id]) ? row.values[id] : [row.values[id]];
-                return rowValues.some(r => selectedOptions.some(option => option.value === r));
-            })
-            .map(row => row.values[id]);
-        // console.log("Selected Options_ColumnFilter:", selectedOptions); // Log selected options
-        // console.log("Filtered Values before Set:", filteredValues); // Log values before uniqueness
-
-        const uniqueFilteredValues = [...new Set(filteredValues)];
-        // console.log("Filtered Values after Set:", uniqueFilteredValues); // Log unique filtered values
-
-
-        setMultiSelectTokenSelectedOptions(selectedOptions);
-        setFilter(selectedOptions.map(option => option.value));
-    }
-
-    React.useEffect(() => {
-        if (filterValue) {
-            const _selOptions = Array.isArray(filterValue) ? filterValue.map(f => ({label: f, value: f})) : [];
-            setMultiSelectTokenSelectedOptions(_selOptions);
-        }
+  
+    // The state should just reflect the selected options for the dropdown's value.
+    const selectedOptions = React.useMemo(() => {
+        const currentFilter = Array.isArray(filterValue) ? filterValue : [];
+        return currentFilter.map(val => ({ label: val, value: val }));
     }, [filterValue]);
-
+  
+  
+    const onChange = (selected): void => {
+      Logger.logTableInteraction({
+        component: 'SmartTable',
+        action: 'multiSelectColumnFilter',
+        filterId: id,
+        selectedOptions: selected.map(opt => opt.value),
+      });
+  
+      if (setSpinner) {
+          setSpinner(true, "Applying Filters...");
+      }
+      
+      // The only job is to update the filter state.
+      // The parent component (`Task1`) will see this change and fetch new data.
+      const newFilterValues = selected.map(opt => opt.value);
+      setFilter(newFilterValues.length > 0 ? newFilterValues : undefined);
+    };
+  
     // Render a multi-select box
     return (
-        <VirtualizedSelect
-            options={_options}
-            // filterOptions={_filterOptions}
-            multi
-            isSearchable={true}
-            clearable={true}
-            placeholder={"Search"}
-            maxHeight={100}
-            value={multiselectTokenSelectedOptions}
-            onChange={onChange}
-            defaultValue={multiselectTokenSelectedOptions}
-        />
-    )
-}
+      <VirtualizedSelect
+        options={_options}
+        multi
+        isSearchable={true}
+        clearable={true}
+        placeholder={"Search"}
+        maxHeight={100}
+        value={selectedOptions} // Use the derived selectedOptions
+        onChange={onChange}
+      />
+    );
+  }
+
+// function DefaultColumnFilter({
+//                                  column: {filterValue, setFilter, id},
+//                              }) {
+//     // Only add ID if this is the Title column
+//     const searchBoxId = id === 'Title' ? 'titleSearchBox' : undefined;
+    
+//     return (
+//         <SearchBox
+//             id={searchBoxId}
+//             onClear={() => {
+//                 setFilter(undefined) // Set undefined to remove the filter entirely
+//             }}
+//             clearButtonProps={{iconProps: {iconName: "Times"}}}
+//             value={filterValue || ''}
+//             placeholder="Search"
+//             onSearch={(newValue) => {
+//                 setFilter(newValue || undefined) // Set undefined to remove the filter entirely
+//             }}
+//             onChange = {(_, newValue) => {
+//                 setFilter(newValue || undefined)
+//             }}
+//         />)
+// }
 
 function DefaultColumnFilter({
-                                 column: {filterValue, setFilter, id},
-                             }) {
+    column: { filterValue, setFilter, id },
+  }) {
+    const [value, setValue] = React.useState(filterValue);
+    
+    // Create a debounced version of the setFilter function
+    const debouncedSetFilter = useAsyncDebounce(newFilterValue => {
+      setFilter(newFilterValue || undefined);
+    }, 300); // Wait 300ms after user stops typing
+  
+    const onChange = (_, newValue) => {
+      // 1. Update the local state immediately to show text in the search box
+      setValue(newValue);
+      // 2. Call the debounced function to update the actual filter
+      debouncedSetFilter(newValue);
+    };
+    
     // Only add ID if this is the Title column
     const searchBoxId = id === 'Title' ? 'titleSearchBox' : undefined;
-    
+  
     return (
-        <SearchBox
-            id={searchBoxId}
-            onClear={() => {
-                setFilter(undefined) // Set undefined to remove the filter entirely
-            }}
-            clearButtonProps={{iconProps: {iconName: "Times"}}}
-            value={filterValue || ''}
-            placeholder="Search"
-            onSearch={(newValue) => {
-                setFilter(newValue || undefined) // Set undefined to remove the filter entirely
-            }}
-            onChange = {(_, newValue) => {
-                setFilter(newValue || undefined)
-            }}
-        />)
-}
+      <SearchBox
+        id={searchBoxId}
+        onClear={() => {
+          setValue(''); // Clear local state
+          setFilter(undefined);
+        }}
+        clearButtonProps={{ iconProps: { iconName: "Times" } }}
+        value={value || ''}
+        placeholder="Search"
+        // onSearch is not needed when debouncing onChange
+        onChange={onChange}
+      />
+    );
+  }
 
 function filterMapping(filter, dataAuthors, dataSources, dataKeywords,
                        setSpinner, columnId, staticMinYear = 1975,
