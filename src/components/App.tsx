@@ -73,8 +73,9 @@ import visConferenceLogo from './../assets/img/ieeevis2021-logo.png';
 import {Dialog} from "./Dialog";
 import {MetaTable} from "./MetaTable";
 import { NotImpactedSolidIcon } from "@fluentui/react-icons";
+import { API_BASE_URL } from '../config';
 
-export const baseUrl = "http://localhost:3000/";
+export const baseUrl = `${API_BASE_URL}/`;
 
 initializeIcons();
 registerIcons({

@@ -1,4 +1,6 @@
-const baseUrl = "http://localhost:3000/";
+import { API_BASE_URL } from './config';
+
+const baseUrl = `${API_BASE_URL}/`;
 
 export const getPaperByIds = (id_list) => {
   return fetch(`${baseUrl}getPapers`, {

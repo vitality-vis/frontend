@@ -311,8 +311,9 @@ import { observer } from "mobx-react";
 import { getPaperByTitle } from "./../request";
 import Markdown from "react-markdown";
 import { Logger } from "../socket/logger";
+import { API_BASE_URL } from '../config';
 
-const baseUrl = "http://localhost:3000/";
+const baseUrl = `${API_BASE_URL}/`;
 
 // ✅ Define getPaperById at the top level
 export async function getPaperById(id: string) {

@@ -10,8 +10,9 @@ import { observer } from "mobx-react";
 import { ActionButton, DefaultButton, Dropdown, Icon, IconButton, IDropdownOption, Label, Modal, Panel, PanelType, Stack } from "@fluentui/react";
 import {useEffect, useState} from "react";
 import { Logger } from "../socket/logger";
+import { API_BASE_URL } from '../config';
 
-const baseUrl = "http://localhost:3000/";
+const baseUrl = `${API_BASE_URL}/`;
 
 
 interface AppProps {
