@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { decodeStudyCode } from "../utils/studyConfig";
 
 export const useStepNav = () => {
   const [searchParams] = useSearchParams();
@@ -7,8 +8,9 @@ export const useStepNav = () => {
 
   // get current params
   const step = parseInt(searchParams.get("step") || "0", 10);
-  const studyId = parseInt(searchParams.get("studyid") || "0", 10);
-  const userId = parseInt(searchParams.get("userid") || "0", 10);
+  const studyCode = searchParams.get("study");
+  const studyId = decodeStudyCode(studyCode);
+  const userId = searchParams.get("userid") || "";
   
   // total steps per study
   const studyStepCounts = {

@@ -9,6 +9,16 @@ const Consent = ({currentStep, totalSteps}) => {
   const { goNext } = useStepNav();
   const [checked, setChecked] = useState(false);
 
+  React.useEffect(() => {
+    Logger.logStudyEvent(
+      {
+        action: 'studyStart',
+        component: 'consent',
+        interactionName: 'studyStart',
+        response: 'yes'
+      })
+    }, []);
+
   return (
     <StepLayout title= {`Consent (Step ${currentStep}/${totalSteps})`}>
       <div style={{ height: "100%", overflow: "auto" }}>
@@ -36,71 +46,6 @@ const Consent = ({currentStep, totalSteps}) => {
             margin: "0 auto 32px auto"
           }}>
             Thank you for registering to participate in our research study on visual data analysis.
-          </div>
-          <div style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: 48,
-            flexWrap: "wrap",
-            marginBottom: 24
-          }}>
-            <div style={{
-              background: "#fff",
-              padding: 24,
-              borderRadius: 8,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-              minWidth: 200,
-              maxWidth: 250
-            }}>
-              <div style={{ fontSize: 18, fontWeight: 600, color: "#222", marginBottom: 8 }}>
-                📊 Interactive Interface
-              </div>
-              <div style={{ fontSize: 14, color: "#666", lineHeight: 1.4 }}>
-                Explore visual data analysis tools and provide feedback on user experience
-              </div>
-            </div>
-            <div style={{
-              background: "#fff",
-              padding: 24,
-              borderRadius: 8,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-              minWidth: 200,
-              maxWidth: 250
-            }}>
-              <div style={{ fontSize: 18, fontWeight: 600, color: "#222", marginBottom: 8 }}>
-                ⏱️ Duration
-              </div>
-              <div style={{ fontSize: 14, color: "#666", lineHeight: 1.4 }}>
-                Approximately 30-45 minutes to complete all tasks
-              </div>
-            </div>
-            <div style={{
-              background: "#fff",
-              padding: 24,
-              borderRadius: 8,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-              minWidth: 200,
-              maxWidth: 250
-            }}>
-              <div style={{ fontSize: 18, fontWeight: 600, color: "#222", marginBottom: 8}}>
-                🔒 Privacy
-              </div>
-              <div style={{ fontSize: 14, color: "#666", lineHeight: 1.4}}>
-                Your responses are confidential and used only for research purposes
-              </div>
-            </div>
-          </div>
-          <div style={{
-            background: "#fff3cd",
-            border: "1px solid #ffeaa7",
-            borderRadius: 6,
-            padding: 16,
-            fontSize: 16,
-            color: "#856404",
-            maxWidth: 600,
-            margin: "0 auto"
-          }}>
-            <strong>Before we begin:</strong> Please read the consent document below carefully and provide your consent to participate.
           </div>
         </div>
 
@@ -171,7 +116,9 @@ const Consent = ({currentStep, totalSteps}) => {
                     interactionName: 'consentGiven',
                     response: 'yes'
                   }
+
                 );
+
                 // logEvent('consent_given', {consent: true});
                 goNext();
               }}

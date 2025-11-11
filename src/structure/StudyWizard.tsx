@@ -17,6 +17,7 @@ import Task3 from "../stepsQuan/Task3";
 
 import PreQuestionnaire from "../stepsQuan/PreQuestionnaire";
 import { useStepNav } from "../hooks/useStepNav";
+import { decodeStudyCode, encodeStudyId } from "../utils/studyConfig";
 
 
 const studySteps = {
@@ -45,36 +46,38 @@ const StudyWizard = () => {
   // Move useEffect to before any conditional returns
   React.useEffect(()=> {
     if (!localStorage.getItem('sessionId')) {
-      localStorage.setItem('sessionId', 
+      localStorage.setItem('sessionId',
         typeof crypto?.randomUUID === "function" ? crypto.randomUUID() : String(Date.now())
       )
     }
   },[])
 
-  // const currentStep = parseInt(searchParams.get("step") || "0", 10);
+  // Decode the obfuscated study code from URL to get actual studyId
+  const studyCode = searchParams.get("study");
+  const studyId = decodeStudyCode(studyCode);
 
-  const studyId = parseInt(searchParams.get("studyid") || "1");
-  
-  // Save studyId to localStorage whenever it changes
+  // Save studyId to localStorage for logging purposes
   React.useEffect(() => {
     if (studyId) {
       localStorage.setItem('studyId', String(studyId));
     }
   }, [studyId]);
 
-  // Always redirect to ensure URL matches our generated userId
+  // Always redirect to ensure URL matches our generated userId and has valid study code
   const urlUserId = searchParams.get("userid");
-  if (!searchParams.get("studyid") || !urlUserId || urlUserId !== userId) {
-    return <Navigate to={`/app?studyid=${studyId}&userid=${userId}&step=${currentStep}`} replace />;
+  if (!searchParams.get("study") || !urlUserId || urlUserId !== userId) {
+    const encodedStudy = encodeStudyId(studyId);
+    return <Navigate to={`/app?study=${encodedStudy}&userid=${userId}&step=${currentStep}`} replace />;
   }
   
   //get appropriate steps for this study
   const steps = studySteps[studyId] || studySteps[1]; //fallback to study 1
   const StepComponent = steps[currentStep];
-  
+
   //handle invalid step
   if (!StepComponent) {
-    return <Navigate to={`/app?studyid=${studyId}&userid=${userId}&step=0`} replace />;
+    const encodedStudy = encodeStudyId(studyId);
+    return <Navigate to={`/app?study=${encodedStudy}&userid=${userId}&step=0`} replace />;
   }
   
   return <StepComponent currentStep={currentStep} totalSteps={totalSteps}/>;
