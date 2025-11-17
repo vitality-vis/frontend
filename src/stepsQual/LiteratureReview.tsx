@@ -30,7 +30,7 @@ const LiteratureReview = ({currentStep, totalSteps}) => {
   };
 
   return (
-    <StepLayout title= {`Pre-Interview (Step ${currentStep}/${totalSteps})`} showNext disableNext={!submitted}>
+    <StepLayout title= {`Pre-Interview (Step ${currentStep}/${totalSteps})`} showNext showPrev disableNext={!submitted}>
       <form
         onSubmit={handleSubmit}
         style={{
@@ -47,24 +47,45 @@ const LiteratureReview = ({currentStep, totalSteps}) => {
 
         <div style={{ padding: 32 }}>
           <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 8 }}>Question</div>
-          <div style={{ fontSize: 18, marginBottom: 24 }}>
+          <div style={{ fontSize: 18, marginBottom: 12 }}>
             Recall a recent topic for which you conducted a literature review. What was the topic?
           </div>
+
+          {/* Instructions and explanation */}
+          <div style={{
+            backgroundColor: "#f8f9fa",
+            padding: 16,
+            borderRadius: 4,
+            marginBottom: 16,
+            border: "1px solid #dee2e6"
+          }}>
+            <div style={{ fontSize: 16, marginBottom: 8, color: "#495057" }}>
+              <strong>Why we're asking:</strong> This helps us understand your research background and allows you to practice using VitaLITy with a topic you're familiar with.
+            </div>
+            <div style={{ fontSize: 16, marginBottom: 8, color: "#495057" }}>
+              <strong>What to include:</strong> Briefly describe the research topic (1-3 sentences). Include the main subject area and any specific aspects you focused on.
+            </div>
+            <div style={{ fontSize: 16, color: "#495057" }}>
+              <strong>Example:</strong> "I conducted a literature review on machine learning applications in healthcare diagnostics, specifically focusing on deep learning models for medical image analysis and their clinical validation."
+            </div>
+          </div>
+
           <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 8 }}>Response</div>
           <textarea
             value={response}
             onChange={e => setResponse(e.target.value)}
+            placeholder="Describe your literature review topic here. Include the main subject area and specific aspects you explored..."
             rows={6}
-            style={{ 
-              width: "100%", 
-              boxSizing: "border-box", 
-              fontSize: 18, 
-              padding: 8, 
-              border: "1.5px solid #444", 
-              borderRadius: 2, 
-              resize: "vertical", 
-              minHeight: 120, 
-              marginBottom: 32 
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              fontSize: 18,
+              padding: 8,
+              border: "1.5px solid #444",
+              borderRadius: 2,
+              resize: "vertical",
+              minHeight: 120,
+              marginBottom: 32
             }}
             disabled={submitted}
           />

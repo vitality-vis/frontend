@@ -27,7 +27,7 @@ const PreInterview = ({currentStep, totalSteps}) => {
   };
 
   return (
-    <StepLayout title={`Pre-Interview (Step ${currentStep}/${totalSteps})`} showNext disableNext={!submitted}>
+    <StepLayout title={`Pre-Interview (Step ${currentStep}/${totalSteps})`} showNext showPrev disableNext={!submitted}>
       <form
         onSubmit={handleSubmit}
         style={{

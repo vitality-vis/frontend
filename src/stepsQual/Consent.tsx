@@ -20,7 +20,7 @@ const Consent = ({currentStep, totalSteps}) => {
     }, []);
 
   return (
-    <StepLayout title= {`Consent (Step ${currentStep}/${totalSteps})`}>
+    <StepLayout title= {`Consent (Step ${currentStep}/${totalSteps})`} showPrev={false}>
       <div style={{ height: "100%", overflow: "auto" }}>
         {/* Landing Page Section */}
         <div style={{ 

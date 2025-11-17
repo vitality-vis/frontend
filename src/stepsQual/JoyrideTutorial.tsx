@@ -68,6 +68,12 @@ const steps: Step[] = [
     target: "#chatWindowsPanel",
     content: "This is the Chat Windows panel where you can have conversations with AI about your research papers.",
     placement: 'left',
+    disableBeacon: true
+  },
+  {
+    target: "#chatModeDropdown",
+    content: "Choose between two chat modes: 🗣 Normal Chat (general conversation) or 📚 RAG Chat (Retrieval-Augmented Generation - answers based on your saved papers and research context).",
+    placement: 'top',
     disableBeacon: true,
     locale: {last: "Finish"}
   }
@@ -216,10 +222,10 @@ const JoyrideTutorial = ({currentStep, totalSteps}) => {
           }
         }}
       />}
-    <StepLayout 
-      title= {`Walkthrough (Step ${currentStep}/${totalSteps})`} 
-      showNext 
-      showPrev 
+    <StepLayout
+      title= {`Walkthrough (Step ${currentStep}/${totalSteps})`}
+      showNext
+      showPrev={false}
       notPractice={false}
       onNext={handleNextAfterTutorial}
     >

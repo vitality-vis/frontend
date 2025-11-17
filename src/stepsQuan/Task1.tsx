@@ -301,7 +301,7 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
   };
 
   return (
-    <StepLayout title={`Task 1 (Step ${currentStep}/${totalSteps})`} showNext>
+    <StepLayout title={`Task 1 (Step ${currentStep}/${totalSteps})`} showNext showPrev={false}>
       <div style={{ height: "calc(100vh - 120px)", display: "flex", flexDirection: "column", padding: 20 }}>
         <div style={{ maxWidth: 700, margin: "0 auto 20px auto", textAlign: "center" }}>
           <h3>Instructions</h3>

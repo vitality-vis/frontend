@@ -828,6 +828,7 @@ function Table({
                    loadMoreData,
                    hasMoreData,
                    loadAllData,
+                   totalPaperCount,
                    dataAuthors,
                    dataSources,
                    dataKeywords,
@@ -1533,9 +1534,7 @@ function Table({
                 <div>
                     <div className="tr">
                         <div className="th">
-                            {/*<Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/{data.length}</b>*/}
-                            {/*hard coding for speed*/}
-                            <Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/66692</b>
+                            <Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/{totalPaperCount !== null && totalPaperCount !== undefined ? totalPaperCount : data.length}</b>
                             </Text>
                             &nbsp;&nbsp;
                             <div id="globalSettingsArea" style={{float: "right", marginRight: 5,borderRadius: 8 }}>
@@ -1829,6 +1828,7 @@ export interface SmartTableProps {
     loadMoreData?: () => Promise<void>;
     hasMoreData?: boolean;
     loadAllData?: () => Promise<void>;
+    totalPaperCount?: number | null;
     globalFilterValue: Array<any>;
     columnFilterValues: Array<any>;
     columnSortByValues: Array<any>;
@@ -1890,7 +1890,7 @@ export const SmartTable: React.FC<{
         columnFilterValues, setFilteredPapers, updateColumnSortByValues, columnSortByValues,
         globalFilterValue, updateGlobalFilterValue, scrollToPaperID, addToSelectNodeIDs,
         checkoutPapers, summarizePapers, literatureReviewPapers, embeddingType, hasEmbeddings, openGScholar,
-        isInSelectedNodeIDs, loadMoreData, hasMoreData, loadAllData, dataAuthors, dataSources,
+        isInSelectedNodeIDs, loadMoreData, hasMoreData, loadAllData, totalPaperCount, dataAuthors, dataSources,
         dataKeywords, staticMinYear,staticMaxYear,staticMinCitationCounts,staticMaxCitationCounts,
          applyLocalFilters,similarMinScore,similarMaxScore
     } = props;
@@ -2063,6 +2063,7 @@ export const SmartTable: React.FC<{
     loadMoreData={loadMoreData}
     hasMoreData={hasMoreData}
     loadAllData={loadAllData}
+    totalPaperCount={totalPaperCount}
     dataAuthors={dataAuthors}  // Pass dataAuthors to Table
     dataSources={dataSources}  // Pass dataSources to Table
     dataKeywords={dataKeywords}

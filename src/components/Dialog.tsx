@@ -768,6 +768,7 @@ export const Dialog = observer(({ props }) => {
 
         <div className="chat-action-row">
           <Dropdown
+            id="chatModeDropdown"
             placeholder="Select mode"
             options={options}
             selectedKey={chatMode}

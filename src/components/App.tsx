@@ -183,6 +183,7 @@ interface AppState {
     chatSelectedPaper: string;
     offset: number;
     hasMoreData: boolean;
+    totalPaperCount: number | null;
     dataLoaded: boolean;
     isMetaTableModalOpen: boolean;
     allDataLoaded: boolean;
@@ -410,6 +411,7 @@ class App extends React.Component<AppProps, AppState> {
             },
             offset: 0,
             hasMoreData: true,
+            totalPaperCount: null,
             allDataLoaded: false,
             isMetaTableModalOpen: false,
             similarMaxScore: 0,
@@ -465,7 +467,7 @@ class App extends React.Component<AppProps, AppState> {
             globalFilterValue,
             columnFilterValues,
         } = this.state;
-        const limit = 1000; // Specify limit of records to fetch
+        const limit = 50; // Load 50 papers at a time for testing
         console.log("loadMoreData");
         if (hasMoreData) {
             this.setState({spinner: true, loadingText: 'Loading More Data...'});
@@ -525,7 +527,10 @@ class App extends React.Component<AppProps, AppState> {
                     max_citation_counts: maxCitationCounts || undefined,
                     id_list: idList || undefined,
                 };
-                console.log('Query Payload loadMore:', queryPayload);
+                console.log('==== LOAD MORE ====');
+                console.log('Current offset:', this.state.offset);
+                console.log('Current dataAll length:', this.state.dataAll.length);
+                console.log('Query Payload:', queryPayload);
                 const response = await fetch(`${baseUrl}getPapers`, {
                     method: 'POST',
                     headers: {
@@ -533,28 +538,42 @@ class App extends React.Component<AppProps, AppState> {
                     },
                     body: JSON.stringify(queryPayload),
                 });
-                const newData = await response.json();
-                console.log('newData', newData);
-                // console.log("Fetched data:", newData);
+                const responseData = await response.json();
+                const newData = responseData.papers || responseData;
+                const totalFromServer = responseData.total !== undefined ? responseData.total : null;
+
+                console.log('Received from server:', newData.length, 'papers, total:', totalFromServer);
+
                 const combinedData = [...this.state.dataAll, ...newData];
+                console.log('Combined data (before dedup):', combinedData.length);
+
                 const uniqueData = Array.from(new Set(combinedData.map(item => item.ID))).map(
                     id => combinedData.find(item => item.ID === id)
                 );
-                const dataFilteredIDs = uniqueData.map(item => item.ID); // Update dataFilteredID
+                console.log('Unique data (after dedup):', uniqueData.length);
 
-                this.setState((prevState) => ({
-                    dataAll: uniqueData,
-                    dataFiltered: {
-                        ...prevState.dataFiltered,
-                        all: uniqueData // Sync with dataAll if no filters are applied
-                    },
-                    dataFilteredID: dataFilteredIDs,
-                    offset: prevState.offset + limit,
-                    hasMoreData: newData.length === limit,
-                    spinner: false,
-                    loadingText: 'Loading Meta Data...',// Check if more data is available
-                }));
-                console.log('dataFiltered after loadmore', this.state.dataFiltered);
+                const dataFilteredIDs = uniqueData.map(item => item.ID);
+
+                this.setState((prevState) => {
+                    const totalCount = totalFromServer !== null ? totalFromServer : prevState.totalPaperCount;
+
+                    const newState = {
+                        dataAll: uniqueData,
+                        dataFiltered: {
+                            ...prevState.dataFiltered,
+                            all: uniqueData
+                        },
+                        dataFilteredID: dataFilteredIDs,
+                        offset: prevState.offset + newData.length,
+                        totalPaperCount: totalCount,
+                        // hasMoreData: we have less data loaded than the total available
+                        hasMoreData: totalCount !== null ? uniqueData.length < totalCount : newData.length > 0,
+                        spinner: false,
+                        loadingText: 'Loading Meta Data...',
+                    };
+                    console.log('New state - loaded:', newState.dataAll.length, 'total:', newState.totalPaperCount, 'hasMoreData:', newState.hasMoreData);
+                    return newState;
+                });
             } catch (error) {
                 console.error("Error loading more data:", error);
                 this.setState({spinner: false});
@@ -568,7 +587,19 @@ class App extends React.Component<AppProps, AppState> {
             hasMoreData,
             columnFilterValues,
             offset,
+            totalPaperCount,
         } = this.state;
+
+        // Warn user if trying to load a large dataset
+        if (totalPaperCount !== null && totalPaperCount > 5000) {
+            const confirmed = window.confirm(
+                `This will load all ${totalPaperCount.toLocaleString()} papers, which may take some time and slow down your browser. Continue?`
+            );
+            if (!confirmed) {
+                return;
+            }
+        }
+
         if (hasMoreData) {
             this.setState({spinner: true, loadingText: 'Loading All Data...'});
             try {
@@ -599,6 +630,14 @@ class App extends React.Component<AppProps, AppState> {
                 const abstract = columnFilterValues["all"]
                     .find(f => f.id === 'Abstract')?.value || undefined;
 
+                // Extract ID (same as loadMoreData)
+                const idValue = columnFilterValues["all"].find(f => f.id === 'ID')?.value;
+                let idList;
+                if (idValue) {
+                    idList = [idValue]; // Wrap in an array if it's not already
+                } else {
+                    idList = undefined; // Keep it undefined if there is no value
+                }
 
                 const queryPayload = {
                     offset,
@@ -612,7 +651,12 @@ class App extends React.Component<AppProps, AppState> {
                     abstract: abstract || undefined,
                     min_citation_counts: minCitationCounts || undefined,
                     max_citation_counts: maxCitationCounts || undefined,
+                    id_list: idList || undefined,
                 };
+
+                console.log('==== LOAD ALL ====');
+                console.log('Current dataAll length:', this.state.dataAll.length);
+                console.log('Query Payload:', queryPayload);
 
                 const response = await fetch(`${baseUrl}getPapers`, {
                     method: 'POST',
@@ -622,22 +666,35 @@ class App extends React.Component<AppProps, AppState> {
                     body: JSON.stringify(queryPayload),
                 });
 
-                const allData = await response.json();
-                const dataFilteredIDs = allData.map(item => item.ID); // Update dataFilteredID
+                const responseData = await response.json();
+                const allData = responseData.papers || responseData;
+                const totalFromServer = responseData.total !== undefined ? responseData.total : null;
 
-                this.setState((prevState) => ({
-                    dataAll: allData,
-                    offset: allData.length,
-                    hasMoreData: false,
-                    spinner: false,
-                    loadingText: 'Loading...',// All data loaded, so no more data to load
-                    dataFiltered: {
-                        ...prevState.dataFiltered,
-                        all: allData, // Directly assign `allData` to `dataFiltered.all` when loadAll is triggered
-                    },
-                    dataFilteredID: dataFilteredIDs,
-                    allDataLoaded: areQueryConditionsUndefined(queryPayload),
-                }));
+                console.log('Received from server:', allData.length, 'papers, total:', totalFromServer);
+                const dataFilteredIDs = allData.map(item => item.ID);
+
+                // Determine if we should set totalPaperCount (only when no filters are applied)
+                const isUnfiltered = areQueryConditionsUndefined(queryPayload);
+                console.log('Is unfiltered query:', isUnfiltered);
+
+                this.setState((prevState) => {
+                    const newState = {
+                        dataAll: allData,
+                        offset: allData.length,
+                        hasMoreData: false,
+                        spinner: false,
+                        loadingText: 'Loading...',
+                        dataFiltered: {
+                            ...prevState.dataFiltered,
+                            all: allData,
+                        },
+                        dataFilteredID: dataFilteredIDs,
+                        allDataLoaded: isUnfiltered,
+                        totalPaperCount: totalFromServer !== null ? totalFromServer : (isUnfiltered ? allData.length : prevState.totalPaperCount),
+                    };
+                    console.log('New state - loaded:', newState.dataAll.length, 'total:', newState.totalPaperCount);
+                    return newState;
+                });
 
             } catch (error) {
                 console.error("Error loading all data:", error);
@@ -814,7 +871,9 @@ class App extends React.Component<AppProps, AppState> {
                 return response.text();
             }).then(function (data) {
             // `data` is the parsed version of the JSON returned from the above endpoint.
-            const _dataAll = JSON.parse(data);
+            const parsedData = JSON.parse(data);
+            const _dataAll = parsedData.papers || parsedData;
+            const totalFromServer = parsedData.total !== undefined ? parsedData.total : null;
             const _paperNoEmbeddings = {
                 "specter": [],
                 "glove": [],
@@ -835,7 +894,7 @@ class App extends React.Component<AppProps, AppState> {
             parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["glove"], "glove");
             parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["specter"], "specter");
             parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["ada"], "ada");
-            // console.log('dataAll:', _dataAll);
+            console.log('Initial data loaded:', _dataAll.length, 'papers, total:', totalFromServer);
             const filteredIDs = _dataAll.map((paper) => paper.ID);
             parent.setState((prevState) => ({
                 dataAll: _dataAll,
@@ -847,6 +906,9 @@ class App extends React.Component<AppProps, AppState> {
                 dataFilteredID: filteredIDs,
                 dataLoaded: true,
                 offset: _dataAll.length,
+                totalPaperCount: totalFromServer,
+                // hasMoreData: check if we have less loaded than total
+                hasMoreData: totalFromServer !== null ? _dataAll.length < totalFromServer : true,
             }));
         });
     }
@@ -1638,6 +1700,7 @@ class App extends React.Component<AppProps, AppState> {
             loadMoreData: this.loadMoreData,
             loadAllData: this.loadAllData,
             hasMoreData: this.state.hasMoreData,
+            totalPaperCount: this.state.totalPaperCount,
             tableType: "all",
             embeddingType: this.state.embeddingType.key as string,
             hasEmbeddings: hasEmbeddings,
@@ -2677,17 +2740,40 @@ class App extends React.Component<AppProps, AppState> {
                             </div>
                             <Nav variant="tabs" activeKey={activeKey} onSelect={(k) => this.setActiveKey(k)}>
                                 {tabs.map((tab) => (
-                                    <Nav.Item key={tab.id} className="d-flex align-items-center">
-                                        <Nav.Link eventKey={tab.id}>{tab.title}</Nav.Link>
-                                        <Button
-                                            variant="link"
-                                            className="ml-1 p-0"
-                                            onClick={() => this.removeTab(tab.id)}
-                                            aria-label="Close tab"
+                                    <Nav.Item key={tab.id}>
+                                        <Nav.Link
+                                            eventKey={tab.id}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                paddingRight: '8px'
+                                            }}
                                         >
-                                            <FontAwesomeIcon icon={faTimes}
-                                                             style={{color: "grey", fontSize: "1rem", marginLeft: '8px'}}/>
-                                        </Button>
+                                            <span>{tab.title}</span>
+                                            <Button
+                                                variant="link"
+                                                className="p-0"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    this.removeTab(tab.id);
+                                                }}
+                                                aria-label="Close tab"
+                                                style={{
+                                                    minWidth: 'auto',
+                                                    padding: '0 4px',
+                                                    marginLeft: '0'
+                                                }}
+                                            >
+                                                <FontAwesomeIcon
+                                                    icon={faTimes}
+                                                    style={{
+                                                        color: "grey",
+                                                        fontSize: "0.9rem"
+                                                    }}
+                                                />
+                                            </Button>
+                                        </Nav.Link>
                                     </Nav.Item>
                                 ))}
                                 {/* Add button next to the last tab */}
