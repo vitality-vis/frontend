@@ -300,7 +300,7 @@ function GlobalFilter({
                 setGlobalFilter(undefined) // Set undefined to remove the filter entirely
             }}
             clearButtonProps={{iconProps: {iconName: "Times"}}}
-            styles={{root: {width: 200, display: "inline-flex", verticalAlign: "top"}}}
+            styles={{root: {width: 150, display: "inline-flex", verticalAlign: "top"}}}
             placeholder="Search"
             value={globalFilterValue}
             onSearch={(newValue) => {
@@ -1257,6 +1257,8 @@ function Table({
             action: 'toggleColumnFromDropdown',
             columnId: String(item.key),
             columnName: String(item.text),
+            method: 'dropdown',
+            tableType: tableType,
             currentFilter: globalFilter || '',
             visibleRows: rows?.length || 0
         });
@@ -1271,6 +1273,15 @@ function Table({
 
     React.useEffect(() => {
         // `sortBy` changed
+        if (sortBy.length > 0) {
+            Logger.logTableInteraction({
+                component: 'SmartTable',
+                action: 'sortColumn',
+                columnId: sortBy[0]?.id,
+                sortDirection: sortBy[0]?.desc ? 'desc' : 'asc',
+                tableType: tableType
+            });
+        }
         // setSpinner(true, "Updating Filters...");
         updateColumnSortByValues(sortBy);
     }, [sortBy]);
@@ -1297,6 +1308,23 @@ function Table({
 
     // Reference to the VariableSizeList element
     const listRef: any = React.useRef(null);
+
+    // Scroll logging handler
+    const handleScroll = React.useCallback((e: any) => {
+        const scrollTop = e.scrollOffset || 0;
+        const scrollHeight = e.scrollUpdateWasRequested ? 0 : (rows.length * 40); // 40px per row
+
+        if (scrollHeight > 0) {
+            Logger.logTableInteraction({
+                component: 'SmartTable',
+                action: 'scrollEnd',
+                tableType: tableType,
+                scrollPosition: scrollTop,
+                scrollPercentage: Math.round((scrollTop / scrollHeight) * 100),
+                visibleRows: rows?.length || 0
+            });
+        }
+    }, [rows, tableType]);
 
     React.useEffect(() => {
         if (listRef.current && scrollToPaperID != null && scrollToPaperID != undefined) {
@@ -1754,6 +1782,8 @@ function Table({
                                           action: 'hideColumn',
                                           columnId: column.id,
                                           columnName: column.render('Header'),
+                                          method: 'inline_button',
+                                          tableType: tableType,
                                           currentFilter: globalFilter || '',
                                           visibleRows: rows?.length || 0
                                       });
@@ -1791,6 +1821,7 @@ function Table({
                         itemSize={(index) => 40}
                         itemKey={(index) => index}
                         width={"100%"}
+                        onScroll={handleScroll}
                     >
                         {RenderRow}
                     </VariableSizeList>

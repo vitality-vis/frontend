@@ -50,6 +50,7 @@ body, .ms-Label, .ms-Pivot, .ms-Dropdown, .ms-Button, .ms-SearchBox, text{
     -webkit-box-sizing: border-box;
     -moz-box-sizing: border-box;
     box-sizing: border-box;
+    overflow: auto;
 }
 
 .split,
@@ -128,6 +129,25 @@ body, .ms-Label, .ms-Pivot, .ms-Dropdown, .ms-Button, .ms-SearchBox, text{
     left: 0px !important;
     right: 0px !important;
     background-color: #27ae60;
+}
+
+#similaritySearchPanel {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-width: 100%;
+}
+
+#similaritySearchPanel .ms-Stack {
+    flex-wrap: wrap;
+    max-width: 100%;
+}
+
+#similaritySearchPanel .ms-Label {
+    white-space: nowrap;
+}
+
+#similaritySearchPanel .ms-Dropdown {
+    flex-shrink: 1;
 }
 
 .w-100 {
@@ -243,7 +263,9 @@ body, .ms-Label, .ms-Pivot, .ms-Dropdown, .ms-Button, .ms-SearchBox, text{
   .chat-action-row {
     margin-top: 0.5rem;
     display: flex;
-    gap: 0.5rem;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    align-items: center;
   }
 
   .chat-bubble {

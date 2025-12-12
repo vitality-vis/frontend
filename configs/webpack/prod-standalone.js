@@ -1,4 +1,4 @@
-// production config for STUDY mode (with logging)
+// production config for STANDALONE mode (no logging)
 const merge = require('webpack-merge');
 const {resolve} = require('path');
 
@@ -6,11 +6,11 @@ const commonConfig = require('./common');
 
 module.exports = merge(commonConfig, {
   mode: 'production',
-  entry: './index.tsx',
+  entry: './index-standalone.tsx',
   output: {
     filename: 'js/bundle.[hash].min.js',
-    path: resolve(__dirname, '../../dist'),
-    publicPath: '/vitality2study/',
+    path: resolve(__dirname, '../../dist-standalone'),
+    publicPath: '/vitality2/',
   },
   devtool: 'source-map',
   plugins: [],

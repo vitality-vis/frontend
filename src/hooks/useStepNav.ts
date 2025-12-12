@@ -12,10 +12,10 @@ export const useStepNav = () => {
   const studyId = decodeStudyCode(studyCode);
   const userId = searchParams.get("userid") || "";
   
-  // total steps per study
+  // total steps per study (max index, not count)
   const studyStepCounts = {
-    1: 6, // 7 steps (Consent, PreInterview, Video, Practice, LiteratureReview, Practice, JoyrideTutorial)
-    2: 9, // 9 steps (Consent, PreQuestionnaire, Task1, Task2, Task3, Video, JoyrideTutorial, Practice, Practice)
+    1: 6, // 7 total steps: indices 0-6 (Consent, PreInterview, Video, Practice, LiteratureReview, Task, PostInterview)
+    2: 9, // 10 total steps: indices 0-9 (Consent, PreQuestionnaire, Task1, Task2, Video, JoyrideTutorial, Practice, Task3, Task, PostInterview)
     // add more studies as needed
   };
   

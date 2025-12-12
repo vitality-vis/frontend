@@ -180,6 +180,7 @@ interface AppState {
     tabs: TabType[];
     activeKey: string;
     dialogStates: { [key: string]: any };
+    nextTabId: number; // Counter for generating unique tab IDs
     chatSelectedPaper: string;
     offset: number;
     hasMoreData: boolean;
@@ -250,10 +251,13 @@ const preprocessMetadata = (metadata, keyColumn = "Keyword", valueColumn = "Coun
 
 interface AppProps {
     onMetadataLoaded?: () => void;
+    isPractice?: boolean;
+    onPracticeTaskComplete?: (taskId: string) => void;
 }
 
 class App extends React.Component<AppProps, AppState> {
     writingPauseTimeout: ReturnType<typeof setTimeout> | null = null;
+    practiceTasksCompleted: Set<string> = new Set();
 
     constructor(props: any) {
         super(props);
@@ -406,8 +410,9 @@ class App extends React.Component<AppProps, AppState> {
             chatSelectedPaper: '',
             tabs: [{id: '1', title: 'Chat 1'}], // Initial state with one default tab
             activeKey: '1', // Track the active tab
+            nextTabId: 2, // Next available tab ID
             dialogStates: {
-                '1': {chatText: '', chatHistory: [], chatResponse: '', chatSelectedPaper: ''}  // Initial state for the first dialog
+                '1': {chatText: '', chatHistory: [], chatResponse: '', chatSelectedPaper: '', displayMessages: []}  // Initial state for the first dialog
             },
             offset: 0,
             hasMoreData: true,
@@ -435,7 +440,13 @@ class App extends React.Component<AppProps, AppState> {
 
 
     handleNotesChange = (content: string) => {
-        this.setState({notesContent: content})
+        this.setState({notesContent: content}, () => {
+            // Practice task: Complete note task if user has written at least 10 characters
+            const plainText = content.replace(/<[^>]+>/g, '').trim();
+            if (this.props.isPractice && plainText.length >= 10) {
+                this.completePracticeTask('note');
+            }
+        })
         try {
             localStorage.setItem('research_notes', content)
         }
@@ -455,6 +466,14 @@ class App extends React.Component<AppProps, AppState> {
         })
     }
 
+    // Helper method to complete practice tasks
+    completePracticeTask = (taskId: string) => {
+        if (this.props.isPractice && this.props.onPracticeTaskComplete && !this.practiceTasksCompleted.has(taskId)) {
+            this.practiceTasksCompleted.add(taskId);
+            this.props.onPracticeTaskComplete(taskId);
+        }
+    }
+
     setMetaTableModalState = (isOpen: boolean) => {
         this.setState({isMetaTableModalOpen: isOpen});
     };
@@ -467,7 +486,7 @@ class App extends React.Component<AppProps, AppState> {
             globalFilterValue,
             columnFilterValues,
         } = this.state;
-        const limit = 50; // Load 50 papers at a time for testing
+        const limit = 1000; // Load 1000 papers at a time
         console.log("loadMoreData");
         if (hasMoreData) {
             this.setState({spinner: true, loadingText: 'Loading More Data...'});
@@ -694,6 +713,11 @@ class App extends React.Component<AppProps, AppState> {
                     };
                     console.log('New state - loaded:', newState.dataAll.length, 'total:', newState.totalPaperCount);
                     return newState;
+                }, () => {
+                    // Practice task: Complete search task if user performed a search/filter
+                    if (this.props.isPractice && !isUnfiltered) {
+                        this.completePracticeTask('search');
+                    }
                 });
 
             } catch (error) {
@@ -780,16 +804,19 @@ class App extends React.Component<AppProps, AppState> {
 
 
     addNewTab = () => {
-        const newId = (this.state.tabs.length + 1).toString(); // Generate new ID
+        const newId = this.state.nextTabId.toString(); // Use counter for unique ID
+        const newTabNumber = this.state.tabs.length + 1; // Display number based on position
+
         this.setState((prevState) => ({
-            tabs: [...prevState.tabs, {id: newId, title: `Chat ${newId}`}],
+            tabs: [...prevState.tabs, {id: newId, title: `Chat ${newTabNumber}`}],
             activeKey: newId,
+            nextTabId: prevState.nextTabId + 1, // Increment counter
             dialogStates: {
                 ...prevState.dialogStates,
-                [newId]: {chatText: "", chatHistory: [], chatResponse: "", chatSelectedPaper: ""}
+                [newId]: {chatText: "", chatHistory: [], chatResponse: "", chatSelectedPaper: "", displayMessages: []}
             }
         }));
-        
+
         // New tab creation
         Logger.logUIInteraction({
             component: 'App',
@@ -801,7 +828,14 @@ class App extends React.Component<AppProps, AppState> {
     };
     removeTab = (id: string) => {
         const tabToRemove = this.state.tabs.find(tab => tab.id === id);
-        const newTabs = this.state.tabs.filter((tab) => tab.id !== id);
+        let newTabs = this.state.tabs.filter((tab) => tab.id !== id);
+
+        // Renumber remaining tabs based on their position
+        newTabs = newTabs.map((tab, index) => ({
+            ...tab,
+            title: `Chat ${index + 1}`
+        }));
+
         const newActiveKey = newTabs.length > 0 ? newTabs[0].id : "";
         const newDialogStates = {...this.state.dialogStates};
         delete newDialogStates[id]; // Remove the dialog state for the closed tab
@@ -811,7 +845,7 @@ class App extends React.Component<AppProps, AppState> {
             activeKey: newActiveKey,
             dialogStates: newDialogStates
         });
-        
+
         // Tab removal
         Logger.logUIInteraction({
             component: 'App',
@@ -838,13 +872,18 @@ class App extends React.Component<AppProps, AppState> {
             });
         }
     };
-    updateDialogState = (tabId: string, updatedState: any) => {
-        this.setState((prevState) => ({
+    updateDialogState = (tabId: string, updater: any) => {         
+        this.setState(prev => {
+        const prevDialog = prev.dialogStates[tabId] || {};
+        const patch =
+            typeof updater === "function" ? updater(prevDialog) : updater;
+        return {
             dialogStates: {
-                ...prevState.dialogStates,
-                [tabId]: {...prevState.dialogStates[tabId], ...updatedState}
-            }
-        }));
+            ...prev.dialogStates,
+            [tabId]: { ...prevDialog, ...patch },
+            },
+        };
+        });
     };
 
     updateStateProp = (_what, _with, _where) => {
@@ -861,8 +900,9 @@ class App extends React.Component<AppProps, AppState> {
         let parent = this;
 
         const requestOptions = {
-            method: 'GET',
-            headers: {'Content-Type': 'application/json'}
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ limit: 1000, offset: 0 })
         };
         fetch(baseUrl + 'getPapers', requestOptions)
             .then(function (response) {
@@ -1263,6 +1303,18 @@ class App extends React.Component<AppProps, AppState> {
             this.setState({
                 dataSaved: _papers,
                 dataSavedID: _savedPaperIDs
+            }, () => {
+                // Save to localStorage for persistence across steps
+                try {
+                    localStorage.setItem('saved_papers', JSON.stringify(_papers));
+                } catch (e) {
+                    console.warn('Failed to save papers to localStorage:', e);
+                }
+
+                // Practice task: Check if user has saved at least 2 papers
+                if (this.props.isPractice && _savedPaperIDs.length >= 2) {
+                    this.completePracticeTask('save');
+                }
             });
         }
 
@@ -1659,6 +1711,11 @@ class App extends React.Component<AppProps, AppState> {
                 this.setState({
                     eventOrigin: _eventOrigin,
                     selectNodeIDs: _selectNodeIDs
+                }, () => {
+                    // Practice task: Complete explore task when user interacts with visualization
+                    if (this.props.isPractice && _selectNodeIDs.length > 0) {
+                        this.completePracticeTask('explore');
+                    }
                 });
             }
         }
@@ -1726,6 +1783,12 @@ class App extends React.Component<AppProps, AppState> {
             updateColumnFilterValues: (filter) => {
                 const {allDataLoaded, columnFilterValues} = this.state;
                 this.setState({spinner: true, loadingText: 'Loading Data...'});
+
+                // Practice task: Check if user applied any filter (search task)
+                if (this.props.isPractice && filter && filter.length > 0) {
+                    this.completePracticeTask('search');
+                }
+
                 if (JSON.stringify(columnFilterValues["all"]) === JSON.stringify(filter)) {
                     setTimeout(() => {
                         this.setState({spinner: false, loadingText: 'Loading Meta Data...'});
@@ -1775,6 +1838,12 @@ class App extends React.Component<AppProps, AppState> {
             updateGlobalFilterValue: (filter) => {
                 const {allDataLoaded, columnFilterValues} = this.state;
                 this.setState({spinner: true, loadingText: 'Loading Data...'});
+
+                // Practice task: Check if user used global search (search task)
+                if (this.props.isPractice && filter && filter.length > 0) {
+                    this.completePracticeTask('search');
+                }
+
                 if (JSON.stringify(columnFilterValues["all"]) === JSON.stringify(filter)) {
                     setTimeout(() => {
                         this.setState({spinner: false, loadingText: 'Loading Meta Data...'});
@@ -1864,7 +1933,16 @@ class App extends React.Component<AppProps, AppState> {
             }
             let obj = {};
             obj[data] = _property;
-            this.setState(obj);
+            this.setState(obj, () => {
+                // Save to localStorage if we're deleting from saved papers
+                if (data === 'dataSaved') {
+                    try {
+                        localStorage.setItem('saved_papers', JSON.stringify(_property));
+                    } catch (e) {
+                        console.warn('Failed to update saved papers in localStorage:', e);
+                    }
+                }
+            });
         }
 
         const savedPapersTableProps: SmartTableProps = {
@@ -2607,9 +2685,9 @@ class App extends React.Component<AppProps, AppState> {
                                                itemCount={this.state.dataSimilarPayload.length}>
                                         <div className="m-t-lg"></div>
                                         <React.Fragment>
-                                            <Stack horizontal verticalAlign="start" horizontalAlign="start"
-                                                   tokens={{childrenGap: 8}}>
-                                                <Label>Dimensions</Label>
+                                            <Stack horizontal verticalAlign="center" horizontalAlign="start" wrap={false}
+                                                   tokens={{childrenGap: 6}} styles={{root: {flexWrap: 'nowrap'}}}>
+                                                <Label styles={{root: {minWidth: 'auto'}}}>Dimensions</Label>
                                                 <Dropdown
                                                     label=""
                                                     selectedKey={this.state.similarityType.key}
@@ -2618,9 +2696,9 @@ class App extends React.Component<AppProps, AppState> {
                                                         this.setState({similarityType: item})
                                                     }}
                                                     options={similarityTypeDropdownOptions}
-                                                    styles={{root: {zIndex: 2}}}
+                                                    styles={{root: {zIndex: 2, minWidth: 80}}}
                                                 />
-                                                <Label>Count</Label>
+                                                <Label styles={{root: {minWidth: 'auto'}}}>Count</Label>
                                                 <Dropdown
                                                     label=""
                                                     selectedKey={this.state.maxSimilarPapers.key}
@@ -2629,14 +2707,16 @@ class App extends React.Component<AppProps, AppState> {
                                                         this.setState({maxSimilarPapers: item})
                                                     }}
                                                     options={maxSimilarPapersDropdownOptions}
+                                                    styles={{root: {minWidth: 60}}}
                                                 />
                                                 {
                                                     this.state.dataSimilarPayload.length > 0 ?
                                                         <PrimaryButton text="Find Similar Papers"
-                                                                       onClick={getSimilarPapers} allowDisabledFocus/> :
+                                                                       onClick={getSimilarPapers} allowDisabledFocus
+                                                                       styles={{root: {minWidth: 'auto'}}}/> :
                                                         <PrimaryButton text="Find Similar Papers"
                                                                        onClick={getSimilarPapers} allowDisabledFocus
-                                                                       disabled/>
+                                                                       disabled styles={{root: {minWidth: 'auto'}}}/>
                                                 }
                                             </Stack>
                                         </React.Fragment>
@@ -2810,6 +2890,12 @@ class App extends React.Component<AppProps, AppState> {
                                                         ...dialogStates[tab.id],
                                                         updateDialogState: (updatedState) =>
                                                             this.updateDialogState(tab.id, updatedState),
+                                                        addToSelectNodeIDs: addToSelectNodeIDs,
+                                                        addToSimilarInputPapers: addToSimilarInputPapers,
+                                                        addToSavedPapers: addToSavedPapers,
+                                                        isInSimilarInputPapers: isInSimilarInputPapers,
+                                                        isInSavedPapers: isInSavedPapers,
+                                                        isInSelectedNodeIDs: isInSelectedNodeIDs,
                                                     }}
                                                 />
                                             </div>

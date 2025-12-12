@@ -1,8 +1,10 @@
 import { debounce } from "lodash";
 import socket from "./initsocket"
+import { isLoggingEnabled } from "../utils/loggingConfig";
 
 // Enhanced logging utility for comprehensive UI interaction tracking
 // Integrates with existing logEvent system to maintain userId, studyId, sessionId tracking
+// Logging can be globally disabled for standalone mode via loggingConfig
 
 const getCreateSessionId = ():string => {
     let id = localStorage.getItem('sessionId');
@@ -15,6 +17,11 @@ const getCreateSessionId = ():string => {
 }
 
 export function logEvent(eventName:string, eventData: any) {
+    // Check if logging is enabled (disabled in standalone mode)
+    if (!isLoggingEnabled()) {
+        return; // Skip logging entirely
+    }
+
     const userId = localStorage.getItem('userId')
     const studyId = localStorage.getItem('studyId')
 
@@ -87,6 +94,10 @@ const debouncedFilterLog = debounce((eventName: string, eventData: any) => {
   logEvent(eventName, eventData);
 }, 1500); // 1.5s debounce for filter changes
 
+const debouncedScrollLog = debounce((eventName: string, eventData: any) => {
+  logEvent(eventName, eventData);
+}, 1000); // 1s debounce for scroll events
+
 // Logging functions
 export const Logger = {
   
@@ -95,10 +106,12 @@ export const Logger = {
     const eventData = {
       ...data
     };
-    
-    // Use debouncing for filter changes, immediate for clicks
+
+    // Use debouncing for filter changes, scroll events, and searches
     if (data.action.includes('filter') || data.action.includes('search')) {
       debouncedFilterLog(`table_${data.action}`, eventData);
+    } else if (data.action.includes('scroll')) {
+      debouncedScrollLog(`table_${data.action}`, eventData);
     } else {
       logEvent(`table_${data.action}`, eventData);
     }

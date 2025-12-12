@@ -1040,6 +1040,16 @@ function Table({
     });
 
     const onChange = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption): void => {
+        Logger.logTableInteraction({
+            component: 'MetaTable',
+            action: 'toggleColumnFromDropdown',
+            columnId: String(item.key),
+            columnName: String(item.text),
+            method: 'dropdown',
+            tableType: tableType,
+            currentFilter: globalFilter || '',
+            visibleRows: rows?.length || 0
+        });
         toggleHideColumn(item.key);
         updateVisibleColumns(item.key);
     };
@@ -1090,6 +1100,23 @@ function Table({
 
     // Reference to the VariableSizeList element
     const listRef: any = React.useRef(null);
+
+    // Scroll logging handler
+    const handleScroll = React.useCallback((e: any) => {
+        const scrollTop = e.scrollOffset || 0;
+        const scrollHeight = e.scrollUpdateWasRequested ? 0 : (rows.length * 40); // 40px per row
+
+        if (scrollHeight > 0) {
+            Logger.logTableInteraction({
+                component: 'MetaTable',
+                action: 'scrollEnd',
+                tableType: tableType,
+                scrollPosition: scrollTop,
+                scrollPercentage: Math.round((scrollTop / scrollHeight) * 100),
+                visibleRows: rows?.length || 0
+            });
+        }
+    }, [rows, tableType]);
 
     React.useEffect(() => {
         // console.log('trigger scrollToPaperID update')
@@ -1549,6 +1576,16 @@ function Table({
                               ? <IconButton
                                   iconProps={{iconName: "Minus"}}
                                   onClick={() => {
+                                      Logger.logTableInteraction({
+                                          component: 'MetaTable',
+                                          action: 'hideColumn',
+                                          columnId: column.id,
+                                          columnName: column.render('Header'),
+                                          method: 'inline_button',
+                                          tableType: tableType,
+                                          currentFilter: globalFilter || '',
+                                          visibleRows: rows?.length || 0
+                                      });
                                       toggleHideColumn(column.id);
                                       updateVisibleColumns(column.id);
                                   }}
@@ -1583,6 +1620,7 @@ function Table({
                         itemSize={(index) => 40}
                         itemKey={(index) => index}
                         width={"100%"}
+                        onScroll={handleScroll}
                     >
                         {RenderRow}
                     </VariableSizeList>

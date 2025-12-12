@@ -1,34 +1,19 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import StepLayout from "../structure/StepLayout";
 import { logEvent } from "../socket/logger";
-// import { useStepNav } from "../hooks/useStepNav";
 import { Logger } from "../socket/logger";
 
 const PostInterview = ({currentStep, totalSteps}) => {
-//   const { studyId, userId } = useStepNav();
-  const [response, setResponse] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [hasClickedExternalForm, setHasClickedExternalForm] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
-
-  const handleSubmit = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setSubmitted(true);
-
-    Logger.logStudyEvent({
-      component: 'PostInterview',
-      action: 'submit',
-      interactionName: 'postInterviewResponse',
-      response: response
-    })
-  };
-
-  const handleExternalFormClick = () => {
-    setHasClickedExternalForm(true);
-  };
+  const [formOpened, setFormOpened] = useState(false);
 
   const handleEndStudy = () => {
+    Logger.logStudyEvent({
+      component: 'PostInterview',
+      action: 'endStudy',
+      interactionName: 'postInterviewComplete'
+    });
     setShowThankYou(true);
   };
 
@@ -81,116 +66,127 @@ const PostInterview = ({currentStep, totalSteps}) => {
     );
   }
 
+  const handleOpenForm = () => {
+    setFormOpened(true);
+    Logger.logStudyEvent({
+      component: 'PostInterview',
+      action: 'openForm',
+      interactionName: 'postInterviewFormOpened'
+    });
+    window.open(
+      'https://docs.google.com/forms/d/e/1FAIpQLSdA6nNoHHcbj4cxsdfk-yo58sgOzMXrY1M8mcIfDVRY1B_-pg/viewform',
+      '_blank',
+      'noopener,noreferrer'
+    );
+  };
+
   return (
-    <StepLayout 
+    <StepLayout
       title= {`Post-Interview (Step ${currentStep}/${totalSteps})`}
-      showNext={true} 
+      showNext={true}
+      showPrev
       nextButtonText="End Study"
       onNext={handleEndStudy}
-      disableNext={!submitted}
+      disableNext={!formOpened}
     >
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          background: "#eee",
-          border: "2px solid #234",
-          margin: 40,
-          padding: 32,
-          maxWidth: 800,
-          marginLeft: "auto",
-          marginRight: "auto",
-          minHeight: 400
-        }}
-      >
-        <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 8 }}>Question</div>
-        <div style={{ fontSize: 18, marginBottom: 24 }}>
-          Were you able to find the relevant papers / information you were seeking?
-        </div>
-        
-        <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 16 }}>Response</div>
-        
-        <div style={{ marginBottom: 24, display: 'flex', gap: 16 }}>
-          <div 
-            onClick={() => !submitted && setResponse("Yes")} 
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              fontSize: 18,
-              cursor: submitted ? 'not-allowed' : 'pointer'
-            }}
-          >
-            <span style={{
-              border: '2px solid #444',
-              padding: '8px 16px',
-              backgroundColor: response === "Yes" ? '#d4edda' : 'white',
-              cursor: submitted ? 'not-allowed' : 'pointer'
-            }}>
-              Yes
-            </span>
-          </div>
-          
-          <div 
-            onClick={() => !submitted && setResponse("No")} 
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              fontSize: 18,
-              cursor: submitted ? 'not-allowed' : 'pointer'
-            }}
-          >
-            <span style={{
-              border: '2px solid #444',
-              padding: '8px 16px',
-              backgroundColor: response === "No" ? '#d4edda' : 'white',
-              cursor: submitted ? 'not-allowed' : 'pointer'
-            }}>
-              No
-            </span>
-          </div>
-        </div>
-
-        <div style={{ 
-          fontWeight: 700, 
-          fontSize: 20, 
-          marginBottom: 16,
-          marginTop: 32
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        padding: '40px',
+        maxWidth: '800px',
+        margin: '0 auto'
+      }}>
+        {/* Main card */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '48px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+          border: '2px solid #e9ecef',
+          textAlign: 'center',
+          width: '100%'
         }}>
-          Additional questions can be found{' '}
-          <a 
-            href="https://docs.google.com/forms/d/e/1FAIpQLSdA6nNoHHcbj4cxsdfk-yo58sgOzMXrY1M8mcIfDVRY1B_-pg/viewform?fbzx=8149586167760765042"
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={handleExternalFormClick}
-            style={{ 
-              color: '#b700ffff',
-              textDecoration: 'underline'
+          <h2 style={{
+            fontSize: '32px',
+            fontWeight: 600,
+            color: '#2c3e50',
+            marginTop: 0,
+            marginBottom: '20px'
+          }}>
+            Post-Study Questionnaire
+          </h2>
+
+          <p style={{
+            fontSize: '18px',
+            color: '#495057',
+            lineHeight: '1.6',
+            marginBottom: '32px'
+          }}>
+            Thank you for completing the study tasks! Please fill out a brief questionnaire about your experience.
+          </p>
+
+          <button
+            onClick={handleOpenForm}
+            style={{
+              backgroundColor: '#6f42c1',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '16px 48px',
+              fontSize: '18px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(111, 66, 193, 0.3)',
+              transition: 'all 0.2s ease',
+              marginBottom: '24px'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = '#5a32a3';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(111, 66, 193, 0.4)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = '#6f42c1';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(111, 66, 193, 0.3)';
             }}
           >
-            here
-          </a>
+            Open Questionnaire
+          </button>
+
+          <p style={{
+            fontSize: '14px',
+            color: '#6c757d',
+            marginTop: '24px',
+            fontStyle: 'italic'
+          }}>
+            The questionnaire will open in a new window
+          </p>
         </div>
 
-        <div style={{ textAlign: "center", marginTop: 32 }}>
-          <button
-            type="submit"
-            style={{
-              background: (response && hasClickedExternalForm && !submitted) ? "#FFC700" : "#ccc",
-              color: (response && hasClickedExternalForm && !submitted) ? "#222" : "#666",
-              fontWeight: 700,
-              fontSize: 22,
-              border: "2px solid #444",
-              borderRadius: 4,
-              padding: "8px 48px",
-              cursor: (response && hasClickedExternalForm && !submitted) ? "pointer" : "not-allowed",
-              opacity: (response && hasClickedExternalForm && !submitted) ? 1 : 0.6, 
-              marginTop: 8,
-            }}
-            disabled={!response || !hasClickedExternalForm || submitted}
-          >
-            Submit
-          </button>
+        {/* Completion instruction */}
+        <div style={{
+          marginTop: '32px',
+          padding: '20px',
+          backgroundColor: '#e7f3ff',
+          border: '2px solid #0066cc',
+          borderRadius: '8px',
+          width: '100%',
+          textAlign: 'center'
+        }}>
+          <p style={{
+            fontSize: '16px',
+            color: '#004080',
+            margin: 0,
+            fontWeight: 500
+          }}>
+            After completing the questionnaire, return here and click <strong>"End Study"</strong> to finish.
+          </p>
         </div>
-      </form>
+      </div>
     </StepLayout>
   );
 };

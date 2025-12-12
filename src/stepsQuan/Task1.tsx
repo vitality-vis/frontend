@@ -1,7 +1,10 @@
 import StepLayout from "../structure/StepLayout";
 import React, { useState, useEffect, useMemo } from "react";
 import SmartTable, { SmartTableProps } from "../components/SmartTable";
-import { baseUrl } from "../components/App";
+import { API_BASE_URL } from "../config";
+import { Logger } from "../socket/logger";
+
+const baseUrl = `${API_BASE_URL}/`;
 
 interface Paper {
   ID: string;
@@ -33,6 +36,11 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
   const [columnFilterValues, setColumnFilterValues] = useState<any[]>([]);
   const [globalFilterValue, setGlobalFilterValue] = useState<any>(undefined);
 
+  // Pagination state
+  const [offset, setOffset] = useState<number>(0);
+  const [hasMoreData, setHasMoreData] = useState<boolean>(true);
+  const [totalPaperCount, setTotalPaperCount] = useState<number | null>(null);
+
   const safeUpdateColumnFilterValues = (values: any[]) => {
     console.log("FILTER UPDATING", JSON.stringify(values, null, 2));
     const normalized = (values || []).map((f) => {
@@ -58,16 +66,51 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
   const savedIds = useMemo(() => new Set(saved.map((p) => p.ID)), [saved]);
 
   const persistSaved = (next: Paper[]) => {
+    console.log("📝 Persisting saved papers:", next.length);
     setSaved(next);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {}
+      console.log("✅ Saved to localStorage");
+    } catch (e) {
+      console.error("❌ Failed to save to localStorage:", e);
+    }
   };
   const addToSaved = (paper: Paper) => {
-    if (!savedIds.has(paper.ID)) persistSaved([...saved, paper]);
+    console.log("➕ Adding paper to saved:", paper.ID, paper.Title);
+    if (!savedIds.has(paper.ID)) {
+      const newSaved = [...saved, paper];
+      persistSaved(newSaved);
+
+      // Log paper save event
+      Logger.logTableInteraction({
+        component: "task1_table",
+        action: "save_paper",
+        paperId: paper.ID,
+        paperTitle: paper.Title,
+        totalSavedCount: newSaved.length,
+        interactionType: "checkbox_select"
+      });
+    } else {
+      console.log("⚠️ Paper already saved:", paper.ID);
+    }
   };
-  const removeFromSaved = (paperId: string) => {
-    if (savedIds.has(paperId)) persistSaved(saved.filter((p) => p.ID !== paperId));
+  const removeFromSaved = (paperId: string, interactionType: string = "unknown") => {
+    console.log("➖ Removing paper from saved:", paperId);
+    if (savedIds.has(paperId)) {
+      const paper = saved.find(p => p.ID === paperId);
+      const newSaved = saved.filter((p) => p.ID !== paperId);
+      persistSaved(newSaved);
+
+      // Log paper unsave event
+      Logger.logTableInteraction({
+        component: "task1_table",
+        action: "unsave_paper",
+        paperId: paperId,
+        paperTitle: paper?.Title || "Unknown",
+        totalSavedCount: newSaved.length,
+        interactionType: interactionType
+      });
+    }
   };
   const isInSaved = (paper: Paper) => savedIds.has(paper.ID);
 
@@ -154,11 +197,9 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
         columnFilterValues.find((f) => f?.id?.toLowerCase() === id.toLowerCase());
       const asArr = (v: any) => (Array.isArray(v) ? v : v ? [v] : []);
 
-
       const author  = asArr(getFilter("Authors")?.value);
       const keyword = asArr(getFilter("Keywords")?.value);
       const source  = getFilter("Source")?.value || undefined;
-      // const title   = (getFilter("Title")?.value || "").trim();
       const titleValue = getFilter("Title")?.value;
       const title = (Array.isArray(titleValue) ? titleValue[0] : titleValue || "").trim();
       const abstractValue = getFilter("Abstract")?.value;
@@ -177,7 +218,7 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
       if (maxC === maxCitationCounts) maxC = undefined;
 
       const payload = {
-        limit: 30,
+        limit: 1000,
         offset: 0,
         title: title || undefined,
         abstract: abstract || undefined,
@@ -195,16 +236,166 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const newData: Paper[] = await resp.json();
+      const responseData = await resp.json();
+
+      // Handle new API response format: {papers: [], total: number}
+      const newData: Paper[] = responseData.papers || responseData;
+      const totalFromServer = responseData.total !== undefined ? responseData.total : null;
 
       if (Array.isArray(newData)) {
-        const slicedData = newData.slice(0, 30);
-        setBaseData(slicedData); // Store the raw data
-        const mapped = mapForSmartTable(slicedData);
+        setBaseData(newData);
+        const mapped = mapForSmartTable(newData);
         setFilteredData(mapped);
+        setOffset(newData.length);
+        setHasMoreData(newData.length < (totalFromServer || 0));
+        setTotalPaperCount(totalFromServer);
+      } else {
+        console.error("Expected array but got:", newData);
+        setBaseData([]);
+        setFilteredData([]);
+        setOffset(0);
+        setHasMoreData(false);
+        setTotalPaperCount(0);
       }
     } catch (e) {
       console.error("Error loading data:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMoreData = async () => {
+    if (!hasMoreData || loading) return;
+
+    setLoading(true);
+    try {
+      const getFilter = (id: string) =>
+        columnFilterValues.find((f) => f?.id?.toLowerCase() === id.toLowerCase());
+      const asArr = (v: any) => (Array.isArray(v) ? v : v ? [v] : []);
+
+      const author  = asArr(getFilter("Authors")?.value);
+      const keyword = asArr(getFilter("Keywords")?.value);
+      const source  = getFilter("Source")?.value || undefined;
+      const titleValue = getFilter("Title")?.value;
+      const title = (Array.isArray(titleValue) ? titleValue[0] : titleValue || "").trim();
+      const abstractValue = getFilter("Abstract")?.value;
+      const abstract = (Array.isArray(abstractValue) ? abstractValue[0] : abstractValue || "").trim() || undefined;
+
+      const yearFilter = getFilter("Year");
+      let minY = yearFilter?.value?.[0];
+      let maxY = yearFilter?.value?.[1];
+      if (minY === minYear) minY = undefined;
+      if (maxY === maxYear) maxY = undefined;
+
+      const citationFilter = getFilter("CitationCounts");
+      let minC = citationFilter?.value?.[0];
+      let maxC = citationFilter?.value?.[1];
+      if (minC === minCitationCounts) minC = undefined;
+      if (maxC === maxCitationCounts) maxC = undefined;
+
+      const payload = {
+        limit: 1000,
+        offset: offset,
+        title: title || undefined,
+        abstract: abstract || undefined,
+        author: author.length > 0 ? author : undefined,
+        source: source || undefined,
+        keyword: keyword.length > 0 ? keyword : undefined,
+        min_year: minY,
+        max_year: maxY,
+        min_citation_counts: minC,
+        max_citation_counts: maxC,
+      };
+
+      const resp = await fetch(`${baseUrl}getPapers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const responseData = await resp.json();
+
+      const newData: Paper[] = responseData.papers || responseData;
+      const totalFromServer = responseData.total !== undefined ? responseData.total : null;
+
+      if (Array.isArray(newData) && newData.length > 0) {
+        const updatedData = [...baseData, ...newData];
+        setBaseData(updatedData);
+        const mapped = mapForSmartTable(updatedData);
+        setFilteredData(mapped);
+        setOffset(updatedData.length);
+        setHasMoreData(updatedData.length < (totalFromServer || 0));
+        setTotalPaperCount(totalFromServer);
+      } else {
+        setHasMoreData(false);
+      }
+    } catch (e) {
+      console.error("Error loading more data:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAllData = async () => {
+    setLoading(true);
+    try {
+      const getFilter = (id: string) =>
+        columnFilterValues.find((f) => f?.id?.toLowerCase() === id.toLowerCase());
+      const asArr = (v: any) => (Array.isArray(v) ? v : v ? [v] : []);
+
+      const author  = asArr(getFilter("Authors")?.value);
+      const keyword = asArr(getFilter("Keywords")?.value);
+      const source  = getFilter("Source")?.value || undefined;
+      const titleValue = getFilter("Title")?.value;
+      const title = (Array.isArray(titleValue) ? titleValue[0] : titleValue || "").trim();
+      const abstractValue = getFilter("Abstract")?.value;
+      const abstract = (Array.isArray(abstractValue) ? abstractValue[0] : abstractValue || "").trim() || undefined;
+
+      const yearFilter = getFilter("Year");
+      let minY = yearFilter?.value?.[0];
+      let maxY = yearFilter?.value?.[1];
+      if (minY === minYear) minY = undefined;
+      if (maxY === maxYear) maxY = undefined;
+
+      const citationFilter = getFilter("CitationCounts");
+      let minC = citationFilter?.value?.[0];
+      let maxC = citationFilter?.value?.[1];
+      if (minC === minCitationCounts) minC = undefined;
+      if (maxC === maxCitationCounts) maxC = undefined;
+
+      const payload = {
+        limit: -1,
+        offset: 0,
+        title: title || undefined,
+        abstract: abstract || undefined,
+        author: author.length > 0 ? author : undefined,
+        source: source || undefined,
+        keyword: keyword.length > 0 ? keyword : undefined,
+        min_year: minY,
+        max_year: maxY,
+        min_citation_counts: minC,
+        max_citation_counts: maxC,
+      };
+
+      const resp = await fetch(`${baseUrl}getPapers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const responseData = await resp.json();
+
+      const newData: Paper[] = responseData.papers || responseData;
+      const totalFromServer = responseData.total !== undefined ? responseData.total : null;
+
+      if (Array.isArray(newData)) {
+        setBaseData(newData);
+        const mapped = mapForSmartTable(newData);
+        setFilteredData(mapped);
+        setOffset(newData.length);
+        setHasMoreData(false);
+        setTotalPaperCount(totalFromServer || newData.length);
+      }
+    } catch (e) {
+      console.error("Error loading all data:", e);
     } finally {
       setLoading(false);
     }
@@ -263,12 +454,55 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
 
     setFilteredPapers: (df) => setFilteredData(mapForSmartTable(df || [])),
 
-    addToSavedPapers: (paper: Paper) => addToSaved(paper),
+    addToSavedPapers: (paper: Paper | Paper[]) => {
+      console.log("🔵 addToSavedPapers called with:", paper);
+      if (Array.isArray(paper)) {
+        paper.forEach(p => addToSaved(p));
+      } else {
+        addToSaved(paper);
+      }
+    },
     addToSimilarInputPapers: () => {},
-    addToSelectNodeIDs: (paper: Paper, selected: boolean) => {
-      const paperToToggle = filteredData.find((p) => p.ID === paper.ID);
-      if (paperToToggle) {
-        selected ? addToSaved(paperToToggle) : removeFromSaved(paperToToggle.ID);
+    addToSelectNodeIDs: (paperOrIds: Paper | string[], checkedOrOrigin: boolean | string) => {
+      console.log("🟢 addToSelectNodeIDs called with:", paperOrIds, "second arg:", checkedOrOrigin);
+
+      // Handle two different call patterns:
+      // 1. From checkbox: addToSelectNodeIDs(paperObject, boolean)
+      // 2. From elsewhere: addToSelectNodeIDs(idsArray, eventOrigin)
+
+      if (typeof checkedOrOrigin === 'boolean') {
+        // Called from checkbox with (paperObject, checked)
+        const paper = paperOrIds as Paper;
+        const isChecked = checkedOrOrigin;
+
+        console.log("📦 Checkbox click for paper:", paper.ID, "checked:", isChecked);
+
+        if (isChecked) {
+          // User checked the box - add to saved
+          addToSaved(paper);
+        } else {
+          // User unchecked the box - remove from saved
+          removeFromSaved(paper.ID, "checkbox_unselect");
+        }
+      } else {
+        // Called with (idsArray, eventOrigin)
+        const ids = paperOrIds as string[];
+        console.log("📦 Array-based selection with IDs:", ids);
+
+        if (ids.length === 0) {
+          return;
+        }
+
+        ids.forEach(id => {
+          const paper = filteredData.find((p) => p.ID === id);
+          if (paper) {
+            if (savedIds.has(id)) {
+              removeFromSaved(id, "checkbox_unselect");
+            } else {
+              addToSaved(paper);
+            }
+          }
+        });
       }
     },
 
@@ -276,7 +510,18 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
     isInSimilarInputPapers: () => false,
     isInSelectedNodeIDs: (paperId: string) => savedIds.has(paperId),
 
-    openGScholar: () => {},
+    deleteRow: (paper: Paper | Paper[]) => {
+      if (Array.isArray(paper)) {
+        paper.forEach(p => removeFromSaved(p.ID, "delete_row"));
+      } else {
+        removeFromSaved(paper.ID, "delete_row");
+      }
+    },
+
+    openGScholar: (paper: Paper) => {
+      const query = encodeURIComponent(paper.Title);
+      window.open(`https://scholar.google.com/scholar?q=${query}`, '_blank');
+    },
     scrollToPaperID: 0,
 
     columnWidths: {
@@ -295,9 +540,10 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
     staticMinCitationCounts: minCitationCounts,
     staticMaxCitationCounts: maxCitationCounts,
 
-    hasMoreData: false,
-    loadMoreData: async () => {},
-    loadAllData: async () => {},
+    hasMoreData: hasMoreData,
+    loadMoreData: loadMoreData,
+    loadAllData: loadAllData,
+    totalPaperCount: totalPaperCount,
   };
 
   return (
@@ -358,7 +604,7 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
                         <td style={{ padding: "6px 8px", borderTop: "1px solid #eee" }}>{p.Source}</td>
                         <td style={{ padding: "6px 8px", borderTop: "1px solid #eee" }}>{p.Year}</td>
                         <td style={{ padding: "6px 8px", borderTop: "1px solid #eee", textAlign: "right" }}>
-                          <button onClick={() => removeFromSaved(p.ID)}>Remove</button>
+                          <button onClick={() => removeFromSaved(p.ID, "remove_button")}>Remove</button>
                         </td>
                       </tr>
                     ))}

@@ -2,6 +2,7 @@
 const merge = require('webpack-merge');
 const webpack = require('webpack');
 const commonConfig = require('./common');
+const {resolve} = require('path');
 
 module.exports = merge(commonConfig, {
   mode: 'development',
@@ -11,9 +12,23 @@ module.exports = merge(commonConfig, {
     // 'webpack/hot/only-dev-server', // bundle the client for hot reloading, only- means to only hot reload for successful updates
     './index.tsx' // the entry point of our app
   ],
+  output: {
+    filename: 'js/bundle.[hash].min.js',
+    path: resolve(__dirname, '../../dist'),
+    publicPath: '/vitality2study/',
+  },
   devServer: {
-    historyApiFallback: true,
+    port: 8080,
+    historyApiFallback: {
+      index: '/vitality2study/',
+      rewrites: [
+        { from: /^\/vitality2study/, to: '/vitality2study/index.html' }
+      ]
+    },
     hot: false, // enable HMR on the server
+    devMiddleware: {
+      publicPath: '/vitality2study/',
+    },
   },
   devtool: 'eval-cheap-module-source-map',
   // plugins: [

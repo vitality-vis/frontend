@@ -347,17 +347,26 @@ export const Dialog = observer(({ props }) => {
     chatText,
     chatHistory,
     chatSelectedPaper,
+    displayMessages: savedDisplayMessages,
     updateDialogState,
     addToSelectNodeIDs,
     addToSimilarInputPapers,
     addToSavedPapers,
+    isInSimilarInputPapers,
+    isInSavedPapers,
+    isInSelectedNodeIDs,
   } = props;
 
   const [displayMessages, setDisplayMessages] = React.useState<
     { role: "user" | "ai"; text: string }[]
-  >([]);
+  >(savedDisplayMessages || []);
   const [isWaiting, setIsWaiting] = React.useState(false);
   const [chatMode, setChatMode] = React.useState<string>("normal");
+
+  // Sync displayMessages to dialogStates whenever it changes
+  React.useEffect(() => {
+    updateDialogState({ displayMessages });
+  }, [displayMessages]);
 
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
@@ -492,6 +501,12 @@ export const Dialog = observer(({ props }) => {
       return <span>{raw}</span>; // Normal text → display as is
     }
 
+    // Check if buttons should be disabled
+    const paperObj = { ID: id };
+    const isAlreadySelected = id && isInSelectedNodeIDs && isInSelectedNodeIDs(id);
+    const isAlreadyInSimilar = id && isInSimilarInputPapers && isInSimilarInputPapers(paperObj);
+    const isAlreadySaved = id && isInSavedPapers && isInSavedPapers(paperObj);
+
     // 🔹 Otherwise it's a paper title → render in blue + show buttons
     return (
       <div style={{ marginBottom: "0.5em" }}>
@@ -518,6 +533,7 @@ export const Dialog = observer(({ props }) => {
           <DefaultButton
             iconProps={{ iconName: "Locate" }}
             styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
+            disabled={isAlreadySelected}
             onClick={() => {
               // 🔍 Locate (by ID first, else by title) + logs
               if (id) {
@@ -580,6 +596,7 @@ export const Dialog = observer(({ props }) => {
           <DefaultButton
             iconProps={{ iconName: "PlusCircle" }}
             styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
+            disabled={isAlreadyInSimilar}
             onClick={() => {
               // ➕ Add to similar input + logs
               if (id) {
@@ -637,6 +654,7 @@ export const Dialog = observer(({ props }) => {
           <DefaultButton
             iconProps={{ iconName: "Save" }}
             styles={{ root: { minWidth: 0 } }}
+            disabled={isAlreadySaved}
             onClick={() => {
               // 💾 Save + logs
               if (id) {
@@ -766,10 +784,10 @@ export const Dialog = observer(({ props }) => {
           />
         </div>
 
-        <div className="chat-action-row">
+        <div className="chat-action-row" style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: '4px' }}>
           <Dropdown
             id="chatModeDropdown"
-            placeholder="Select mode"
+            placeholder="Mode"
             options={options}
             selectedKey={chatMode}
             defaultSelectedKey="normal"
@@ -782,11 +800,12 @@ export const Dialog = observer(({ props }) => {
                 mode: option?.key as string,
               });
             }}
-            styles={{ root: { width: 160 } }}
+            styles={{ root: { width: 120, minWidth: 120, marginRight: 30 } }}
           />
           <DefaultButton
             text="ALL"
             iconProps={{ iconName: "Locate" }}
+            styles={{ root: { minWidth: 0, padding: "0 6px" } }}
             onClick={() => {
               // Ported "ALL locate" log using latest AI response length
               Logger.logUIInteraction({
@@ -799,6 +818,7 @@ export const Dialog = observer(({ props }) => {
           <DefaultButton
             text="ALL"
             iconProps={{ iconName: "PlusCircle" }}
+            styles={{ root: { minWidth: 0, padding: "0 6px" } }}
             onClick={() => {
               Logger.logUIInteraction({
                 component: "Dialog",
@@ -810,6 +830,7 @@ export const Dialog = observer(({ props }) => {
           <DefaultButton
             text="ALL"
             iconProps={{ iconName: "Save" }}
+            styles={{ root: { minWidth: 0, padding: "0 6px" } }}
             onClick={() => {
               Logger.logUIInteraction({
                 component: "Dialog",
