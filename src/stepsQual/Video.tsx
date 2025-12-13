@@ -47,7 +47,7 @@ const Video = ({currentStep,totalSteps}) => {
 
   return (
     <>
-      <StepLayout title={`Tutorial (Step ${currentStep}/${totalSteps})`} showNext showPrev onNext={handleNextClick}> 
+      <StepLayout title={`Tutorial (Step ${currentStep}/${totalSteps})`} showNext showPrev={false} onNext={handleNextClick}> 
         <div style={{
           padding: '32px',
           display: 'flex',

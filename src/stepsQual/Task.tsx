@@ -17,10 +17,10 @@ const Task = ({currentStep, totalSteps}) => {
   };
 
   return (
-    <StepLayout 
+    <StepLayout
       title = {`Task (Step ${currentStep}/${totalSteps})`}
-      showNext 
-      showPrev 
+      showNext
+      showPrev={false}
       notPractice={false}
       onNext={handleNext}
     >

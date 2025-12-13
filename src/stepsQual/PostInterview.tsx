@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import StepLayout from "../structure/StepLayout";
 import { logEvent } from "../socket/logger";
 import { Logger } from "../socket/logger";
+import { colors, typography, spacing, borderRadius, shadows, transitions } from "../styles/studyDesignSystem";
 
 const PostInterview = ({currentStep, totalSteps}) => {
   const [showThankYou, setShowThankYou] = useState(false);
@@ -50,7 +51,7 @@ const PostInterview = ({currentStep, totalSteps}) => {
           }}>
             Thank You!
           </h2>
-          
+
           <p style={{
             fontSize: '16px',
             color: '#34495e',
@@ -60,7 +61,7 @@ const PostInterview = ({currentStep, totalSteps}) => {
           }}>
             Thank you for participating in this study. Your responses have been recorded and will help improve our research.
           </p>
-  
+
         </div>
       </div>
     );
@@ -84,7 +85,7 @@ const PostInterview = ({currentStep, totalSteps}) => {
     <StepLayout
       title= {`Post-Interview (Step ${currentStep}/${totalSteps})`}
       showNext={true}
-      showPrev
+      showPrev={false}
       nextButtonText="End Study"
       onNext={handleEndStudy}
       disableNext={!formOpened}
@@ -101,29 +102,29 @@ const PostInterview = ({currentStep, totalSteps}) => {
       }}>
         {/* Main card */}
         <div style={{
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          padding: '48px',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-          border: '2px solid #e9ecef',
+          backgroundColor: colors.background.card,
+          borderRadius: borderRadius.lg,
+          padding: spacing['2xl'],
+          boxShadow: shadows.lg,
+          border: `2px solid ${colors.border.main}`,
           textAlign: 'center',
           width: '100%'
         }}>
           <h2 style={{
-            fontSize: '32px',
-            fontWeight: 600,
-            color: '#2c3e50',
+            fontSize: typography.fontSize['4xl'],
+            fontWeight: typography.fontWeight.bold,
+            color: colors.neutral.dark,
             marginTop: 0,
-            marginBottom: '20px'
+            marginBottom: spacing.lg
           }}>
             Post-Study Questionnaire
           </h2>
 
           <p style={{
-            fontSize: '18px',
-            color: '#495057',
-            lineHeight: '1.6',
-            marginBottom: '32px'
+            fontSize: typography.fontSize.lg,
+            color: colors.neutral.medium,
+            lineHeight: typography.lineHeight.relaxed,
+            marginBottom: spacing.xl
           }}>
             Thank you for completing the study tasks! Please fill out a brief questionnaire about your experience.
           </p>
@@ -131,36 +132,36 @@ const PostInterview = ({currentStep, totalSteps}) => {
           <button
             onClick={handleOpenForm}
             style={{
-              backgroundColor: '#6f42c1',
-              color: 'white',
+              backgroundColor: colors.state.info,
+              color: colors.neutral.white,
               border: 'none',
-              borderRadius: '8px',
-              padding: '16px 48px',
-              fontSize: '18px',
-              fontWeight: 600,
+              borderRadius: borderRadius.md,
+              padding: `${spacing.md} ${spacing['2xl']}`,
+              fontSize: typography.fontSize.lg,
+              fontWeight: typography.fontWeight.bold,
               cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(111, 66, 193, 0.3)',
-              transition: 'all 0.2s ease',
-              marginBottom: '24px'
+              boxShadow: shadows.md,
+              transition: `all ${transitions.normal}`,
+              marginBottom: spacing.lg
             }}
             onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#5a32a3';
+              e.currentTarget.style.backgroundColor = '#2980b9';
               e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 16px rgba(111, 66, 193, 0.4)';
+              e.currentTarget.style.boxShadow = shadows.lg;
             }}
             onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = '#6f42c1';
+              e.currentTarget.style.backgroundColor = colors.state.info;
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(111, 66, 193, 0.3)';
+              e.currentTarget.style.boxShadow = shadows.md;
             }}
           >
-            Open Questionnaire
+            📋 Open Questionnaire
           </button>
 
           <p style={{
-            fontSize: '14px',
-            color: '#6c757d',
-            marginTop: '24px',
+            fontSize: typography.fontSize.sm,
+            color: colors.neutral.light,
+            marginTop: spacing.lg,
             fontStyle: 'italic'
           }}>
             The questionnaire will open in a new window
@@ -169,19 +170,19 @@ const PostInterview = ({currentStep, totalSteps}) => {
 
         {/* Completion instruction */}
         <div style={{
-          marginTop: '32px',
-          padding: '20px',
-          backgroundColor: '#e7f3ff',
-          border: '2px solid #0066cc',
-          borderRadius: '8px',
+          marginTop: spacing.xl,
+          padding: spacing.lg,
+          backgroundColor: '#e3f2fd',
+          border: `2px solid ${colors.state.info}`,
+          borderRadius: borderRadius.md,
           width: '100%',
           textAlign: 'center'
         }}>
           <p style={{
-            fontSize: '16px',
-            color: '#004080',
+            fontSize: typography.fontSize.base,
+            color: '#1565c0',
             margin: 0,
-            fontWeight: 500
+            fontWeight: typography.fontWeight.semibold
           }}>
             After completing the questionnaire, return here and click <strong>"End Study"</strong> to finish.
           </p>

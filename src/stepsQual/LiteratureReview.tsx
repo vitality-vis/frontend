@@ -4,12 +4,7 @@ import StepLayout from "../structure/StepLayout";
 import { useStepNav } from "../hooks/useStepNav";
 import { logEvent } from "../socket/logger";
 import { Logger } from "../socket/logger";
-
-// // Placeholder logging utility
-// function logSubmit(answer: { studyId: number; userId: number; response: string }) {
-//   // Replace with real logging or API call 
-//   console.log("logSubmit", answer);
-// }
+import { colors, typography, spacing, borderRadius, shadows, components, transitions } from "../styles/studyDesignSystem";
 
 const LiteratureReview = ({currentStep, totalSteps}) => {
   const [response, setResponse] = useState("");
@@ -29,105 +24,161 @@ const LiteratureReview = ({currentStep, totalSteps}) => {
     })
   };
 
+  const canSubmit = response.trim() && !submitted;
+
   return (
-    <StepLayout title= {`Pre-Interview (Step ${currentStep}/${totalSteps})`} showNext showPrev disableNext={!submitted}>
+    <StepLayout title= {`Pre-Interview (Step ${currentStep}/${totalSteps})`} showNext showPrev={false} disableNext={!submitted}>
+      <div style={{
+        padding: spacing.lg,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        minHeight: '100%',
+      }}>
       <form
         onSubmit={handleSubmit}
         style={{
-          background: "#eee",
-          border: "2px solid #234",
-          margin: 40,
-          padding: 0,
+          ...components.form.container,
+          margin: spacing.sm,
+          padding: spacing.md,
+          width: '100%',
           maxWidth: 800,
-          marginLeft: "auto",
-          marginRight: "auto",
         }}
       >
-        {/* Google Form / Microsoft Form header */}
+          <div style={{ marginBottom: spacing.lg }}>
+            <label style={components.form.label}>Question</label>
+            <div style={{
+              ...components.form.description,
+              marginBottom: spacing.sm,
+            }}>
+              Recall a recent topic for which you conducted a literature review. What was the topic?
+            </div>
 
-        <div style={{ padding: 32 }}>
-          <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 8 }}>Question</div>
-          <div style={{ fontSize: 18, marginBottom: 12 }}>
-            Recall a recent topic for which you conducted a literature review. What was the topic?
+            {/* Instructions and explanation */}
+            <div style={{
+              backgroundColor: colors.background.subtle,
+              padding: spacing.md,
+              borderRadius: borderRadius.md,
+              marginBottom: spacing.md,
+              border: `1px solid ${colors.border.main}`,
+              boxShadow: shadows.sm,
+            }}>
+              <div style={{ fontSize: typography.fontSize.base, marginBottom: spacing.sm, color: colors.neutral.medium }}>
+                <strong style={{ color: colors.neutral.dark }}>Why we're asking:</strong> This helps us understand your research background and allows you to practice using VitaLITy with a topic you're familiar with.
+              </div>
+              <div style={{ fontSize: typography.fontSize.base, marginBottom: spacing.sm, color: colors.neutral.medium }}>
+                <strong style={{ color: colors.neutral.dark }}>What to include:</strong> Briefly describe the research topic (1-3 sentences). Include the main subject area and any specific aspects you focused on.
+              </div>
+              <div style={{ fontSize: typography.fontSize.base, color: colors.neutral.medium }}>
+                <strong style={{ color: colors.neutral.dark }}>Example:</strong> "I conducted a literature review on machine learning applications in healthcare diagnostics, specifically focusing on deep learning models for medical image analysis and their clinical validation."
+              </div>
+            </div>
           </div>
 
-          {/* Instructions and explanation */}
-          <div style={{
-            backgroundColor: "#f8f9fa",
-            padding: 16,
-            borderRadius: 4,
-            marginBottom: 16,
-            border: "1px solid #dee2e6"
-          }}>
-            <div style={{ fontSize: 16, marginBottom: 8, color: "#495057" }}>
-              <strong>Why we're asking:</strong> This helps us understand your research background and allows you to practice using VitaLITy with a topic you're familiar with.
-            </div>
-            <div style={{ fontSize: 16, marginBottom: 8, color: "#495057" }}>
-              <strong>What to include:</strong> Briefly describe the research topic (1-3 sentences). Include the main subject area and any specific aspects you focused on.
-            </div>
-            <div style={{ fontSize: 16, color: "#495057" }}>
-              <strong>Example:</strong> "I conducted a literature review on machine learning applications in healthcare diagnostics, specifically focusing on deep learning models for medical image analysis and their clinical validation."
-            </div>
+          <div style={{ marginBottom: spacing.lg }}>
+            <label style={components.form.label}>Your Response</label>
+            <textarea
+              value={response}
+              onChange={e => setResponse(e.target.value)}
+              placeholder="Describe your literature review topic here. Include the main subject area and specific aspects you explored..."
+              rows={3}
+              style={{
+                ...components.input.default,
+                resize: "vertical",
+                minHeight: 60,
+                fontFamily: typography.fontFamily.main,
+                fontSize: typography.fontSize.base,
+                lineHeight: typography.lineHeight.relaxed,
+                width: '100%',
+                boxSizing: 'border-box',
+              }}
+              disabled={submitted}
+              onFocus={(e) => {
+                if (!submitted) {
+                  e.target.style.borderColor = colors.border.focus;
+                  e.target.style.boxShadow = `0 0 0 3px ${colors.shadow.sm}`;
+                }
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = colors.border.main;
+                e.target.style.boxShadow = 'none';
+              }}
+            />
           </div>
 
-          <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 8 }}>Response</div>
-          <textarea
-            value={response}
-            onChange={e => setResponse(e.target.value)}
-            placeholder="Describe your literature review topic here. Include the main subject area and specific aspects you explored..."
-            rows={6}
-            style={{
-              width: "100%",
-              boxSizing: "border-box",
-              fontSize: 18,
-              padding: 8,
-              border: "1.5px solid #444",
-              borderRadius: 2,
-              resize: "vertical",
-              minHeight: 120,
-              marginBottom: 32
-            }}
-            disabled={submitted}
-          />
           <div style={{ textAlign: "center" }}>
             <button
               type="submit"
               style={{
-                background: "#FFC700",
-                color: "#222",
-                fontWeight: 700,
-                fontSize: 22,
-                border: "2px solid #444",
-                borderRadius: 4,
-                padding: "8px 48px",
-                cursor: response.trim() && !submitted ? "pointer" : "not-allowed",
-                opacity: response.trim() && !submitted ? 1 : 0.6, 
-                marginTop: 8,
+                ...components.button.primary,
+                cursor: canSubmit ? "pointer" : "not-allowed",
+                opacity: canSubmit ? 1 : 0.5,
+                padding: `${spacing.md} ${spacing['2xl']}`,
+                fontSize: typography.fontSize.xl,
               }}
-              disabled={!response.trim() || submitted}
-              onClick={handleSubmit}
+              disabled={!canSubmit}
+              onMouseEnter={(e) => {
+                if (canSubmit) {
+                  (e.target as HTMLButtonElement).style.background = colors.primary.dark;
+                  (e.target as HTMLButtonElement).style.transform = 'translateY(-2px)';
+                  (e.target as HTMLButtonElement).style.boxShadow = shadows.md;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (canSubmit) {
+                  (e.target as HTMLButtonElement).style.background = colors.primary.main;
+                  (e.target as HTMLButtonElement).style.transform = 'translateY(0)';
+                  (e.target as HTMLButtonElement).style.boxShadow = shadows.sm;
+                }
+              }}
             >
-              Submit
+              {submitted ? "✓ Submitted" : "Submit Response"}
             </button>
+            {submitted && (
+              <div style={{
+                marginTop: spacing.md,
+                color: colors.state.success,
+                fontWeight: typography.fontWeight.semibold,
+                fontSize: typography.fontSize.base,
+              }}>
+                Great! Read the task below to continue.
+              </div>
+            )}
           </div>
-        </div>
       </form>
 
       {/* Task Section */}
-      {showTask && 
+      {showTask &&
       <div style={{
-        margin: "32px",
-        marginTop: "16px",
-        maxWidth: 750,
-        marginLeft: "auto",
-        marginRight: "auto"
+        marginTop: spacing.xl,
+        padding: spacing.xl,
+        maxWidth: 800,
+        width: '100%',
+        backgroundColor: '#e8f4f8',
+        border: `2px solid ${colors.state.info}`,
+        borderRadius: borderRadius.lg,
+        boxShadow: shadows.md,
       }}>
-        <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 16 }}>Task</div>
-        <div style={{ fontSize: 18, lineHeight: 1.5 }}>
+        <div style={{
+          fontWeight: typography.fontWeight.bold,
+          fontSize: typography.fontSize['2xl'],
+          marginBottom: spacing.md,
+          color: colors.neutral.dark,
+          display: 'flex',
+          alignItems: 'center',
+          gap: spacing.sm,
+        }}>
+          📋 Task
+        </div>
+        <div style={{
+          fontSize: typography.fontSize.lg,
+          lineHeight: typography.lineHeight.relaxed,
+          color: colors.neutral.dark,
+        }}>
           In the next step, utilize VitaLITy and act as if you are going to conduct that same literature review again using it. Think aloud as you go.
         </div>
       </div>}
-
+      </div>
     </StepLayout>
   );
 };

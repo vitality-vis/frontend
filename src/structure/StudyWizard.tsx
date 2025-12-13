@@ -56,8 +56,6 @@ const StudyWizard = () => {
   const studyCode = searchParams.get("study");
   const studyId = decodeStudyCode(studyCode);
 
-  console.log('🔍 StudyWizard Debug:', { studyCode, studyId, currentStep, totalSteps, userId });
-
   // Save studyId to localStorage for logging purposes
   React.useEffect(() => {
     if (studyId) {
@@ -69,37 +67,30 @@ const StudyWizard = () => {
   const urlUserId = searchParams.get("userid");
   if (!searchParams.get("study") || !urlUserId || urlUserId !== userId) {
     const encodedStudy = encodeStudyId(studyId);
-    console.log('🔄 Redirecting to:', `/app?study=${encodedStudy}&userid=${userId}&step=${currentStep}`);
     return <Navigate to={`/app?study=${encodedStudy}&userid=${userId}&step=${currentStep}`} replace />;
   }
-
+  
   //get appropriate steps for this study
   const steps = studySteps[studyId] || studySteps[1]; //fallback to study 1
-  console.log('📚 Available steps for study', studyId, ':', steps.length);
-  console.log('📚 Step array:', steps.map(s => s.name));
-
   const StepComponent = steps[currentStep];
 
   console.log('📍 StudyWizard rendering - studyId:', studyId, 'currentStep:', currentStep, 'totalSteps:', totalSteps);
-  console.log('📍 StepComponent at index', currentStep, ':', StepComponent?.name);
-
-  if (!StepComponent) {
-    console.error('❌ No StepComponent found for currentStep:', currentStep, 'studyId:', studyId);
-  }
+  console.log('📍 Available study IDs:', Object.keys(studySteps));
+  console.log('📍 Steps for this study:', steps?.length);
+  console.log('📍 StepComponent name:', StepComponent?.name);
 
   //handle invalid step
   if (!StepComponent) {
+    console.error('❌ No StepComponent found for currentStep:', currentStep);
     const encodedStudy = encodeStudyId(studyId);
-    console.error('⚠️ Invalid step, redirecting to step 0');
     return <Navigate to={`/app?study=${encodedStudy}&userid=${userId}&step=0`} replace />;
   }
 
   try {
-    console.log('✅ Rendering', StepComponent.name, 'with props:', { currentStep, totalSteps });
     return <StepComponent currentStep={currentStep} totalSteps={totalSteps}/>;
   } catch (error) {
-    console.error('💥 Error rendering StepComponent:', error);
-    throw error; // Let ErrorBoundary catch it
+    console.error('❌ Error rendering StepComponent:', error);
+    return <div style={{padding: '20px', color: 'red'}}>Error loading step: {error.message}</div>;
   }
 };
 

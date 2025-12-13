@@ -3,12 +3,8 @@ import { useState } from "react";
 import StepLayout from "../structure/StepLayout";
 import { logEvent } from "../socket/logger";
 import { Logger } from "../socket/logger";
+import { colors, typography, spacing, borderRadius, shadows, components, transitions } from "../styles/studyDesignSystem";
 
-
-// Placeholder logging utility
-// function logSubmit(answer: { studyId: number; userId: number; response: string }) {
-//   console.log("logSubmit", answer);
-// }
 
 const PreInterview = ({currentStep, totalSteps}) => {
   const [response, setResponse] = useState("");
@@ -26,56 +22,106 @@ const PreInterview = ({currentStep, totalSteps}) => {
     setSubmitted(true);
   };
 
+  const canSubmit = response.trim() && !submitted;
+
   return (
-    <StepLayout title={`Pre-Interview (Step ${currentStep}/${totalSteps})`} showNext showPrev disableNext={!submitted}>
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          background: "#eee",
-          border: "2px solid #234",
-          margin: 40,
-          padding: 0,
-          maxWidth: 800,
-          marginLeft: "auto",
-          marginRight: "auto",
-        }}
-      >
-        <div style={{ padding: 32 }}>
-          <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 8 }}>Question</div>
-          <div style={{ fontSize: 18, marginBottom: 24 }}>
-            Your paper cited <span style={{ fontWeight: 700 }}>vitaLITy</span> 1.0. Can you tell me about the nature of how you knew about and/or used the system?
+    <StepLayout title={`Pre-Interview (Step ${currentStep}/${totalSteps})`} showNext showPrev={false} disableNext={!submitted}>
+      <div style={{
+        padding: spacing.md,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'flex-start',
+        minHeight: '100%',
+      }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            ...components.form.container,
+            margin: spacing.sm,
+            padding: spacing.md,
+            maxWidth: 600,
+          }}
+        >
+          <div style={{ marginBottom: spacing.md }}>
+            <label style={components.form.label}>Question</label>
+            <div style={{
+              ...components.form.description,
+              marginBottom: spacing.sm,
+            }}>
+              Your paper cited <span style={{ fontWeight: typography.fontWeight.bold, color: colors.primary.main }}>vitaLITy</span> 1.0. Can you tell me about the nature of how you knew about and/or used the system?
+            </div>
           </div>
-          <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 8 }}>Response</div>
-          <textarea
-            value={response}
-            onChange={e => setResponse(e.target.value)}
-            rows={6}
-            style={{ width: "100%", boxSizing: "border-box", fontSize: 18, padding: 8, border: "1.5px solid #444", borderRadius: 2, resize: "vertical", minHeight: 120, marginBottom: 32 }}
-            disabled={submitted}
-          />
+
+          <div style={{ marginBottom: spacing.md }}>
+            <label style={components.form.label}>Your Response</label>
+            <textarea
+              value={response}
+              onChange={e => setResponse(e.target.value)}
+              rows={3}
+              placeholder="Type your response here..."
+              style={{
+                ...components.input.default,
+                resize: "vertical",
+                minHeight: 60,
+                fontFamily: typography.fontFamily.main,
+                fontSize: typography.fontSize.base,
+                lineHeight: typography.lineHeight.relaxed,
+              }}
+              disabled={submitted}
+              onFocus={(e) => {
+                if (!submitted) {
+                  e.target.style.borderColor = colors.border.focus;
+                  e.target.style.boxShadow = `0 0 0 3px ${colors.shadow.sm}`;
+                }
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = colors.border.main;
+                e.target.style.boxShadow = 'none';
+              }}
+            />
+          </div>
+
           <div style={{ textAlign: "center" }}>
             <button
               type="submit"
               style={{
-                background: "#FFC700",
-                color: "#222",
-                fontWeight: 700,
-                fontSize: 22,
-                border: "2px solid #444",
-                borderRadius: 4,
-                padding: "8px 48px",
-                cursor: response.trim() && !submitted ? "pointer" : "not-allowed",
-                opacity: response.trim() && !submitted ? 1 : 0.6, 
-                marginTop: 8,
+                ...components.button.primary,
+                cursor: canSubmit ? "pointer" : "not-allowed",
+                opacity: canSubmit ? 1 : 0.5,
+                padding: `${spacing.md} ${spacing['2xl']}`,
+                fontSize: typography.fontSize.xl,
               }}
-              disabled={!response.trim() || submitted}
-              onClick={handleSubmit}
+              disabled={!canSubmit}
+              onMouseEnter={(e) => {
+                if (canSubmit) {
+                  (e.target as HTMLButtonElement).style.background = colors.primary.dark;
+                  (e.target as HTMLButtonElement).style.transform = 'translateY(-2px)';
+                  (e.target as HTMLButtonElement).style.boxShadow = shadows.md;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (canSubmit) {
+                  (e.target as HTMLButtonElement).style.background = colors.primary.main;
+                  (e.target as HTMLButtonElement).style.transform = 'translateY(0)';
+                  (e.target as HTMLButtonElement).style.boxShadow = shadows.sm;
+                }
+              }}
             >
-              Submit
+              {submitted ? "✓ Submitted" : "Submit Response"}
             </button>
+            {submitted && (
+              <div style={{
+                marginTop: spacing.md,
+                color: colors.state.success,
+                fontWeight: typography.fontWeight.semibold,
+                fontSize: typography.fontSize.base,
+              }}>
+                Thank you! Click "Next" to continue.
+              </div>
+            )}
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </StepLayout>
   );
 };

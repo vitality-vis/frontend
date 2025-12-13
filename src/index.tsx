@@ -5,9 +5,14 @@ import StudyWizard from "./structure/StudyWizard";
 import ErrorBoundary from "./structure/ErrorBoundary";
 import { encodeStudyId } from "./utils/studyConfig";
 import { setLoggingEnabled } from "./utils/loggingConfig";
+import socket from "./socket/initsocket";
 
 // STUDY MODE: Enable logging for research data collection
 setLoggingEnabled(true);
+
+// Manually connect socket (since it was created before logging was enabled)
+socket.connect();
+console.log("🔌 Socket manually connected for study mode");
 
 const App = () => (
   <BrowserRouter basename="/vitality2study">

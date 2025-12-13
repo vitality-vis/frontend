@@ -1,6 +1,7 @@
 import * as React from "react";
 import logo from "../assets/img/vitality-logo-2.png";
 import { useStepNav } from "../hooks/useStepNav";
+import { colors, typography, spacing, borderRadius, shadows, transitions } from "../styles/studyDesignSystem";
 
 export type StepLayoutProps = {
   title: string;
@@ -33,15 +34,15 @@ const StepLayout = ({
   return (
     <div
       style={{
-        fontFamily: "sans-serif",
-        background: "#fff",
+        fontFamily: typography.fontFamily.main,
+        background: colors.background.subtle,
         height: "100vh",
         overflow: "hidden",
       }}
     >
       <div
         style={{
-          border: "2px solid #222",
+          border: `1px solid ${colors.border.main}`,
           margin: 16,
           padding: 0,
           height: "calc(100vh - 32px)",
@@ -49,6 +50,9 @@ const StepLayout = ({
           flexDirection: "column",
           overflow: "hidden",
           boxSizing: "border-box",
+          borderRadius: borderRadius.lg,
+          background: colors.background.main,
+          boxShadow: shadows.lg,
         }}
       >
         {/* Header */}
@@ -56,12 +60,15 @@ const StepLayout = ({
           style={{
             display: "flex",
             alignItems: "center",
-            background: "#444",
-            color: "#fff",
-            padding: "8px 16px",
-            position: "relative", 
+            background: `linear-gradient(135deg, ${colors.neutral.dark} 0%, ${colors.neutral.medium} 100%)`,
+            color: colors.neutral.white,
+            padding: `${spacing.md} ${spacing.lg}`,
+            position: "relative",
             flex: "0 0 auto",
-            height: 60
+            height: 60,
+            borderTopLeftRadius: borderRadius.lg,
+            borderTopRightRadius: borderRadius.lg,
+            boxShadow: shadows.sm,
           }}
         >
           {/* Left: Logo and Back button together */}
@@ -72,19 +79,35 @@ const StepLayout = ({
             {showPrev && (
               <button
                 style={{
-                  background: "#FFC700",
-                  color: "#222",
-                  fontWeight: 700,
-                  fontSize: 20,
+                  background: colors.primary.main,
+                  color: colors.neutral.darkest,
+                  fontWeight: typography.fontWeight.bold,
+                  fontSize: typography.fontSize.lg,
                   border: "none",
-                  borderRadius: 4,
-                  padding: "8px 20px",
-                  marginLeft: 4,
+                  borderRadius: borderRadius.md,
+                  padding: `${spacing.sm} ${spacing.lg}`,
+                  marginLeft: spacing.sm,
                   cursor: !disableNext ? "pointer" : "not-allowed",
-                  opacity: !disableNext ? 1 : 0.6
+                  opacity: !disableNext ? 1 : 0.5,
+                  transition: `all ${transitions.normal}`,
+                  boxShadow: shadows.sm,
                 }}
                 onClick={handlePrev}
                 disabled={disableNext}
+                onMouseEnter={(e) => {
+                  if (!disableNext) {
+                    (e.target as HTMLButtonElement).style.background = colors.primary.dark;
+                    (e.target as HTMLButtonElement).style.transform = 'translateY(-1px)';
+                    (e.target as HTMLButtonElement).style.boxShadow = shadows.md;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!disableNext) {
+                    (e.target as HTMLButtonElement).style.background = colors.primary.main;
+                    (e.target as HTMLButtonElement).style.transform = 'translateY(0)';
+                    (e.target as HTMLButtonElement).style.boxShadow = shadows.sm;
+                  }
+                }}
               >
                 Back
               </button>
@@ -92,13 +115,17 @@ const StepLayout = ({
           </div>
 
           {/* Center: Title */}
-          <div style={{ 
-            position: "absolute", 
-            left: "50%", 
+          <div style={{
+            position: "absolute",
+            left: "50%",
             transform: "translateX(-50%)",
-            zIndex: 1 
+            zIndex: 1,
           }}>
-            <span style={{ fontWeight: 700, fontSize: 24 }}>{title}</span>
+            <span style={{
+              fontWeight: typography.fontWeight.bold,
+              fontSize: typography.fontSize['2xl'],
+              letterSpacing: '-0.5px',
+            }}>{title}</span>
           </div>
 
           {/* Right: Next button */}
@@ -106,18 +133,34 @@ const StepLayout = ({
             {showNext && (
               <button
                 style={{
-                  background: "#FFC700",
-                  color: "#222",
-                  fontWeight: 700,
-                  fontSize: 20,
+                  background: colors.primary.main,
+                  color: colors.neutral.darkest,
+                  fontWeight: typography.fontWeight.bold,
+                  fontSize: typography.fontSize.lg,
                   border: "none",
-                  borderRadius: 4,
-                  padding: "8px 24px",
-                  cursor: !disableNext ? "pointer": "not-allowed",
-                  opacity: !disableNext ? 1 : 0.6
+                  borderRadius: borderRadius.md,
+                  padding: `${spacing.sm} ${spacing.lg}`,
+                  cursor: !disableNext ? "pointer" : "not-allowed",
+                  opacity: !disableNext ? 1 : 0.5,
+                  transition: `all ${transitions.normal}`,
+                  boxShadow: shadows.sm,
                 }}
                 onClick={handleNext}
                 disabled={disableNext}
+                onMouseEnter={(e) => {
+                  if (!disableNext) {
+                    (e.target as HTMLButtonElement).style.background = colors.primary.dark;
+                    (e.target as HTMLButtonElement).style.transform = 'translateY(-1px)';
+                    (e.target as HTMLButtonElement).style.boxShadow = shadows.md;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!disableNext) {
+                    (e.target as HTMLButtonElement).style.background = colors.primary.main;
+                    (e.target as HTMLButtonElement).style.transform = 'translateY(0)';
+                    (e.target as HTMLButtonElement).style.boxShadow = shadows.sm;
+                  }
+                }}
               >
                 {nextButtonText}
               </button>
