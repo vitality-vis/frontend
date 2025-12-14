@@ -58,28 +58,114 @@ const Video = ({currentStep,totalSteps}) => {
           <p style={{
             fontSize: '20px',
             margin: 0,
-            color: '#34495e'
+            color: '#34495e',
+            textAlign: 'center'
           }}>
-            Watch the below video to get to know the system.
+            Watch the tutorial video to get to know the system.
           </p>
+          
+          {/* Video Link Card */}
           <div style={{
             width: '100%',
-            maxWidth: '960px',
-            aspectRatio: '16/9',
+            maxWidth: '600px',
+            backgroundColor: '#f8f9fa',
             border: '1px solid #e0e0e0',
-            borderRadius: '8px',
-            overflow: 'hidden',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            borderRadius: '12px',
+            padding: '32px',
+            textAlign: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
           }}>
-            <iframe
-              width="100%"
-              height="100%"
-              src="https://www.youtube.com/embed/Ngu_TrorL8U"
-              title="VitaLITy Tutorial Video"
-              allowFullScreen
-              style={{ border: 'none' }}
-            />
+            {/* YouTube Icon */}
+            <div style={{
+              width: '80px',
+              height: '80px',
+              margin: '0 auto 20px',
+              backgroundColor: '#ff0000',
+              borderRadius: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(255,0,0,0.3)'
+            }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="white">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            </div>
+            
+            <h3 style={{
+              fontSize: '20px',
+              fontWeight: 600,
+              color: '#2c3e50',
+              margin: '0 0 8px 0'
+            }}>
+              VitaLITy Tutorial Video
+            </h3>
+            
+            <p style={{
+              fontSize: '14px',
+              color: '#7f8c8d',
+              margin: '0 0 24px 0',
+              lineHeight: 1.5
+            }}>
+              This video will guide you through the main features of VitaLITy,<br/>
+              including searching, filtering, and visualizing research papers.
+            </p>
+            
+            <a 
+              href="https://www.youtube.com/watch?v=Ngu_TrorL8U"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => {
+                Logger.logStudyEvent({
+                  component: 'Video',
+                  action: 'click',
+                  interactionName: 'openTutorialVideo',
+                  url: 'https://www.youtube.com/watch?v=Ngu_TrorL8U'
+                });
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                backgroundColor: '#ff0000',
+                color: 'white',
+                padding: '14px 28px',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                fontSize: '16px',
+                fontWeight: 600,
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 8px rgba(255,0,0,0.3)'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = '#cc0000';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = '#ff0000';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M10 6.5L17.5 12L10 17.5V6.5Z"/>
+              </svg>
+              Watch on YouTube
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
           </div>
+          
+          <p style={{
+            fontSize: '14px',
+            color: '#7f8c8d',
+            margin: 0,
+            textAlign: 'center'
+          }}>
+            After watching the video, click <strong>Next</strong> to proceed.
+          </p>
         </div>
       </StepLayout>
 

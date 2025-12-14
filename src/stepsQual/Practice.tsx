@@ -4,6 +4,7 @@ import App from "../components/App";
 import StepLayout from "../structure/StepLayout";
 import { useStepNav } from "../hooks/useStepNav";
 import { Logger } from "../socket/logger";
+import LoadingScreen from "../components/LoadingScreen";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faCheckCircle,
@@ -28,6 +29,8 @@ const Practice = ({currentStep, totalSteps}) => {
   const { goNext } = useStepNav();
   const appRef = React.useRef<App>(null);
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showTaskPanel, setShowTaskPanel] = useState(true);
   const [tasks, setTasks] = useState<PracticeTask[]>([
@@ -298,7 +301,20 @@ const Practice = ({currentStep, totalSteps}) => {
         )}
       </div>
 
-      <App ref={appRef} isPractice={true} onPracticeTaskComplete={markTaskComplete} />
+      {isLoading && (
+        <LoadingScreen 
+          message="Loading VitaLITy..." 
+          subMessage="Preparing the literature review tool"
+          progress={loadingProgress}
+        />
+      )}
+      <App 
+        ref={appRef} 
+        isPractice={true} 
+        onPracticeTaskComplete={markTaskComplete}
+        onMetadataLoaded={() => setIsLoading(false)}
+        onLoadingProgress={(progress) => setLoadingProgress(progress)}
+      />
     </StepLayout>
   );
 };

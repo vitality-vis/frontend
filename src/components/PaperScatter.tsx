@@ -529,7 +529,8 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
 
     // Update layout when any Direct Manipulation control changes.
     React.useEffect(() => {
-        update();        
+        update();
+        updateSelections();  // Reapply selections after redraw so crosshair/outline persists
     }, [colorByAttribute, embeddingKey]);
 
     const onChangeColorByAttribute = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption): void => {

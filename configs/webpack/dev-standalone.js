@@ -3,6 +3,7 @@ const merge = require('webpack-merge');
 const webpack = require('webpack');
 const commonConfig = require('./common');
 const {resolve} = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = merge(commonConfig, {
   mode: 'development',
@@ -28,4 +29,9 @@ module.exports = merge(commonConfig, {
     },
   },
   devtool: 'eval-cheap-module-source-map',
+  plugins: [
+    new HtmlWebpackPlugin({
+      template: 'index-standalone.html.ejs',
+    }),
+  ],
 });

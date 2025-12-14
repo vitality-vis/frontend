@@ -1343,7 +1343,7 @@ function Table({
                 <div>
                     <div className="tr">
                         <div className="th">
-                            <Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/{data.length}</b>
+                            <Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/{data.length}</b> papers
                             {/*hard coding for speed*/}
                             </Text>
                             &nbsp;&nbsp;

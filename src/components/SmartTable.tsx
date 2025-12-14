@@ -647,12 +647,9 @@ function MultiSelectColumnFilter({
         selectedOptions: selected.map(opt => opt.value),
       });
   
-      if (setSpinner) {
-          setSpinner(true, "Applying Filters...");
-      }
+      // Removed spinner - filtering is client-side and doesn't need loading overlay
       
       // The only job is to update the filter state.
-      // The parent component (`Task1`) will see this change and fetch new data.
       const newFilterValues = selected.map(opt => opt.value);
       setFilter(newFilterValues.length > 0 ? newFilterValues : undefined);
     };
@@ -699,19 +696,7 @@ function MultiSelectColumnFilter({
 function DefaultColumnFilter({
     column: { filterValue, setFilter, id },
   }) {
-    const [value, setValue] = React.useState(filterValue);
-    
-    // Create a debounced version of the setFilter function
-    const debouncedSetFilter = useAsyncDebounce(newFilterValue => {
-      setFilter(newFilterValue || undefined);
-    }, 300); // Wait 300ms after user stops typing
-  
-    const onChange = (_, newValue) => {
-      // 1. Update the local state immediately to show text in the search box
-      setValue(newValue);
-      // 2. Call the debounced function to update the actual filter
-      debouncedSetFilter(newValue);
-    };
+    const [value, setValue] = React.useState(filterValue || '');
     
     // Only add ID if this is the Title column
     const searchBoxId = id === 'Title' ? 'titleSearchBox' : undefined;
@@ -720,14 +705,20 @@ function DefaultColumnFilter({
       <SearchBox
         id={searchBoxId}
         onClear={() => {
-          setValue(''); // Clear local state
+          setValue('');
           setFilter(undefined);
         }}
         clearButtonProps={{ iconProps: { iconName: "Times" } }}
-        value={value || ''}
+        value={value}
         placeholder="Search"
-        // onSearch is not needed when debouncing onChange
-        onChange={onChange}
+        onSearch={(newValue) => {
+          // Only trigger filter on Enter key press
+          setFilter(newValue || undefined);
+        }}
+        onChange={(_, newValue) => {
+          // Just update local state - don't trigger filter
+          setValue(newValue);
+        }}
       />
     );
   }
@@ -1562,7 +1553,7 @@ function Table({
                 <div>
                     <div className="tr">
                         <div className="th">
-                            <Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/{totalPaperCount !== null && totalPaperCount !== undefined ? totalPaperCount : data.length}</b>
+                            <Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/{totalPaperCount !== null && totalPaperCount !== undefined ? totalPaperCount : data.length}</b> papers
                             </Text>
                             &nbsp;&nbsp;
                             <div id="globalSettingsArea" style={{float: "right", marginRight: 5,borderRadius: 8 }}>

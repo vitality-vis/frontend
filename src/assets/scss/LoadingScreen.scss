@@ -1,0 +1,45 @@
+.loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.98);
+  z-index: 9999;
+}
+
+.loading-content {
+  text-align: center;
+  padding: 40px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.loading-message {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1.5rem;
+  color: #333;
+  font-weight: 500;
+}
+
+.loading-sub-message {
+  margin-top: 0;
+  margin-bottom: 24px;
+  font-size: 1rem;
+  color: #666;
+}
+
+.progress-container {
+  width: 100%;
+}
+
+.progress-text {
+  margin-top: 12px;
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+}

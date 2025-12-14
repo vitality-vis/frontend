@@ -251,6 +251,7 @@ const preprocessMetadata = (metadata, keyColumn = "Keyword", valueColumn = "Coun
 
 interface AppProps {
     onMetadataLoaded?: () => void;
+    onLoadingProgress?: (progress: number) => void;
     isPractice?: boolean;
     onPracticeTaskComplete?: (taskId: string) => void;
 }
@@ -1104,10 +1105,24 @@ class App extends React.Component<AppProps, AppState> {
     };
 
     loadInitialData = async () => {
+        const { onLoadingProgress } = this.props;
+        
         try {
-            await this.getMetaData(); // Load metadata first
-            this.getData(); // Load the main data
-            this.getUmapPoints(); // Load UMAP points data
+            // Report initial progress
+            if (onLoadingProgress) onLoadingProgress(0.1);
+            
+            // Load metadata first (this is usually the slowest)
+            await this.getMetaData();
+            if (onLoadingProgress) onLoadingProgress(0.5);
+            
+            // Load papers data
+            await this.getData();
+            if (onLoadingProgress) onLoadingProgress(0.8);
+            
+            // Load UMAP points
+            await this.getUmapPoints();
+            if (onLoadingProgress) onLoadingProgress(1.0);
+            
         } catch (error) {
             console.error("Error loading initial data:", error);
             this.setState({dataLoaded: false});
@@ -1782,7 +1797,6 @@ class App extends React.Component<AppProps, AppState> {
             columnFilterValues: this.state.columnFilterValues["all"],
             updateColumnFilterValues: (filter) => {
                 const {allDataLoaded, columnFilterValues} = this.state;
-                this.setState({spinner: true, loadingText: 'Loading Data...'});
 
                 // Practice task: Check if user applied any filter (search task)
                 if (this.props.isPractice && filter && filter.length > 0) {
@@ -1790,12 +1804,11 @@ class App extends React.Component<AppProps, AppState> {
                 }
 
                 if (JSON.stringify(columnFilterValues["all"]) === JSON.stringify(filter)) {
-                    setTimeout(() => {
-                        this.setState({spinner: false, loadingText: 'Loading Meta Data...'});
-                    }, 10); // Delay of 500ms
                     return;
                 }
                 if (!allDataLoaded) {
+                    // Only show spinner when loading from server
+                    this.setState({spinner: true, loadingText: 'Loading Data...'});
                     this.setState(
                         {
                             dataAll: [],
@@ -1809,7 +1822,7 @@ class App extends React.Component<AppProps, AppState> {
                     // Update the column filter values
                     this.updateStateProp("columnFilterValues", filter, "all");
                 } else {
-                    // console.log("Updating column filter values:", filter);
+                    // Client-side filtering - no spinner needed
                     // Update column filter values without resetting data or calling loadMoreData
                     this.updateStateProp("columnFilterValues", filter, "all");
 
@@ -1829,15 +1842,11 @@ class App extends React.Component<AppProps, AppState> {
                             dataFilteredID: concatenatedFilteredIDs,
                         };
                     });
-                    setTimeout(() => {
-                        this.setState({spinner: false, loadingText: 'Loading Meta Data...'});
-                    }, 10); // Delay of 500ms
                 }
             },
             globalFilterValue: this.state.globalFilterValue["all"],
             updateGlobalFilterValue: (filter) => {
                 const {allDataLoaded, columnFilterValues} = this.state;
-                this.setState({spinner: true, loadingText: 'Loading Data...'});
 
                 // Practice task: Check if user used global search (search task)
                 if (this.props.isPractice && filter && filter.length > 0) {
@@ -1845,12 +1854,11 @@ class App extends React.Component<AppProps, AppState> {
                 }
 
                 if (JSON.stringify(columnFilterValues["all"]) === JSON.stringify(filter)) {
-                    setTimeout(() => {
-                        this.setState({spinner: false, loadingText: 'Loading Meta Data...'});
-                    }, 10); // Delay of 500ms
                     return;
                 }
                 if (!allDataLoaded) {
+                    // Only show spinner when loading from server
+                    this.setState({spinner: true, loadingText: 'Loading Data...'});
                     this.setState(
                         {
                             dataAll: [],
@@ -1864,7 +1872,7 @@ class App extends React.Component<AppProps, AppState> {
                     // Update the column filter values
                     this.updateStateProp("columnFilterValues", filter, "all");
                 } else {
-                    // console.log("Updating column filter values:", filter);
+                    // Client-side filtering - no spinner needed
                     // Update column filter values without resetting data or calling loadMoreData
                     this.updateStateProp("columnFilterValues", filter, "all");
 
@@ -1878,9 +1886,6 @@ class App extends React.Component<AppProps, AppState> {
                         },
                         dataFilteredID: filteredData.map((paper) => paper.ID),
                     }));
-                    setTimeout(() => {
-                        this.setState({spinner: false, loadingText: 'Loading Meta Data...'});
-                    }, 10); // Delay of 500ms
                 }
             },
             columnFilterTypes: this.state.columnFilterTypes,
@@ -2299,7 +2304,7 @@ class App extends React.Component<AppProps, AppState> {
                 commandBarButtonAs: () => (
                     <DefaultButton
                         id = "metaTableButton"
-                        text="Meta Table"
+                        text="Metadata"
                         iconProps={{iconName: "Table"}}
                         onClick={() => {
                             const wasOpen = this.state.isMetaTableModalOpen;
@@ -2467,11 +2472,11 @@ class App extends React.Component<AppProps, AppState> {
                     >
                         <div className="p-lg">
                             <h2 className="p-0 m-0">
-                                Meta Table
+                                Metadata
                                 <IconButton
                                     className="float-right"
                                     iconProps={{iconName: "Times"}}
-                                    ariaLabel="Close meta table modal"
+                                    ariaLabel="Close metadata modal"
                                     onClick={() => {
                                         this.setState({isMetaTableModalOpen: false});
                                         
