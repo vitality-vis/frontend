@@ -828,6 +828,10 @@ class App extends React.Component<AppProps, AppState> {
         });
     };
     removeTab = (id: string) => {
+        // Store current scroll position before state change
+        const scrollY = window.scrollY;
+        const scrollX = window.scrollX;
+        
         const tabToRemove = this.state.tabs.find(tab => tab.id === id);
         let newTabs = this.state.tabs.filter((tab) => tab.id !== id);
 
@@ -845,6 +849,9 @@ class App extends React.Component<AppProps, AppState> {
             tabs: newTabs,
             activeKey: newActiveKey,
             dialogStates: newDialogStates
+        }, () => {
+            // Restore scroll position after state update
+            window.scrollTo(scrollX, scrollY);
         });
 
         // Tab removal
@@ -2869,17 +2876,16 @@ class App extends React.Component<AppProps, AppState> {
                                         onClick={this.addNewTab}
                                         aria-label="Add new tab"
                                     >
-                                        {/* Transparent "+" sign inside a gray circle with SVG */}
+                                        {/* Larger "+" sign */}
                                         <svg
                                             xmlns="http://www.w3.org/2000/svg"
-                                            width="30px"
-                                            height="30px"
+                                            width="28px"
+                                            height="28px"
                                             viewBox="0 0 24 24"
                                             className="add-icon"
                                         >
-                                            <circle cx="12" cy="12" r="10" stroke="gray" strokeWidth="1.5" fill="none"/>
-                                            <line x1="8" y1="12" x2="16" y2="12" stroke="gray" strokeWidth="1.5"/>
-                                            <line x1="12" y1="8" x2="12" y2="16" stroke="gray" strokeWidth="1.5"/>
+                                            <line x1="6" y1="12" x2="18" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                            <line x1="12" y1="6" x2="12" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                                         </svg>
                                     </Button>
                                 </Nav.Item>

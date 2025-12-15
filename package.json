@@ -82,9 +82,9 @@
   "dependencies": {
     "@fluentui/react": "^8.122.9",
     "@fluentui/react-icons": "^0.1.19",
-    "@fortawesome/fontawesome-svg-core": "^7.1.0",
-    "@fortawesome/free-solid-svg-icons": "^7.1.0",
-    "@fortawesome/react-fontawesome": "0.2.2",
+    "@fortawesome/fontawesome-svg-core": "^6.5.0",
+    "@fortawesome/free-solid-svg-icons": "^6.5.0",
+    "@fortawesome/react-fontawesome": "^0.2.2",
     "@google-cloud/logging": "^11.2.0",
     "@material-ui/core": "^4.11.0",
     "@types/jest": "^30.0.0",

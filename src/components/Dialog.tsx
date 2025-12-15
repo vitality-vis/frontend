@@ -306,7 +306,7 @@
 
 import * as React from "react";
 import "./../assets/scss/App.scss";
-import { DefaultButton, Dropdown, IDropdownOption } from "@fluentui/react";
+import { ActionButton, DefaultButton, Dropdown, IconButton, IDropdownOption, Modal, Stack } from "@fluentui/react";
 import { observer } from "mobx-react";
 import { getPaperByTitle } from "./../request";
 import Markdown from "react-markdown";
@@ -362,6 +362,43 @@ export const Dialog = observer(({ props }) => {
   >(savedDisplayMessages || []);
   const [isWaiting, setIsWaiting] = React.useState(false);
   const [chatMode, setChatMode] = React.useState<string>("normal");
+  
+  // Paper info modal state
+  const [isModalOpen, setModalState] = React.useState(false);
+  const [paperInfo, setPaperInfo] = React.useState<any>(null);
+  const [loadingPaperInfo, setLoadingPaperInfo] = React.useState(false);
+
+  // Function to open paper info modal
+  const openPaperInfoModal = async (title: string, id: string | null) => {
+    setLoadingPaperInfo(true);
+    setModalState(true);
+    
+    try {
+      let paper = null;
+      if (id) {
+        paper = await getPaperById(id);
+      } else {
+        const papers = await getPaperByTitle(title);
+        paper = papers.length > 0 ? papers[0] : null;
+      }
+      
+      if (paper) {
+        setPaperInfo(paper);
+        Logger.logUIInteraction({
+          component: "Dialog",
+          action: "paperInfoModalOpen",
+          paperTitle: title,
+          paperId: paper.ID || id,
+        });
+      } else {
+        setPaperInfo(null);
+      }
+    } catch (error) {
+      console.error("Error fetching paper info:", error);
+      setPaperInfo(null);
+    }
+    setLoadingPaperInfo(false);
+  };
 
   // Sync displayMessages to dialogStates whenever it changes
   React.useEffect(() => {
@@ -379,7 +416,30 @@ export const Dialog = observer(({ props }) => {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
     prevMessageCountRef.current = displayMessages.length;
+
+    // Reset button states when a new AI message is added
+    if (displayMessages.length > 0 && displayMessages[displayMessages.length - 1].role === "ai") {
+      setButtonsClicked({ locateAll: false, addAll: false, saveAll: false });
+    }
   }, [displayMessages, isWaiting]);
+
+  // Handle Enter key to send message
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault(); // Prevent newline
+      if (chatText.trim()) {
+        Logger.logUIInteraction({
+          component: "Dialog",
+          action: "askButtonClick",
+          value: chatText,
+          chatHistoryLength: chatHistory.length,
+          mode: chatMode,
+          trigger: "enter_key",
+        });
+        chatRequest();
+      }
+    }
+  };
 
   const onChangeChatText = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = e.target.value;
@@ -406,6 +466,42 @@ export const Dialog = observer(({ props }) => {
     }
     return "";
   }, [displayMessages]);
+
+  // Extract all papers from the current AI response
+  const extractAllPapers = React.useCallback(() => {
+    const text = currentAIResponseText();
+    const papers: { title: string; id: string | null }[] = [];
+
+    // Match paper titles in format: **Title: xxx [[ID:yyy]]** or **Title:** xxx [[ID:yyy]]
+    const titlePattern = /\*\*Title:\*\*\s*([^\[]+)\s*\[\[ID:([^\]]+)\]\]/gi;
+    let match;
+
+    while ((match = titlePattern.exec(text)) !== null) {
+      const title = match[1].trim();
+      const id = match[2].trim();
+      papers.push({ title, id });
+    }
+
+    // Also match list items: Title: xxx [[ID:yyy]]
+    const listPattern = /Title:\s*([^\[]+)\s*\[\[ID:([^\]]+)\]\]/gi;
+    while ((match = listPattern.exec(text)) !== null) {
+      const title = match[1].trim();
+      const id = match[2].trim();
+      // Check if not already added
+      if (!papers.some(p => p.id === id)) {
+        papers.push({ title, id });
+      }
+    }
+
+    return papers;
+  }, [currentAIResponseText]);
+
+  // State to track which buttons have been clicked
+  const [buttonsClicked, setButtonsClicked] = React.useState({
+    locateAll: false,
+    addAll: false,
+    saveAll: false
+  });
 
   const chatRequest = () => {
     if (!chatText.trim()) return;
@@ -513,7 +609,7 @@ export const Dialog = observer(({ props }) => {
         <span
           style={{ color: "blue", fontWeight: "bold", cursor: "pointer" }}
           onClick={() => {
-            // 🟣 Log selecting a paper from response (ported)
+            // 🟣 Open paper info modal when clicking on paper title
             Logger.logUIInteraction({
               component: "Dialog",
               action: "selectPaperFromResponse",
@@ -522,12 +618,14 @@ export const Dialog = observer(({ props }) => {
               paperId: id || undefined,
             });
             updateDialogState({ chatSelectedPaper: title });
+            // Open info modal
+            openPaperInfoModal(title, id);
           }}
         >
           {title}
         </span>
 
-        {id && <div style={{ color: "red", fontSize: "0.85em" }}>ID: {id}</div>}
+        {id && <div style={{ color: "gray", fontSize: "0.75em" }}>ID: {id}</div>}
 
         <div style={{ marginTop: "0.2em" }}>
           <DefaultButton
@@ -762,7 +860,8 @@ export const Dialog = observer(({ props }) => {
             className="chat-input"
             value={chatText}
             onChange={onChangeChatText}
-            placeholder="Type your message..."
+            onKeyDown={onKeyDown}
+            placeholder="Type your message"
             rows={1}
           />
           <DefaultButton
@@ -806,41 +905,189 @@ export const Dialog = observer(({ props }) => {
             text="ALL"
             iconProps={{ iconName: "Locate" }}
             styles={{ root: { minWidth: 0, padding: "0 6px" } }}
-            onClick={() => {
-              // Ported "ALL locate" log using latest AI response length
+            disabled={buttonsClicked.locateAll}
+            onClick={async () => {
+              const papers = extractAllPapers();
               Logger.logUIInteraction({
                 component: "Dialog",
                 action: "selectAllPapers",
                 responseLength: currentAIResponseText().length,
+                paperCount: papers.length,
               });
+
+              if (papers.length === 0) {
+                console.log("No papers found in response");
+                return;
+              }
+
+              // Collect all paper IDs
+              const paperIds: string[] = [];
+              for (const paper of papers) {
+                if (paper.id) {
+                  paperIds.push(paper.id);
+                }
+              }
+
+              if (paperIds.length > 0) {
+                addToSelectNodeIDs(paperIds, "scatterplot");
+                setButtonsClicked(prev => ({ ...prev, locateAll: true }));
+              }
             }}
           />
           <DefaultButton
             text="ALL"
             iconProps={{ iconName: "PlusCircle" }}
             styles={{ root: { minWidth: 0, padding: "0 6px" } }}
-            onClick={() => {
+            disabled={buttonsClicked.addAll}
+            onClick={async () => {
+              const papers = extractAllPapers();
               Logger.logUIInteraction({
                 component: "Dialog",
                 action: "addAllToSimilarInputPapers",
                 responseLength: currentAIResponseText().length,
+                paperCount: papers.length,
               });
+
+              if (papers.length === 0) {
+                console.log("No papers found in response");
+                return;
+              }
+
+              // Add all papers to similar input
+              for (const paper of papers) {
+                if (paper.id) {
+                  try {
+                    const paperObj = await getPaperById(paper.id);
+                    if (paperObj) {
+                      addToSimilarInputPapers(paperObj);
+                    }
+                  } catch (e) {
+                    console.error(`Failed to fetch paper ${paper.id}:`, e);
+                  }
+                }
+              }
+              setButtonsClicked(prev => ({ ...prev, addAll: true }));
             }}
           />
           <DefaultButton
             text="ALL"
             iconProps={{ iconName: "Save" }}
             styles={{ root: { minWidth: 0, padding: "0 6px" } }}
-            onClick={() => {
+            disabled={buttonsClicked.saveAll}
+            onClick={async () => {
+              const papers = extractAllPapers();
               Logger.logUIInteraction({
                 component: "Dialog",
                 action: "saveAllPapers",
                 responseLength: currentAIResponseText().length,
+                paperCount: papers.length,
               });
+
+              if (papers.length === 0) {
+                console.log("No papers found in response");
+                return;
+              }
+
+              // Save all papers
+              for (const paper of papers) {
+                if (paper.id) {
+                  try {
+                    const paperObj = await getPaperById(paper.id);
+                    if (paperObj) {
+                      addToSavedPapers(paperObj);
+                    }
+                  } catch (e) {
+                    console.error(`Failed to fetch paper ${paper.id}:`, e);
+                  }
+                }
+              }
+              setButtonsClicked(prev => ({ ...prev, saveAll: true }));
             }}
           />
         </div>
       </div>
+
+      {/* Paper Info Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onDismiss={() => setModalState(false)}
+        isBlocking={false}
+        containerClassName="paper-info-modal"
+        styles={{
+          main: {
+            maxWidth: 600,
+            padding: 24,
+            borderRadius: 12,
+          },
+        }}
+      >
+        {loadingPaperInfo ? (
+          <div style={{ padding: 20, textAlign: "center" }}>Loading...</div>
+        ) : paperInfo ? (
+          <Stack tokens={{ childrenGap: 16 }}>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
+              {paperInfo.Title}
+            </h2>
+            <div style={{ fontSize: 14, color: "#666" }}>
+              <strong>Authors:</strong> {paperInfo.Authors}
+            </div>
+            <div style={{ fontSize: 14, color: "#666" }}>
+              <strong>Year:</strong> {paperInfo.Year}
+            </div>
+            <div style={{ fontSize: 14, color: "#666" }}>
+              <strong>Venue:</strong> {paperInfo.Venue}
+            </div>
+            <div style={{ fontSize: 14 }}>
+              <strong>Abstract:</strong>
+              <p style={{ marginTop: 8, lineHeight: 1.6 }}>
+                {paperInfo.Abstract}
+              </p>
+            </div>
+            {paperInfo.DOI && (
+              <div style={{ fontSize: 14 }}>
+                <strong>DOI:</strong>{" "}
+                <a
+                  href={`https://doi.org/${paperInfo.DOI}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "var(--color-primary)" }}
+                >
+                  {paperInfo.DOI}
+                </a>
+              </div>
+            )}
+            <Stack horizontal tokens={{ childrenGap: 12 }} style={{ marginTop: 16 }}>
+              <ActionButton
+                iconProps={{ iconName: "Add" }}
+                text="Add to Selection"
+                onClick={() => {
+                  if (paperInfo && paperInfo.ID) {
+                    addToSelectNodeIDs([paperInfo.ID], "scatterplot");
+                    setModalState(false);
+                  }
+                }}
+              />
+              <ActionButton
+                iconProps={{ iconName: "Save" }}
+                text="Save Paper"
+                onClick={() => {
+                  if (paperInfo) {
+                    addToSavedPapers(paperInfo);
+                    setModalState(false);
+                  }
+                }}
+              />
+              <ActionButton
+                iconProps={{ iconName: "Cancel" }}
+                text="Close"
+                onClick={() => setModalState(false)}
+              />
+            </Stack>
+          </Stack>
+        ) : (
+          <div style={{ padding: 20, textAlign: "center" }}>Paper not found</div>
+        )}
+      </Modal>
     </div>
   );
 });

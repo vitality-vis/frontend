@@ -11,6 +11,7 @@ import { ActionButton, DefaultButton, Dropdown, Icon, IconButton, IDropdownOptio
 import {useEffect, useState} from "react";
 import { Logger } from "../socket/logger";
 import { API_BASE_URL } from '../config';
+import { getPaperById } from './Dialog';
 
 const baseUrl = `${API_BASE_URL}/`;
 
@@ -525,6 +526,11 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
 
         // Draw the datapoints
         scatterplot.draw(datapoints, {transition: true});
+        
+        // Reapply selections after draw transition completes to ensure crosshairs persist
+        setTimeout(() => {
+            updateSelections();
+        }, 350);
     }
 
     // Update layout when any Direct Manipulation control changes.
@@ -548,26 +554,12 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
     const [isModalOpen, setModalState] = React.useState(false);
     const [selectedPapers, setSelectedPapers] = useState([]); // For storing selected papers' details
     const fetchPaperDetails = async (paperID) => {
-        const queryPayload = {
-            id_list: [paperID], // Specify the paper ID in the payload
-        };
-
         try {
-            const response = await fetch(`${baseUrl}getPapers`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(queryPayload),
-            });
-            // console.log('response',response)
-
-            if (response.ok) {
-                const paperData = await response.json();
-                // console.log('paperData:',paperData)
-                return paperData.length > 0 ? paperData[0] : null; // Return the paper details
+            const paperData = await getPaperById(paperID);
+            if (paperData) {
+                return paperData;
             } else {
-                console.error("Failed to fetch paper details");
+                console.error("Failed to fetch paper details for ID:", paperID);
                 return null;
             }
         } catch (error) {
@@ -724,9 +716,9 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                             <div id="detailTooltip">
                                 <table>
                                     <colgroup>
-                                        <col style={{ width: 60 }} />
-                                        <col style={{ width: "calc(100% - 150)" }} />
-                                        <col style={{ width: 90 }} />
+                                        <col style={{ width: 50 }} />
+                                        <col style={{ width: "auto" }} />
+                                        <col style={{ width: 100 }} />
                                     </colgroup>
                                     <tbody>
                                         <tr>

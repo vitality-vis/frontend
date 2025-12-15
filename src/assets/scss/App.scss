@@ -1,321 +1,884 @@
-@import url('https://fonts.googleapis.com/css?family=Titillium+Web');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-body{
-    margin: 0;
+// ============================================
+// MODERN DESIGN SYSTEM - CSS Variables
+// ============================================
+:root {
+  // Colors - Modern palette
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-primary-light: #eff6ff;
+  --color-secondary: #64748b;
+  --color-success: #10b981;
+  --color-success-light: #d1fae5;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  
+  // Neutrals
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-border: #e2e8f0;
+  --color-border-light: #f1f5f9;
+  --color-text: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #94a3b8;
+  
+  // Shadows - Subtle and layered
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  
+  // Spacing
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  
+  // Border radius - Modern rounded
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+  
+  // Transitions
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
 }
 
-body, .ms-Label, .ms-Pivot, .ms-Dropdown, .ms-Button, .ms-SearchBox, text{
-    font-family: 'Titillium Web';
+// ============================================
+// BASE STYLES
+// ============================================
+body {
+  margin: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.text-center{
-    text-align: center;
+body, .ms-Label, .ms-Pivot, .ms-Dropdown, .ms-Button, .ms-SearchBox, text {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-.Select-placeholder{
-    text-align: left;
+* {
+  box-sizing: border-box;
 }
 
-.Select-multi-value-wrapper{
-    text-align: left;
+// ============================================
+// UTILITY CLASSES
+// ============================================
+.text-center { text-align: center; }
+
+.Select-placeholder { text-align: left; }
+.Select-multi-value-wrapper { text-align: left; }
+.Select-control {
+  text-align: left;
+  white-space: normal;
+  overflow: none;
+}
+.Select-menu-outer div {
+  text-align: left;
+  white-space: nowrap;
+  overflow-x: auto;
 }
 
-.Select-control{
-    text-align: left;
-    white-space: normal;
-    overflow: none;
-}
-
-.Select-menu-outer div{
-    text-align: left;
-    white-space: nowrap;
-    overflow-x: auto;
-}
-
+// ============================================
+// SPLIT PANES - Modern gutters
+// ============================================
 .gutter {
-    background-color: #eee;
-    background-repeat: no-repeat;
-    background-position: 50%;
+  background-color: var(--color-border-light);
+  background-repeat: no-repeat;
+  background-position: 50%;
+  transition: background-color var(--transition-normal);
+  
+  &:hover {
+    background-color: var(--color-border);
+  }
 }
 
 .gutter.gutter-vertical {
-    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAFAQMAAABo7865AAAABlBMVEVHcEzMzMzyAv2sAAAAAXRSTlMAQObYZgAAABBJREFUeF5jOAMEEAIEEFwAn3kMwcB6I2AAAAAASUVORK5CYII=');
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAFAQMAAABo7865AAAABlBMVEVHcEzMzMzyAv2sAAAAAXRSTlMAQObYZgAAABBJREFUeF5jOAMEEAIEEFwAn3kMwcB6I2AAAAAASUVORK5CYII=');
+  cursor: row-resize;
 }
 
 .gutter.gutter-horizontal {
-    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
+  cursor: col-resize;
+  height: 60px;
 }
 
 .split {
-    -webkit-box-sizing: border-box;
-    -moz-box-sizing: border-box;
-    box-sizing: border-box;
-    overflow: auto;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  overflow: auto;
 }
 
 .split,
 .gutter.gutter-horizontal {
-    float: left;
+  float: left;
 }
 
-.gutter.gutter-horizontal{
-    height: 60px;
-}
+// Spacing utilities
+.p-lg { padding: var(--spacing-lg); }
+.p-md { padding: var(--spacing-md); }
+.p-sm { padding: var(--spacing-sm); }
+.p-b-0 { padding-bottom: 0; }
+.p-t-0 { padding-top: 0; }
+.p-0 { padding: 0; }
+.m-0 { margin: 0; }
+.m-t-sm { margin-top: var(--spacing-sm); }
+.m-t-md { margin-top: var(--spacing-md); }
+.m-t-lg { margin-top: var(--spacing-lg); }
+.float-right { float: right; }
+.float-left { float: left; }
 
-.p-lg{
-    padding: 16px;
-}
-
-.p-md{
-    padding: 8px;
-}
-
-.p-sm{
-    padding: 4px;
-}
-
-.p-b-0{
-    padding-bottom: 0;
-} 
-
-.p-t-0{
-    padding-top: 0;
-} 
-
-.p-0{
-    padding: 0;
-} 
-
-.m-0{
-    margin: 0;
-} 
-
-.m-t-sm{
-    margin-top: 4px;
-} 
-
-.m-t-md{
-    margin-top: 8px;
-} 
-
-.m-t-lg{
-    margin-top: 16px;
-} 
-
-.float-right{
-    float: right;
-}
-
-.float-left{
-    float: left;
-}
-
-// .similarityPanelPivot *[data-content="Output Similar"]  {
-.similarityPanelPivot .ms-Pivot-link:last-child{    
-    float: right !important;
-    // background-color: #e8f5e9;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    margin-right: 0 !important;
+// ============================================
+// SIMILARITY PANEL PIVOT - Modern tabs
+// ============================================
+.similarityPanelPivot .ms-Pivot-link:last-child {
+  float: right !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-right: 0 !important;
 }
 
 .similarityPanelPivot .ms-Pivot-link:last-child:hover::before {
-    left: 0px !important;
-    right: 0px !important;
-    background-color: #27ae60;
+  left: 0px !important;
+  right: 0px !important;
+  background-color: var(--color-success);
 }
 
 .similarityPanelPivot .is-selected:last-child::before {
-    left: 0px !important;
-    right: 0px !important;
-    background-color: #27ae60;
+  left: 0px !important;
+  right: 0px !important;
+  background-color: var(--color-success);
 }
 
 #similaritySearchPanel {
-    overflow-x: auto;
-    overflow-y: auto;
-    max-width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-width: 100%;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  padding: var(--spacing-md);
+  padding-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+  max-height: 560px;
+  box-shadow: var(--shadow-sm);
 }
 
 #similaritySearchPanel .ms-Stack {
-    flex-wrap: wrap;
-    max-width: 100%;
+  flex-wrap: wrap;
+  max-width: 100%;
 }
 
 #similaritySearchPanel .ms-Label {
-    white-space: nowrap;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--color-text);
 }
 
 #similaritySearchPanel .ms-Dropdown {
-    flex-shrink: 1;
+  flex-shrink: 1;
 }
 
-.w-100 {
-    width: 100%;
-}
+.w-100 { width: 100%; }
 
-.iconButton{
-    color: #116EBE;
+// ============================================
+// BUTTONS - Modern styling
+// ============================================
+.iconButton {
+  color: var(--color-primary) !important;
+  border-radius: var(--radius-md) !important;
+  transition: all var(--transition-fast) !important;
+  
+  &:hover {
+    background-color: var(--color-primary-light) !important;
+    transform: translateY(-1px);
   }
+}
 
+// ============================================
+// CHAT TABS - Modern tab interface
+// ============================================
+// Plus button - Simple, aligned with tab height
 .add-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background-color: #e0e0e0; /* Gray circle */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  border: 1px solid var(--color-border);
+  transition: all var(--transition-normal);
+  margin-left: -5px;
+  margin-top: -4px;
+  padding: 0;
+  color: var(--color-text-secondary);
+
+  &:hover {
+    background-color: var(--color-primary-light);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
 }
 
 .add-icon {
-    width: 30px;
-    height: 30px;
+  width: 16px;
+  height: 16px;
+  
+
+  line {
+    stroke: currentColor;
+    stroke-width: 2.5;
+    transition: stroke var(--transition-fast);
+  }
 }
 
-.add-button:hover .add-icon line {
-    stroke: #007bff; /* Change color on hover */
-}
-
-.add-button:hover {
-    background-color: #d0d0d0; /* Change background on hover */
-}
+// ============================================
+// DIALOG CONTAINER - Modern chat layout
+// ============================================
 .dialog-container {
-    min-height: 320px;
-    max-height: 440px; // Adjust this height to match the visualization block
-    overflow-y: auto;
-    border: 1px solid #ddd; // Optional: Add border for visual separation
-    padding: 10px; // Optional: Padding for the content
+  min-height: 280px;
+  max-height: 380px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .dialog-content {
-    height: 100%;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
-
-
-////////////////////////////////////////////////////////////
-// Chat Window Styles
-  
+// ============================================
+// BOTTOM PANEL ALIGNMENT - Make all panels same height
+// ============================================
+// The second Split row with Similarity Search, Visualization, Chat Windows
+// needs consistent bottom alignment - use auto height with max-height
 
 #chatWindowsPanel {
-    height: 600px;;          
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .dialog-tab-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;             
-  }
-  
-  .dialog-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;            
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    background: #fff;
-    overflow: hidden;
-  }
-  
-  .chat-messages {
-    display: flex;
-    flex-direction: column;
-    height: 290px;
-    gap: 0.5rem;
-    padding: 1rem;
-    overflow-y: auto;
-    background: #fafafa;
-  }
-  
-.chat-input-area {
-  flex-shrink: 0;           
-  border-top: 1px solid #ddd;
-  padding: 0.5rem;
-  background: #fff;
+  min-height: 500px;
+  max-height: 600px;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
 }
-  
-  .chat-input-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 0.5rem;
-  }
-  
-  .chat-input {
-    flex: 1;
-    resize: none;
-    font-size: 1rem;
-    padding: 0.5rem;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-    overflow-y: auto;
-    line-height: 1.5;
-    max-height: calc(1.5em * 3 + 1rem);
-  }
-  
-  .chat-action-row {
-    margin-top: 0.5rem;
-    display: flex;
-    gap: 0.4rem;
-    flex-wrap: wrap;
-    align-items: center;
-  }
 
-  .chat-bubble {
-    max-width: 70%;
-    padding: 0.75rem 1rem;
-    border-radius: 12px;
-    word-break: break-word;
-  }
-  
-  .chat-bubble.user {
-    align-self: flex-end;
-    background: #daf1ff;
-    border-bottom-right-radius: 4px;
-  }
-  
-  .chat-bubble.ai {
-    align-self: flex-start;
-    background: #f1f1f1;
-    border-bottom-left-radius: 4px;
-  }
+// Visualization panel should match
+.split.p-md:has(#parent-wrapper) {
+  min-height: 480px;
+  max-height: 560px;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff !important;
+}
 
-  .spinner {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border: 2px solid #ccc;
-    border-top: 2px solid #333;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-right: 6px;
-  }
+.split.p-md:has(#visualizationPanel) {
+  background: #ffffff !important;
+}
+
+#parent-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+#canvas {
+  flex: 1;
+  min-height: 350px;
+  max-height: 480px;
+}
+
+// ============================================
+// CHAT WINDOW PANEL - Complete Modern Redesign
+// ============================================
+
+// Chat window panel styles continue below
+
+// Modern Tab Navigation with Chrome-like dynamic shrinking
+#chatWindowsPanel .nav-tabs {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+  padding: var(--spacing-sm) var(--spacing-sm) 0;
+  gap: 2px;
+  flex-wrap: nowrap;
+  overflow-x: hidden; // Hide overflow, tabs will shrink instead
+  display: flex;
   
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
+  .nav-item {
+    margin-bottom: 0;
+    flex: 0 1 auto; // Allow shrinking
+    min-width: 60px; // Minimum tab width
+    max-width: 150px; // Maximum tab width
+    
+    &:last-child {
+      // The add button container
+      flex: 0 0 auto;
+      min-width: auto;
+      max-width: none;
     }
   }
-
-  .chat-input-row {
+  
+  .nav-link {
+    border: none;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    font-size: 0.8125rem;
+    transition: all var(--transition-fast);
+    background: transparent;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    &:hover {
+      color: var(--color-primary);
+      background: var(--color-primary-light);
+    }
+    
+    &.active {
+      color: var(--color-primary);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-bottom-color: var(--color-surface);
+      margin-bottom: -1px;
+    }
+    
+    // Close button on tab
+    .btn-link {
+      opacity: 0.5;
+      transition: opacity var(--transition-fast);
+      padding: 2px !important;
+      line-height: 1;
+      flex-shrink: 0;
+      
+      &:hover {
+        opacity: 1;
+        color: var(--color-danger) !important;
+      }
+    }
   }
-  
-  .chat-input {
-    flex: 1; 
-  }
-  
-  .ms-Dropdown {
-    min-width: 150px;
-  }
+}
 
+.dialog-tab-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dialog-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+  background: var(--color-surface);
+  overflow: hidden;
+  box-shadow: none;
+}
+
+// ============================================
+// CHAT MESSAGES - Modern bubble design
+// ============================================
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  height: 260px;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+  background: linear-gradient(to bottom, var(--color-bg), var(--color-surface));
+}
+
+.chat-bubble {
+  max-width: 80%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-xl);
+  word-break: break-word;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  animation: fadeInUp 0.2s ease-out;
   
+  &.user {
+    align-self: flex-end;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+    color: white;
+    border-bottom-right-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  &.ai {
+    align-self: flex-start;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-bottom-left-radius: var(--radius-sm);
+    box-shadow: var(--shadow-xs);
+    
+    // Paper title links in AI responses
+    span[style*="color: blue"] {
+      color: var(--color-primary) !important;
+      font-weight: 600;
+      padding: 2px 6px;
+      background: var(--color-primary-light);
+      border-radius: var(--radius-sm);
+      transition: all var(--transition-fast);
+      
+      &:hover {
+        background: var(--color-primary);
+        color: white !important;
+      }
+    }
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ============================================
+// CHAT INPUT AREA - Modern input design
+// ============================================
+.chat-input-area {
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-border);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-surface);
+}
+
+.chat-input-row {
+  display: flex;
+  align-items: center; // Changed from flex-end to center for equal height alignment
+  gap: var(--spacing-md);
+}
+
+.chat-input {
+  flex: 1;
+  resize: none;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  padding: 10px var(--spacing-lg); // Fixed padding for consistent height
+  border-radius: var(--radius-xl);
+  border: 2px solid var(--color-border);
+  background: var(--color-bg);
+  overflow-y: auto;
+  line-height: 1.4;
+  min-height: 40px; // Match button height
+  max-height: calc(1.5em * 3 + 1rem);
+  transition: all var(--transition-fast);
+  
+  &:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    background: var(--color-surface);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
+  }
+  
+  &::placeholder {
+    color: var(--color-text-muted);
+  }
+}
+
+// Ask button - Modern primary action (same height as input)
+.chat-input-row .iconButton {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover)) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: var(--radius-full) !important;
+  padding: 10px var(--spacing-lg) !important; // Match textarea padding
+  min-height: 40px !important; // Match textarea min-height
+  font-weight: 600 !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: all var(--transition-fast) !important;
+  display: flex !important;
+  align-items: center !important;
+  
+  &:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: var(--shadow-md) !important;
+  }
+  
+  &:active {
+    transform: translateY(0) !important;
+  }
+  
+  i, svg {
+    color: white !important;
+  }
+}
+
+// ============================================
+// CHAT ACTION ROW - Modern button group
+// ============================================
+.chat-action-row {
+  margin-top: var(--spacing-md);
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.chat-action-row .ms-Dropdown {
+  min-width: 140px;
+  
+  .ms-Dropdown-title {
+    border-radius: var(--radius-md);
+    border-color: var(--color-border);
+    background: var(--color-bg);
+    font-size: 0.8125rem;
+  }
+}
+
+.chat-action-row .ms-Button {
+  border-radius: var(--radius-md) !important;
+  font-size: 0.75rem !important;
+  padding: var(--spacing-xs) var(--spacing-sm) !important;
+  background: var(--color-bg) !important;
+  border: 1px solid var(--color-border) !important;
+  color: var(--color-text-secondary) !important;
+  transition: all var(--transition-fast) !important;
+  
+  &:hover {
+    background: var(--color-primary-light) !important;
+    border-color: var(--color-primary) !important;
+    color: var(--color-primary) !important;
+  }
+}
+
+// ============================================
+// LOADING SPINNER - Modern animation
+// ============================================
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: var(--radius-full);
+  animation: spin 0.8s linear infinite;
+  margin-right: var(--spacing-sm);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// ============================================
+// SECTION HEADERS - Modern labels
+// ============================================
+#chatWindowsPanel > div > label {
+  font-size: 1rem !important;
+  font-weight: 600;
+  color: var(--color-text);
+  padding: var(--spacing-md) var(--spacing-lg);
+  margin: 0;
+  display: block;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+// ============================================
+// FLUENT UI GLOBAL OVERRIDES - Modern styling
+// ============================================
+
+// Modern Pivot/Tab styling
+.ms-Pivot {
+  border-bottom: 1px solid var(--color-border);
+  
+  .ms-Pivot-link {
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin-right: 0;
+    transition: color var(--transition-fast);
+    
+    &:hover {
+      color: var(--color-primary);
+      background: transparent;
+    }
+    
+    &::before {
+      display: none;
+    }
+    
+    &.is-selected {
+      color: var(--color-primary);
+      font-weight: 600;
+      
+      &::before {
+        display: block;
+        background-color: var(--color-primary) !important;
+        height: 3px !important;
+        border-radius: 3px 3px 0 0;
+        left: var(--spacing-lg);
+        right: var(--spacing-lg);
+      }
+    }
+  }
+}
+
+// Modern Button styling
+.ms-Button {
+  border-radius: var(--radius-md) !important;
+  font-weight: 500 !important;
+  transition: all var(--transition-fast) !important;
+  
+  &.ms-Button--primary {
+    background: var(--color-primary) !important;
+    border-color: var(--color-primary) !important;
+    
+    &:hover {
+      background: var(--color-primary-hover) !important;
+      border-color: var(--color-primary-hover) !important;
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    &:active {
+      transform: translateY(0);
+    }
+  }
+  
+  &.ms-Button--default {
+    border-color: var(--color-border) !important;
+    
+    &:hover {
+      background: var(--color-primary-light) !important;
+      border-color: var(--color-primary) !important;
+      color: var(--color-primary) !important;
+    }
+  }
+  
+  &.ms-Button--icon {
+    border-radius: var(--radius-md) !important;
+    
+    &:hover {
+      background: var(--color-primary-light) !important;
+      color: var(--color-primary) !important;
+    }
+  }
+}
+
+// Modern Dropdown styling
+.ms-Dropdown {
+  .ms-Dropdown-title {
+    border-radius: var(--radius-md) !important;
+    border-color: var(--color-border) !important;
+    font-size: 0.875rem;
+    transition: all var(--transition-fast);
+    
+    &:hover {
+      border-color: var(--color-primary) !important;
+    }
+  }
+  
+  &.is-open .ms-Dropdown-title {
+    border-color: var(--color-primary) !important;
+  }
+}
+
+.ms-Dropdown-callout {
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-lg) !important;
+  border: 1px solid var(--color-border) !important;
+  
+  .ms-Dropdown-item {
+    font-size: 0.875rem;
+    padding: var(--spacing-sm) var(--spacing-md);
+    
+    &:hover {
+      background: var(--color-primary-light) !important;
+      color: var(--color-primary) !important;
+    }
+    
+    &.is-selected {
+      background: var(--color-primary) !important;
+      color: white !important;
+    }
+  }
+}
+
+// Modern SearchBox styling
+.ms-SearchBox {
+  border-radius: var(--radius-md) !important;
+  border-color: var(--color-border) !important;
+  transition: all var(--transition-fast);
+  
+  &:hover {
+    border-color: var(--color-primary) !important;
+  }
+  
+  &.is-active {
+    border-color: var(--color-primary) !important;
+    box-shadow: 0 0 0 3px var(--color-primary-light);
+  }
+  
+  .ms-SearchBox-field {
+    font-size: 0.875rem;
+  }
+}
+
+// Modern TextField styling
+.ms-TextField {
+  .ms-TextField-fieldGroup {
+    border-radius: var(--radius-md) !important;
+    border-color: var(--color-border) !important;
+    transition: all var(--transition-fast);
+    
+    &:hover {
+      border-color: var(--color-primary) !important;
+    }
+    
+    &:focus-within {
+      border-color: var(--color-primary) !important;
+      box-shadow: 0 0 0 3px var(--color-primary-light);
+    }
+  }
+}
+
+// Modern Label styling
+.ms-Label {
+  font-weight: 500;
+  color: var(--color-text);
+  font-size: 0.875rem;
+}
+
+// Modern Stack styling for panels
+.ms-Stack {
+  .panel-header {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--spacing-md);
+  }
+}
+
+// Modern Modal/Panel styling
+.ms-Panel {
+  .ms-Panel-main {
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .ms-Panel-header {
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border);
+  }
+  
+  .ms-Panel-headerText {
+    font-weight: 600;
+    font-size: 1.125rem;
+  }
+  
+  .ms-Panel-content {
+    padding: var(--spacing-lg);
+  }
+}
+
+// ============================================
+// PANEL SECTIONS - Consistent styling
+// ============================================
+.split.p-md {
+  background: var(--color-bg);
+  
+  > label:first-child,
+  > div:first-child > label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: var(--spacing-md);
+    display: block;
+  }
+}
+
+// Card-like panel containers
+.panel-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+}
+
+// ============================================
+// HEADER/TOOLBAR - Keep original dark styling
+// ============================================
+// Note: The CommandBar has inline styles setting background to rgba(0, 0, 0, 0.39)
+// We should NOT override it with white - keep the grey header
+.ms-CommandBar {
+  // Do not set background - let inline styles handle it
+  
+  .ms-Button--commandBar {
+    border-radius: var(--radius-md) !important;
+    margin: var(--spacing-xs);
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.1) !important;
+    }
+  }
+}
+
+// ============================================
+// TOOLTIP STYLING
+// ============================================
+.ms-Tooltip {
+  .ms-Tooltip-content {
+    background: var(--color-text) !important;
+    color: white !important;
+    border-radius: var(--radius-md) !important;
+    font-size: 0.8125rem;
+    padding: var(--spacing-sm) var(--spacing-md);
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+// ============================================
+// CALLOUT STYLING
+// ============================================
+.ms-Callout {
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-lg) !important;
+  border: 1px solid var(--color-border) !important;
+  
+  .ms-Callout-main {
+    padding: var(--spacing-lg);
+  }
+}

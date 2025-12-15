@@ -1,75 +1,220 @@
-.MuiSlider-marked{
+// ============================================
+// SMART TABLE - Modern Design
+// ============================================
+
+// MUI Slider modernization
+.MuiSlider-marked {
   margin-bottom: 8px !important;
 }
 
+.MuiSlider-root {
+  color: var(--color-primary) !important;
+}
+
+.MuiSlider-thumb {
+  box-shadow: var(--shadow-sm) !important;
+  
+  &:hover, &.Mui-focusVisible {
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.16) !important;
+  }
+}
+
+.MuiSlider-track {
+  height: 4px !important;
+}
+
+.MuiSlider-rail {
+  height: 4px !important;
+  background-color: var(--color-border) !important;
+}
+
+// React-Select modernization
 .Select-menu-outer {
   position: relative !important;
+  z-index: 1000;
+  border-radius: var(--radius-md) !important;
+  border-color: var(--color-border) !important;
+  box-shadow: var(--shadow-lg) !important;
+  margin-top: 4px;
+  overflow: hidden;
 }
 
-.Select{
-  font-family: 'Titillium Web' !important;
+.Select {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
 
-.Select-control{
-  border-color: #999 !important;
-  border-radius: 0 !important;
+.Select-control {
+  border-color: var(--color-border) !important;
+  border-radius: var(--radius-md) !important;
+  min-height: 36px !important;
+  transition: all var(--transition-fast) !important;
+  
+  &:hover {
+    border-color: var(--color-primary) !important;
+  }
 }
 
+.Select.is-focused .Select-control {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px var(--color-primary-light) !important;
+}
 
-/* Styles for the Load More button */
+.Select-option {
+  padding: var(--spacing-sm) var(--spacing-md) !important;
+  transition: background-color var(--transition-fast) !important;
+  
+  &.is-focused {
+    background-color: var(--color-primary-light) !important;
+  }
+  
+  &.is-selected {
+    background-color: var(--color-primary) !important;
+    color: white !important;
+  }
+}
+
+.Select-value-label {
+  color: var(--color-text) !important;
+}
+
+.Select-placeholder {
+  color: var(--color-text-muted) !important;
+}
+
+// ============================================
+// LOAD MORE / LOAD ALL BUTTONS - Modern
+// ============================================
 .load-more-container {
   display: flex;
-  justify-content: center; /* Center horizontally */
-  margin-top: 1em;
-  gap: 20px;
+  justify-content: center;
+  margin-top: var(--spacing-lg);
+  gap: var(--spacing-lg);
 }
 
-.load-more-button {
-  background-color: white;
-  color: gray;
-  border: 1px solid gray;
-  transition: background-color 0.3s, color 0.3s; /* Add smooth transition */
+.load-more-button,
+.load-all-button {
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-xl);
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  
+  &:hover:not(.loading) {
+    background-color: var(--color-primary-light);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  &:active:not(.loading) {
+    transform: translateY(0);
+  }
+  
+  &.loading {
+    background-color: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+    cursor: wait;
+  }
+  
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-primary-light);
+  }
 }
 
-.load-more-button.loading {
-  background-color: gray;
-  color: white;
-  border: none;
-}
-
-.load-more-button:hover:not(.loading) {
-  background-color: lightgray;
-}
-
-.load-more-button:focus {
-  outline: none;
-}
-
-
-/* Styles for the Load More button */
 .load-all-container {
   display: flex;
-  justify-content: center; /* Center horizontally */
-  margin-top: 1em;
+  justify-content: center;
+  margin-top: var(--spacing-md);
 }
 
-.load-all-button {
-  background-color: white;
-  color: gray;
-  border: 1px solid gray;
-  transition: background-color 0.3s, color 0.3s; /* Add smooth transition */
+// ============================================
+// TABLE STYLES - Modern data table
+// ============================================
+.smart-table-wrapper {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 
-.load-all-button.loading {
-  background-color: gray;
-  color: white;
-  border: none;
+// Table header row
+table thead {
+  background: var(--color-bg);
+  
+  th {
+    padding: var(--spacing-md) var(--spacing-lg) !important;
+    font-weight: 600;
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    border-bottom: 2px solid var(--color-border) !important;
+    white-space: nowrap;
+    
+    &:hover {
+      color: var(--color-primary);
+    }
+  }
 }
 
-.load-all-button:hover:not(.loading) {
-  background-color: lightgray;
+// Table body rows
+table tbody {
+  tr {
+    transition: background-color var(--transition-fast);
+    
+    &:hover {
+      background-color: var(--color-primary-light);
+    }
+    
+    &:not(:last-child) td {
+      border-bottom: 1px solid var(--color-border-light);
+    }
+  }
+  
+  td {
+    padding: var(--spacing-md) var(--spacing-lg) !important;
+    font-size: 0.875rem;
+    color: var(--color-text);
+    vertical-align: middle;
+  }
 }
 
-.load-all-button:focus {
-  outline: none;
+// Search input in table headers
+table thead .ms-SearchBox {
+  border-radius: var(--radius-md);
+  border-color: var(--color-border);
+  
+  &:hover, &.is-active {
+    border-color: var(--color-primary);
+  }
+}
+
+// Action buttons in table
+table .ms-Button--icon {
+  border-radius: var(--radius-md) !important;
+  transition: all var(--transition-fast) !important;
+  
+  &:hover {
+    background-color: var(--color-primary-light) !important;
+    color: var(--color-primary) !important;
+  }
+}
+
+// Paper count display
+.paper-count {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  
+  strong {
+    color: var(--color-text);
+    font-weight: 700;
+  }
 }
