@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "esModuleInterop": true,          // <-- enables default-style imports from CommonJS modules
-    "allowSyntheticDefaultImports": true,  // <-- lets TypeScript compile `import X from "cjs-lib"` even when no default export exists
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
     "outDir": "./dist/",
     "sourceMap": true,
@@ -10,6 +10,7 @@
     "target": "es2015",
     "jsx": "react",
     "skipLibCheck": true,
+    "types": ["jest", "node"],
     "lib": [
       "es5",
       "es6",
@@ -18,6 +19,7 @@
   },
   "include": [
     "./src/**/*",
+    "./tests/**/*",
     "index.d.ts"
   ]
 }
