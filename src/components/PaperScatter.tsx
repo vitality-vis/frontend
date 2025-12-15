@@ -84,6 +84,7 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
     const [isFirstTime, setFirstTime] = React.useState(false);
     const [isColorLegendPanelOpen, setIsColorLegendPanelOpen] = React.useState(false);
     const [colorByAttribute, setColorByAttribute] = React.useState<IDropdownOption>(colorByDropdownOptions[0]);
+    const [cameraInitialized, setCameraInitialized] = React.useState(false);
     const embeddingKey = embeddingType + "_umap";
     // Refs to manage hover logging timer/state so we log once after 500ms continuous hover
     const hoverTimerRef = React.useRef<number | null>(null);
@@ -103,6 +104,19 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
         }
         update();
         updateSelections();
+        
+        // Initialize camera once after data is loaded and drawn
+        if (!cameraInitialized && scatterplot && data.length > 0) {
+            setTimeout(() => {
+                const centerX = (xMin[embeddingKey] + xMax[embeddingKey]) / 2;
+                const centerY = (yMin[embeddingKey] + yMax[embeddingKey]) / 2;
+                scatterplot.set({
+                    cameraTarget: [centerX, centerY],
+                    cameraDistance: 10
+                });
+                setCameraInitialized(true);
+            }, 500);
+        }
     }, [data, dataFiltered, dataSaved, dataSimilarPayload, dataSimilar, selectNodeIDs]);
 
     const reset = () => {
@@ -331,11 +345,14 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
             cameraTarget: [(xMin[embeddingKey]+xMax[embeddingKey])/2, (yMin[embeddingKey]+yMax[embeddingKey])/2],
             cameraDistance: 10,
             pointSize: 12,
-            showRecticle: true,            
+            showRecticle: true,
             recticleColor: '#000000',
             deselectOnDblClick: false,
             deselectOnEscape: false,
-            pointSizeSelected: 4, 
+            // Fix zoom behavior - use pan-zoom mode and set proper bounds
+            mouseMode: 'panZoom',
+            zoomSpeed: 1,
+            pointSizeSelected: 4,
             opacity: 1,
             pointOutlineWidth: 4
         });
@@ -526,10 +543,19 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
 
         // Draw the datapoints
         scatterplot.draw(datapoints, {transition: true});
-        
+
         // Reapply selections after draw transition completes to ensure crosshairs persist
         setTimeout(() => {
             updateSelections();
+            
+            // Force camera to center after draw to fix zoom pivot issue
+            if (scatterplot && datapoints.length > 0) {
+                const centerX = (xMin[embeddingKey] + xMax[embeddingKey]) / 2;
+                const centerY = (yMin[embeddingKey] + yMax[embeddingKey]) / 2;
+                scatterplot.set({
+                    cameraTarget: [centerX, centerY]
+                });
+            }
         }, 350);
     }
 
@@ -610,7 +636,7 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                                 onChange={onChangeColorByAttribute}
                                 placeholder="Select an option"
                                 options={colorByDropdownOptions}
-                                styles={{root: {display: "inline-block"}}}
+                                styles={{root: {display: "inline-block", minWidth: 120}}}
                             />
                         </Stack>
                     </div>
@@ -691,12 +717,23 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                     <div>
                         <div id="parent-wrapper">
                             <canvas id="canvas"></canvas>
-                            <DefaultButton 
+                            <DefaultButton
                                 className="iconButton"
                                 onClick={(e) => { reset(); }}
                                 iconProps={{iconName:"Location"}}
                                 text="Recenter"
-                                style={{position:"absolute", right: 0, bottom: 54, border: 0, padding: 0, minWidth: 0}}
+                                style={{
+                                    position: "absolute",
+                                    right: "5px",
+                                    bottom: "95px",
+                                    border: "none",
+                                    padding: "8px 8px",
+                                    minWidth: "auto",
+                                    background: "rgba(255, 255, 255, 0.95)",
+                                    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                                    borderRadius: "8px",
+                                    zIndex: 10
+                                }}
                             />
                             <DefaultButton 
                                 className="iconButton"

@@ -88,6 +88,7 @@
   display: flex;
   justify-content: center;
   margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
   gap: var(--spacing-lg);
 }
 
@@ -144,6 +145,15 @@
   overflow: hidden;
 }
 
+// SmartTable outer container with thicker border and padding
+.table {
+  border: 20px solid var(--color-border);
+  box-shadow: inset 0 0 0 2px var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg) 0 var(--spacing-xl) 0;
+  background: var(--color-surface);
+}
+
 // Table header row
 table thead {
   background: var(--color-bg);
@@ -190,10 +200,26 @@ table tbody {
 table thead .ms-SearchBox {
   border-radius: var(--radius-md);
   border-color: var(--color-border);
-  
+  width: 100%;
+  box-sizing: border-box;
+
   &:hover, &.is-active {
     border-color: var(--color-primary);
   }
+}
+
+// Ensure filter containers match column widths
+table thead .th > div:last-child {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+// Remove right border from Save column (similar to Info column on left)
+.table .th[data-column-id="save"],
+.table .td[data-column-id="save"] {
+  border-right: 0 !important;
 }
 
 // Action buttons in table

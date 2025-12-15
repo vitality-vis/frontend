@@ -11,7 +11,7 @@
 }
 
 #canvas {
-  height: 420px;
+  height: 100%;
   width: 100%;
   background: #ffffff;
 }
@@ -207,8 +207,8 @@
   flex-wrap: wrap;
   
   .ms-Dropdown {
-    min-width: 120px;
-    
+    min-width: 180px;
+
     .ms-Dropdown-title {
       border-radius: var(--radius-md);
       border-color: var(--color-border);

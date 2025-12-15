@@ -296,7 +296,7 @@ class App extends React.Component<AppProps, AppState> {
                 "Title": {minWidth: 100},
                 "Authors": {minWidth: 100},
                 "Source": {maxWidth: 200},
-                "Year": {maxWidth: 200},
+                "Year": {maxWidth: 45},
                 "Abstract": {minWidth: 100},
                 "Keywords": {minWidth: 100},
                 "Sim": {maxWidth: 50},
@@ -2345,7 +2345,7 @@ class App extends React.Component<AppProps, AppState> {
                             onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => {
                                 const previousValue = this.state.embeddingType.key;
                                 this.setState({embeddingType: item});
-                                
+
                                 // Embedding type change
                                 Logger.logUIInteraction({
                                     component: 'App',
@@ -2356,8 +2356,8 @@ class App extends React.Component<AppProps, AppState> {
                             }}
                             // disabled={true}
                             options={embeddingTypeDropdownOptions}
-                            styles={{root: {zIndex: 2, paddingLeft: 4, paddingRight: 4}}}
-                           
+                            styles={{root: {zIndex: 2, paddingLeft: 4, paddingRight: 4, minWidth: 120}}}
+
                         />
                     </>
                 )
@@ -2719,7 +2719,7 @@ class App extends React.Component<AppProps, AppState> {
                                                         this.setState({maxSimilarPapers: item})
                                                     }}
                                                     options={maxSimilarPapersDropdownOptions}
-                                                    styles={{root: {minWidth: 60}}}
+                                                    styles={{root: {minWidth: 90}}}
                                                 />
                                                 {
                                                     this.state.dataSimilarPayload.length > 0 ?

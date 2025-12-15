@@ -197,6 +197,25 @@
     }
   }
   
+  // Ensure filter inputs align with columns
+  table thead .ms-SearchBox {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  table thead .th > div:last-child {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+  }
+
+  // Remove right border from Save column (similar to Info column on left)
+  .table .th[data-column-id="save"],
+  .table .td[data-column-id="save"] {
+    border-right: 0 !important;
+  }
+
   .ms-TextField-fieldGroup {
     border-radius: var(--radius-md);
     border-color: var(--color-border);

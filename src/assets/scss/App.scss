@@ -302,8 +302,8 @@ body, .ms-Label, .ms-Pivot, .ms-Dropdown, .ms-Button, .ms-SearchBox, text {
 
 #canvas {
   flex: 1;
-  min-height: 350px;
-  max-height: 480px;
+  min-height: 400px;
+  max-height: 520px;
 }
 
 // ============================================
@@ -722,15 +722,28 @@ body, .ms-Label, .ms-Pivot, .ms-Dropdown, .ms-Button, .ms-SearchBox, text {
   .ms-Dropdown-item {
     font-size: 0.875rem;
     padding: var(--spacing-sm) var(--spacing-md);
-    
+    color: var(--color-text) !important;
+
     &:hover {
       background: var(--color-primary-light) !important;
       color: var(--color-primary) !important;
     }
-    
+
     &.is-selected {
       background: var(--color-primary) !important;
       color: white !important;
+    }
+
+    &.is-disabled {
+      color: var(--color-text-muted) !important;
+      background: var(--color-bg) !important;
+      opacity: 0.6;
+      cursor: not-allowed !important;
+
+      &:hover {
+        background: var(--color-bg) !important;
+        color: var(--color-text-muted) !important;
+      }
     }
   }
 }

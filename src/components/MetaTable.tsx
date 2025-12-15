@@ -159,6 +159,10 @@ const Styles = styled.div`
         border-right: 0;
       }
 
+      &[data-column-id="save"] {
+        border-right: 0 !important;
+      }
+
       .resizer {
         display: inline-block;
         background: #aaa;
@@ -796,7 +800,9 @@ function Table({
                         ),
                         width: 15,
                         maxWidth: 15,
-                        minWidth: 15
+                        minWidth: 15,
+                        disableFilters: true,
+                        Filter: () => null
                     }
                     beforeColumns.push(infoColumn);
                 }
@@ -849,7 +855,9 @@ function Table({
                         ),
                         width: 20,
                         maxWidth: 20,
-                        minWidth: 20
+                        minWidth: 20,
+                        disableFilters: true,
+                        Filter: () => null
                     }
                     afterColumns.push(locateColumn);
                 }
@@ -900,7 +908,9 @@ function Table({
                         ),
                         width: 20,
                         maxWidth: 20,
-                        minWidth: 20
+                        minWidth: 20,
+                        disableFilters: true,
+                        Filter: () => null
                     }
                     afterColumns.push(addColumn);
                 }
@@ -924,6 +934,12 @@ function Table({
                                       aria-describedby="tooltip-save"></Icon>
                             </TooltipHost>
                         </>),
+                        getHeaderProps: () => ({
+                            style: { borderRight: 0 }
+                        }),
+                        getCellProps: () => ({
+                            style: { borderRight: 0 }
+                        }),
                         Cell: ({row, column, cell}) => (
                             cell.isAggregated ? <></> : <div className="text-center">
                                 <IconButton
@@ -948,7 +964,9 @@ function Table({
                         ),
                         width: 20,
                         maxWidth: 20,
-                        minWidth: 20
+                        minWidth: 20,
+                        disableFilters: true,
+                        Filter: () => null
                     }
                     afterColumns.push(saveColumn);
                 }
@@ -1173,7 +1191,7 @@ function Table({
                 <div {...row.getRowProps({style})} className="tr">
                     {row.cells.map(cell => {
                         return (
-                            <div {...cell.getCellProps()} className="td">
+                            <div {...cell.getCellProps()} className="td" data-column-id={cell.column.id}>
                                 {cell.isGrouped ? (
                                     // If it's a grouped cell, add an expander and row count
                                     <>
@@ -1343,7 +1361,13 @@ function Table({
                 <div>
                     <div className="tr">
                         <div className="th">
-                            <Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/{data.length}</b> papers
+                            <Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/{data.length}</b> {
+                                tableType === 'keyword' ? 'keywords' :
+                                tableType === 'author' ? 'authors' :
+                                tableType === 'source' ? 'sources' :
+                                tableType === 'year' ? 'years' :
+                                'papers'
+                            }
                             {/*hard coding for speed*/}
                             </Text>
                             &nbsp;&nbsp;
@@ -1353,19 +1377,23 @@ function Table({
                                     setGlobalFilter={setGlobalFilter}
                                 />
                                 {' '}
-                                <Dropdown
-                                    disabled={allDisabled}
-                                    selectedKey={null}
-                                    placeholder="Column"
-                                    onChange={onChange}
-                                    dropdownWidth={120}
-                                    options={options}
-                                    onRenderCaretDown={() => {
-                                        return <Icon className="iconButton" iconName="Plus"></Icon>
-                                    }}
-                                    styles={{root: {display: "inline-block"}}}
-                                />
-                                {' '}
+                                {!['keyword', 'author', 'source', 'year'].includes(tableType) && (
+                                    <>
+                                        <Dropdown
+                                            disabled={allDisabled}
+                                            selectedKey={null}
+                                            placeholder="Column"
+                                            onChange={onChange}
+                                            dropdownWidth={120}
+                                            options={options}
+                                            onRenderCaretDown={() => {
+                                                return <Icon className="iconButton" iconName="Plus"></Icon>
+                                            }}
+                                            styles={{root: {display: "inline-block"}}}
+                                        />
+                                        {' '}
+                                    </>
+                                )}
                                 {tableControls.indexOf("locate") !== -1 ?
                                     <>
                                         <DefaultButton
@@ -1561,7 +1589,7 @@ function Table({
                     {headerGroups.map(headerGroup => (
                         <div {...headerGroup.getHeaderGroupProps()} className="tr">
                             {headerGroup.headers.map(column => (
-                                <div {...column.getHeaderProps()} className="th">
+                                <div {...column.getHeaderProps()} className="th" data-column-id={column.id}>
                                     <div>
                       <span {...column.getSortByToggleProps()}>
                         {column.isSorted
@@ -1777,8 +1805,12 @@ export const MetaTable: React.FC<{
 
         // console.log("Columns for Table:", columns);
 
+        // Center Year and Source values in metadata tables
+        const cellStyle = (c === 'Year' || c === 'Source') ? {
+            Cell: ({value}) => <div style={{textAlign: 'center'}}>{value}</div>
+        } : {};
 
-        return { ...columnHeader, ...columnWidth, ...columnFilter };
+        return { ...columnHeader, ...columnWidth, ...columnFilter, ...cellStyle };
     }), [
         columnIds,
         columnWidths,
