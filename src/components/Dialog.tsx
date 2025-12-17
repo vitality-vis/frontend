@@ -306,7 +306,7 @@
 
 import * as React from "react";
 import "./../assets/scss/App.scss";
-import { ActionButton, DefaultButton, Dropdown, IconButton, IDropdownOption, Modal, Stack } from "@fluentui/react";
+import { ActionButton, DefaultButton, IconButton, Modal, Stack } from "@fluentui/react";
 import { observer } from "mobx-react";
 import { getPaperByTitle } from "./../request";
 import Markdown from "react-markdown";
@@ -320,11 +320,6 @@ export async function getPaperById(id: string) {
   const res = await fetch(`${baseUrl}getPaperById?id=${id}`);
   return res.json();
 }
-
-const options: IDropdownOption[] = [
-  { key: "normal", text: "🗣 Normal Chat" },
-  { key: "rag", text: "📚 RAG Chat" },
-];
 
 // Parse paper title and ID from raw string
 const parseTitleAndId = (raw: string) => {
@@ -361,8 +356,7 @@ export const Dialog = observer(({ props }) => {
     { role: "user" | "ai"; text: string }[]
   >(savedDisplayMessages || []);
   const [isWaiting, setIsWaiting] = React.useState(false);
-  const [chatMode, setChatMode] = React.useState<string>("normal");
-  
+
   // Paper info modal state
   const [isModalOpen, setModalState] = React.useState(false);
   const [paperInfo, setPaperInfo] = React.useState<any>(null);
@@ -433,7 +427,6 @@ export const Dialog = observer(({ props }) => {
           action: "askButtonClick",
           value: chatText,
           chatHistoryLength: chatHistory.length,
-          mode: chatMode,
           trigger: "enter_key",
         });
         chatRequest();
@@ -513,7 +506,6 @@ export const Dialog = observer(({ props }) => {
       query: chatText,
       chatHistory: chatHistory,
       historyLength: chatHistory.length,
-      mode: chatMode,
       chat_history_raw: [...displayMessages, { role: "user", text: chatText }],
     });
 
@@ -531,8 +523,7 @@ export const Dialog = observer(({ props }) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         text: chatText,
-        chat_history_raw: [...displayMessages, { role: "user", text: chatText }],
-        mode: chatMode,
+        chat_id: `chat_${Date.now()}`, // Use timestamp-based chat ID for session isolation
       }),
     }).then((response) => {
       const reader = response.body!.getReader();
@@ -551,7 +542,6 @@ export const Dialog = observer(({ props }) => {
             query: chatText,
             responseLength: partial.length,
             chatHistory: chatHistory,
-            mode: chatMode,
           });
 
           // Also append to external chatHistory like before
@@ -591,7 +581,46 @@ export const Dialog = observer(({ props }) => {
     return "";
   };
 
+  // Helper function to check if text is part of a summary (not an individual paper)
+  const isSummaryText = (text: string): boolean => {
+    // Summary text characteristics:
+    // - Doesn't start with "Title:"
+    // - Contains narrative text (commas, parentheses, conjunctions)
+    // - May contain multiple [[ID:xxx]] references
+
+    if (!text || text.trim().startsWith("Title:")) {
+      return false;
+    }
+
+    // Check if it's embedded in parentheses (common in summaries)
+    if (/^\s*\(/i.test(text) || /\)\s*$/i.test(text)) {
+      return true;
+    }
+
+    // Check if it contains summary-like patterns or narrative structure
+    const hasSummaryKeywords = /short summary|results include|highlights?|guidance|survey|taxonomy|special issues|applied collections/i.test(text);
+    const hasNarrativeStructure = /[,()]/g.test(text) && text.length > 50;
+
+    // Check if it contains multiple [[ID:xxx]] references (indicates it's a summary paragraph)
+    const idMatches = text.match(/\[\[ID:[^\]]+\]\]/g);
+    const hasMultipleIDs = idMatches && idMatches.length > 1;
+
+    return hasSummaryKeywords || hasNarrativeStructure || hasMultipleIDs;
+  };
+
+  // Helper function to strip [[ID:xxx]] tags from text
+  const stripIDTags = (text: string): string => {
+    return text.replace(/\[\[ID:[^\]]+\]\]/g, '').trim();
+  };
+
   const renderPaperBlock = (title: string, id: string | null, raw: string) => {
+    // 🔹 Check if this is summary text (not an individual paper)
+    if (isSummaryText(raw)) {
+      // For summary text, strip ID tags and display as normal text
+      const cleanedText = stripIDTags(raw);
+      return <span>{cleanedText}</span>;
+    }
+
     // 🔹 If no Title was parsed OR title === raw text, then it's not a paper title
     if (!id && (!title || title === raw)) {
       return <span>{raw}</span>; // Normal text → display as is
@@ -821,7 +850,7 @@ export const Dialog = observer(({ props }) => {
               `${msg.text}`
             ) : (
               <div>
-                🤖
+                
                 <Markdown
                   components={{
                     strong: ({ node, ...props }) => {
@@ -834,6 +863,19 @@ export const Dialog = observer(({ props }) => {
                       const { title, id } = parseTitleAndId(raw);
                       return renderPaperBlock(title, id, raw); // ✅ Pass raw
                     },
+                    p: ({ node, children }) => {
+                      // Check if paragraph contains summary text with IDs
+                      const raw = extractText(children);
+                      if (raw && /\[\[ID:[^\]]+\]\]/g.test(raw)) {
+                        // Check if this looks like a summary paragraph
+                        if (isSummaryText(raw)) {
+                          const cleanedText = stripIDTags(raw);
+                          return <p>{cleanedText}</p>;
+                        }
+                      }
+                      // Otherwise render normally
+                      return <p>{children}</p>;
+                    },
                   }}
                 >
                   {msg.text}
@@ -845,7 +887,7 @@ export const Dialog = observer(({ props }) => {
 
         {isWaiting && (
           <div className="chat-bubble ai">
-            🤖 <span className="spinner"></span> RUNNING...
+            <span className="spinner"></span> THINKING...
           </div>
         )}
 
@@ -874,7 +916,6 @@ export const Dialog = observer(({ props }) => {
                 action: "askButtonClick",
                 value: chatText,
                 chatHistoryLength: chatHistory.length,
-                mode: chatMode,
               });
               chatRequest();
             }}
@@ -884,23 +925,6 @@ export const Dialog = observer(({ props }) => {
         </div>
 
         <div className="chat-action-row" style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: '4px' }}>
-          <Dropdown
-            id="chatModeDropdown"
-            placeholder="Mode"
-            options={options}
-            selectedKey={chatMode}
-            defaultSelectedKey="normal"
-            onChange={(e, option) => {
-              setChatMode(option?.key as string);
-              // 🟠 Log mode change
-              Logger.logUIInteraction({
-                component: "Dialog",
-                action: "changeChatMode",
-                mode: option?.key as string,
-              });
-            }}
-            styles={{ root: { width: 120, minWidth: 120, marginRight: 30 } }}
-          />
           <DefaultButton
             text="ALL"
             iconProps={{ iconName: "Locate" }}

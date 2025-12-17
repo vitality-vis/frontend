@@ -84,8 +84,9 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
     const [isFirstTime, setFirstTime] = React.useState(false);
     const [isColorLegendPanelOpen, setIsColorLegendPanelOpen] = React.useState(false);
     const [colorByAttribute, setColorByAttribute] = React.useState<IDropdownOption>(colorByDropdownOptions[0]);
-    const [cameraInitialized, setCameraInitialized] = React.useState(false);
     const embeddingKey = embeddingType + "_umap";
+    // Track which embeddings have had their camera initialized for center-based zooming
+    const initializedEmbeddingsRef = React.useRef<Set<string>>(new Set());
     // Refs to manage hover logging timer/state so we log once after 500ms continuous hover
     const hoverTimerRef = React.useRef<number | null>(null);
     const hoverLoggedRef = React.useRef<boolean>(false);
@@ -104,19 +105,6 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
         }
         update();
         updateSelections();
-        
-        // Initialize camera once after data is loaded and drawn
-        if (!cameraInitialized && scatterplot && data.length > 0) {
-            setTimeout(() => {
-                const centerX = (xMin[embeddingKey] + xMax[embeddingKey]) / 2;
-                const centerY = (yMin[embeddingKey] + yMax[embeddingKey]) / 2;
-                scatterplot.set({
-                    cameraTarget: [centerX, centerY],
-                    cameraDistance: 10
-                });
-                setCameraInitialized(true);
-            }, 500);
-        }
     }, [data, dataFiltered, dataSaved, dataSimilarPayload, dataSimilar, selectNodeIDs]);
 
     const reset = () => {
@@ -349,8 +337,8 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
             recticleColor: '#000000',
             deselectOnDblClick: false,
             deselectOnEscape: false,
-            // Fix zoom behavior - use pan-zoom mode and set proper bounds
-            mouseMode: 'panZoom',
+            // // Fix zoom behavior - use pan-zoom mode and set proper bounds
+            // mouseMode: 'panZoom',
             zoomSpeed: 1,
             pointSizeSelected: 4,
             opacity: 1,
@@ -547,14 +535,17 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
         // Reapply selections after draw transition completes to ensure crosshairs persist
         setTimeout(() => {
             updateSelections();
-            
-            // Force camera to center after draw to fix zoom pivot issue
-            if (scatterplot && datapoints.length > 0) {
+
+            // Initialize camera target after first draw to fix zoom pivot issue
+            // This ensures zoom is always center-based from the start
+            // Do this once per embedding type (when switching between specter/glove/ada)
+            if (!initializedEmbeddingsRef.current.has(embeddingKey) && scatterplot && datapoints.length > 0) {
                 const centerX = (xMin[embeddingKey] + xMax[embeddingKey]) / 2;
                 const centerY = (yMin[embeddingKey] + yMax[embeddingKey]) / 2;
                 scatterplot.set({
                     cameraTarget: [centerX, centerY]
                 });
+                initializedEmbeddingsRef.current.add(embeddingKey);
             }
         }, 350);
     }

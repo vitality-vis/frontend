@@ -1119,12 +1119,6 @@ function Table({
                                       aria-describedby="tooltip-save"></Icon>
                             </TooltipHost>
                         </>),
-                        getHeaderProps: () => ({
-                            style: { borderRight: 0 }
-                        }),
-                        getCellProps: () => ({
-                            style: { borderRight: 0 }
-                        }),
                         Cell: ({row, column, cell}) => (
                             cell.isAggregated ? <></> : <div className="text-center">
                                 <IconButton
@@ -1193,7 +1187,9 @@ function Table({
                         ),
                         width: 20,
                         maxWidth: 20,
-                        minWidth: 20
+                        minWidth: 20,
+                        disableFilters: true,
+                        Filter: () => null
                     }
                     afterColumns.push(deleteColumn);
                 }

@@ -479,6 +479,57 @@ class App extends React.Component<AppProps, AppState> {
         this.setState({isMetaTableModalOpen: isOpen});
     };
 
+    // Format LLM response to make citations more readable
+    formatLLMResponse = (text: string): string => {
+        if (!text) return text;
+
+        let formatted = text;
+
+        // Step 1: Format citations in parentheses
+        const citationPattern = /\s*\(\s*([^)]+?)\s*\)\s*\./g;
+        formatted = formatted.replace(citationPattern, (match, citations) => {
+            const citationList = citations
+                .split(';')
+                .map((c: string) => c.trim())
+                .filter((c: string) => c.length > 0);
+
+            if (citationList.length > 0) {
+                const formattedCitations = citationList
+                    .map((c: string) => `  - ${c}`)
+                    .join('\n');
+                return `\n\n**References:**\n${formattedCitations}\n\n`;
+            }
+            return match;
+        });
+
+        // Step 2: Bold paper titles and add paragraph spacing
+        // Pattern matches: "Title text. — " or "Title text — "
+        // Captures everything before the em dash as the title
+        const titlePattern = /^(.+?)\.?\s*—\s*/gm;
+        formatted = formatted.replace(titlePattern, (match, title) => {
+            // Clean up the title
+            const cleanTitle = title.trim().replace(/\.\s*$/, '');
+            // Check if this looks like a paper title (not a section header)
+            // Section headers are usually shorter and end with specific keywords
+            if (cleanTitle.length > 15 || cleanTitle.includes(':')) {
+                return `\n\n**${cleanTitle}** —\n\n`;
+            }
+            return match;
+        });
+
+        // Step 3: Add spacing around standalone section headers
+        // (text ending with colon at start of line or after double newline)
+        formatted = formatted.replace(/\n([A-Z][^:\n]{5,50}:)\s*\n/g, '\n\n**$1**\n\n');
+
+        // Also handle section headers at the very beginning
+        formatted = formatted.replace(/^([A-Z][^:\n]{5,50}:)\s*\n/g, '**$1**\n\n');
+
+        // Step 4: Ensure paragraphs between different paper summaries
+        // Add extra line break before paper titles (identified by bold + em dash)
+        formatted = formatted.replace(/([.!?])\s+(\n\n\*\*)/g, '$1\n$2');
+
+        return formatted;
+    };
 
     loadMoreData = async () => {
         const {
@@ -2595,8 +2646,15 @@ class App extends React.Component<AppProps, AppState> {
                                         backgroundColor: '#ffffff',
                                         minHeight: 300
                                     }}>
-                                        <Markdown>
-                                            {this.state.summarizeResponse}
+                                        <Markdown
+                                            components={{
+                                                // Disable hyperlinks - render as plain text
+                                                a: ({node, children, ...props}) => <span>{children}</span>,
+                                                // Keep bold text working
+                                                strong: ({node, children, ...props}) => <strong>{children}</strong>
+                                            }}
+                                        >
+                                            {this.formatLLMResponse(this.state.summarizeResponse)}
                                         </Markdown>
                                     </div>
                                 </div>
