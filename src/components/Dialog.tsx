@@ -1,309 +1,3 @@
-// import * as React from "react";
-// import "./../assets/scss/App.scss";
-// import { DefaultButton, Label, TextField } from "@fluentui/react";
-// import Markdown from 'react-markdown'
-// import { observer } from "mobx-react";
-// import { getPaperByTitle } from "./../request";
-// import { Logger } from "../socket/logger";
-
-// const baseUrl = "http://localhost:3000/";
-
-// export const Dialog = observer(({props}) => {
-//   const { chatText, chatHistory, chatResponse, chatSelectedPaper, updateDialogState } = props;
-//   // const [chatText, setChatText] = React.useState('')
-//   // const [chatHistory, setChatHistory] = React.useState([])
-//   // const [chatSelectedPaper, setChatSelectedPaper] = React.useState('')
-//   // const [chatResponse, setChatResponse] = React.useState('')
-//   // const [chatResponsing, setChatResponsing] = React.useState(false)
- 
-//   const onChangeChatText = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newText: string): void => {
-//     updateDialogState({ chatText: newText });
-//   }
-
-//   const chatRequest = () => {
-//     Logger.logLLMInteraction({
-//       component: 'Dialog',
-//       action: 'chatQuery',
-//       query: chatText,
-//       chatHistory: chatHistory,
-//       historyLength: chatHistory.length
-//     });
-    
-//     updateDialogState({ chatSelectedPaper: '', chatResponse: 'RUNNING ... ...' });
-
-//     fetch(`${baseUrl}chat`, {
-//       method: 'POST',
-//       headers: {'Content-Type': 'application/json'},
-//       body: JSON.stringify({
-//         text: chatText,
-//         chatHistory: chatHistory
-//       })
-//     }).then(response => {
-//       const reader = response.body.getReader();
-//       const decoder = new TextDecoder('utf-8');
-//       let partial = '';
-//       updateDialogState({ chatResponse: '' });
-    
-//       const readChunk = ({ done, value }) => {
-//         if (done) {
-//           if (partial) {
-//             updateDialogState({ chatResponse: partial });
-            
-//             // Log the completed LLM response
-//             Logger.logLLMInteraction({
-//               component: 'Dialog',
-//               action: 'chatResponse',
-//               query: chatText,
-//               responseLength: partial.length,
-//               chatHistory: chatHistory
-//             });
-//           }
-//           const newChatHistory = [...chatHistory, { human: chatText, ai: partial }];
-//           updateDialogState({ chatHistory: newChatHistory })
-//           return;
-//           // maximum to save latest 3 dialog in chatHistory array
-//           // if (chatHistory.length >= 3) {
-//           //   setChatHistory(chatHistory.slice(1).concat([{
-//           //     'human': chatText,
-//           //     'ai': chatResponse
-//           //   }]))
-//           // } else {
-//           //   setChatHistory(chatHistory.concat([{
-//           //     'human': chatText,
-//           //     'ai': chatResponse
-//           //   }]))
-//           // }
-//           // return;
-//         }
-//         partial += decoder.decode(value);
-//         updateDialogState({ chatResponse: partial });
-//         // setChatResponse(`${partial}`)
-//         reader.read().then(readChunk) // Call readChunk recursively with next chunk
-//       }
-//       reader.read().then(readChunk)
-//     })
-//   }
-
-
-//   return (
-//     <div className="split p-md p-b-0">
-//       <div className="history">
-//         {
-//           chatHistory.map(historyItem => {
-//             return (
-//               <div>
-//                 <div> User: {historyItem.human} </div> 
-//                 <div> AI: {historyItem.ai} </div> 
-//               </div>
-//             )
-//           })
-//         }
-//       </div>
-
-//       <div style={{ display: 'flex' }}>
-//         <Label style={{ fontSize: "1.2rem" }}> Chat with your data here</Label>
-//         &nbsp;&nbsp;
-//         <DefaultButton 
-//           className="iconButton"
-//           styles={{root: {padding:0, minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
-//           onClick={() => {
-//             Logger.logUIInteraction({
-//               component: 'Dialog',
-//               action: 'askButtonClick',
-//               value: chatText,
-//               chatHistoryLength: chatHistory.length
-//             });
-            
-//             chatRequest();
-//           }}
-//           iconProps={{iconName: "Rocket"}}
-//           text={'Ask'}>
-//         </DefaultButton>
-//       </div>
-//       <TextField style={{ marginBottom: "2em" }} multiline rows={10} defaultValue={""} onChange={onChangeChatText} />
-
-//       <div>
-//         <div style={{ display: 'flex' }}>
-//           <Label style={{ fontSize: "1.2rem" }}> LLM Feedback </Label>
-//           <div>
-//             <DefaultButton
-//               text="ALL"
-//               iconProps={{iconName: "Locate"}}
-//               onClick={() => {
-//                 Logger.logUIInteraction({
-//                   component: 'Dialog',
-//                   action: 'selectAllPapers',
-//                   responseLength: chatResponse.length
-//                 });
-//               }} 
-//               allowDisabledFocus 
-//               styles={{root: {padding:0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
-//             />
-//             <DefaultButton
-//               text="ALL"
-//               iconProps={{iconName: "PlusCircle"}}
-//               onClick={() => {
-//                 Logger.logUIInteraction({
-//                   component: 'Dialog',
-//                   action: 'addAllToSimilarInputPapers',
-//                   responseLength: chatResponse.length
-//                 });
-//               }} 
-//               allowDisabledFocus 
-//               styles={{root: {padding:0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
-//             />
-//             <DefaultButton
-//               text="ALL"
-//               iconProps={{iconName: "Save"}}
-//               onClick={() => {
-//                 Logger.logUIInteraction({
-//                   component: 'Dialog',
-//                   action: 'saveAllPapers',
-//                   responseLength: chatResponse.length
-//                 });
-//               }} 
-//               allowDisabledFocus 
-//               styles={{root: {padding:0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
-//             />
-//           </div>
-//         </div>
-
-//         <div>
-//         {
-//           chatSelectedPaper.length > 0 &&
-//           <div>
-//             <span style={{fontWeight: 900}}>Current Selected Paper:</span> 
-//             <span style={{color: 'blue'}}>{chatSelectedPaper}</span>
-//             <span>
-//               <DefaultButton
-//                 iconProps={{iconName: "Locate"}}
-//                 onClick={() => {
-//                   Logger.logUIInteraction({
-//                     component: 'Dialog',
-//                     action: 'locateSelectedPaper',
-//                     paperTitle: chatSelectedPaper
-//                   });
-                  
-//                   getPaperByTitle(chatSelectedPaper)
-//                   .then((papers) => {
-//                     if (papers.length > 0) {
-//                       Logger.logUIInteraction({
-//                         component: 'Dialog',
-//                         action: 'locateSelectedPaperSuccess',
-//                         paperTitle: chatSelectedPaper,
-//                         paperId: papers[0].ID,
-//                         papersFound: papers.length
-//                       });
-                      
-//                       props['addToSelectNodeIDs'](papers.map((d) => d["ID"]), "scatterplot")
-//                     } else {
-//                       Logger.logUIInteraction({
-//                         component: 'Dialog',
-//                         action: 'locateSelectedPaperNotFound',
-//                         paperTitle: chatSelectedPaper
-//                       });
-//                     }
-//                   })
-//                 }} 
-//                 allowDisabledFocus 
-//                 styles={{root: {padding:0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
-//               />
-//               <DefaultButton
-//                 iconProps={{iconName: "PlusCircle"}}
-//                 onClick={() => {
-//                   Logger.logUIInteraction({
-//                     component: 'Dialog',
-//                     action: 'addSelectedPaperToSimilarInput',
-//                     paperTitle: chatSelectedPaper
-//                   });
-                  
-//                   getPaperByTitle(chatSelectedPaper)
-//                   .then((papers) => {
-//                     if (papers.length > 0) {
-//                       Logger.logUIInteraction({
-//                         component: 'Dialog',
-//                         action: 'addSelectedPaperToSimilarInputSuccess',
-//                         paperTitle: chatSelectedPaper,
-//                         paperId: papers[0].ID
-//                       });
-                      
-//                       props['addToSimilarInputPapers'](papers[0])
-//                     } else {
-//                       Logger.logUIInteraction({
-//                         component: 'Dialog',
-//                         action: 'addSelectedPaperToSimilarInputNotFound',
-//                         paperTitle: chatSelectedPaper
-//                       });
-//                     }
-//                   })
-//                 }} 
-//                 allowDisabledFocus 
-//                 styles={{root: {padding:0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
-//               />
-//               <DefaultButton
-//                 iconProps={{iconName: "Save"}}
-//                 onClick={() => {
-//                   Logger.logUIInteraction({
-//                     component: 'Dialog',
-//                     action: 'saveSelectedPaper',
-//                     paperTitle: chatSelectedPaper
-//                   });
-                  
-//                   getPaperByTitle(chatSelectedPaper)
-//                   .then((papers) => {
-//                     if (papers.length > 0) {
-//                       Logger.logUIInteraction({
-//                         component: 'Dialog',
-//                         action: 'saveSelectedPaperSuccess',
-//                         paperTitle: chatSelectedPaper,
-//                         paperId: papers[0].ID
-//                       });
-                      
-//                       props['addToSavedPapers'](papers[0])
-//                     } else {
-//                       Logger.logUIInteraction({
-//                         component: 'Dialog',
-//                         action: 'saveSelectedPaperNotFound',
-//                         paperTitle: chatSelectedPaper
-//                       });
-//                     }
-//                   })
-//                 }} 
-//                 allowDisabledFocus 
-//                 styles={{root: {padding:0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
-//               />
-//             </span>
-//           </div>
-//         }
-//         </div>
-
-//         <Markdown
-//           components={{
-//             strong: ({node, ...props}) => {
-//               return (
-//                 <span
-//                   id={`${props.children[0]}`}
-//                   style={{color: 'blue', fontWeight: 'bold', cursor: 'pointer' }} {...props} 
-//                   onClick={() => {
-//                     Logger.logUIInteraction({
-//                       component: 'Dialog',
-//                       action: 'selectPaperFromResponse',
-//                       paperTitle: `${props.children[0]}`,
-//                       previousSelectedPaper: chatSelectedPaper
-//                     });
-                    
-//                     updateDialogState({ chatSelectedPaper: `${props.children[0]}` });
-//                   }}
-//                 />
-//               )
-//             }
-//           }}
-//         >{chatResponse}</Markdown>
-//       </div>
-//     </div>
-//   )
-// })
-
 import * as React from "react";
 import "./../assets/scss/App.scss";
 import { ActionButton, DefaultButton, IconButton, Modal, Stack } from "@fluentui/react";
@@ -321,35 +15,83 @@ export async function getPaperById(id: string) {
   return res.json();
 }
 
+
+
+
+////////////////////////////////////////////////////////////////////// modified code
 // Parse paper title and ID from raw string
+// const parseTitleAndId = (raw: string) => {
+//   const match = raw.match(/\[\[ID:([^\]]+)\]\]/); // Match [[ID:xxx]]
+//   const id = match ? match[1] : null;
+
+//   let title = raw;
+
+//   // Check if there's a "Title:" prefix (handle both **Title:** and Title:)
+//   const titleMatch = raw.match(/\*{0,2}Title:\*{0,2}\s*([^\[.\n]+)/i);
+//   if (titleMatch) {
+//     title = titleMatch[1].trim();
+//     // Remove trailing period if present
+//     title = title.replace(/\.\s*$/, '');
+//   } else if (id) {
+//     // Extract everything before [[ID:xxx]]
+//     const beforeId = raw.split('[[ID:')[0].trim();
+
+//     // Remove any metadata after the title (could be inline or on same line)
+//     // Pattern matches: Authors:, Year:, Source:, Venue:, etc.
+//     title = beforeId
+//       .split(/\n/)[0]  // Take only first line if multiline
+//       .replace(/\s+(Authors?:|Year:|Source:|Venue:|ID:).*$/gi, '')  // Remove inline metadata
+//       .replace(/\.\s*$/, '')  // Remove trailing period
+//       .trim();
+//   }
+
+//   console.log("parseTitleAndId → raw:", raw, "title:", title, "id:", id);
+//   return { title, id };
+// };
+
 const parseTitleAndId = (raw: string) => {
-  const match = raw.match(/\[\[ID:([^\]]+)\]\]/); // Match [[ID:xxx]]
-  const id = match ? match[1] : null;
+  // 1) Extract ID (various formats supported)
+  const idMatch = raw.match(/(?:<!--ID:([\w-]+)-->|\[\[ID:([^\]]+)\]\])/i);
+  const extractedId = idMatch ? (idMatch[1] || idMatch[2]) : null;
 
-  let title = raw;
+  // 2) Extract title
+  const titleMatch = raw.match(/Title:\s*([^\n\.<]+)/i);
+  const title = titleMatch ? titleMatch[1].trim() : null;
 
-  // Check if there's a "Title:" prefix (handle both **Title:** and Title:)
-  const titleMatch = raw.match(/\*{0,2}Title:\*{0,2}\s*([^\[.\n]+)/i);
-  if (titleMatch) {
-    title = titleMatch[1].trim();
-    // Remove trailing period if present
-    title = title.replace(/\.\s*$/, '');
-  } else if (id) {
-    // Extract everything before [[ID:xxx]]
-    const beforeId = raw.split('[[ID:')[0].trim();
+  // 3) Build fallback key (only for UI, never used in backend queries)
+  const fallbackKey = extractedId || (title
+    ? `temp_${title.replace(/\s+/g, "_").toLowerCase()}`
+    : `temp_raw_${raw.slice(0, 20).replace(/\s+/g, "_")}`);
 
-    // Remove any metadata after the title (could be inline or on same line)
-    // Pattern matches: Authors:, Year:, Source:, Venue:, etc.
-    title = beforeId
-      .split(/\n/)[0]  // Take only first line if multiline
-      .replace(/\s+(Authors?:|Year:|Source:|Venue:|ID:).*$/gi, '')  // Remove inline metadata
-      .replace(/\.\s*$/, '')  // Remove trailing period
-      .trim();
-  }
-
-  console.log("parseTitleAndId → raw:", raw, "title:", title, "id:", id);
-  return { title, id };
+  return { id: extractedId, title, key: fallbackKey };
 };
+
+async function fetchPaper(id: string | null, title: string | null) {
+  try {
+    if (id && !id.startsWith("temp_")) {
+      const res = await getPaperById(id);
+      const paper = Array.isArray(res) ? res[0] : (res?.data || res);
+      if (paper && paper.ID) return paper;
+    }
+
+    // Fallback to title
+    if (title) {
+      const papers = await getPaperByTitle(title);
+      if (papers && papers.length > 0) return papers[0];
+    }
+
+    return null;
+  } catch (err) {
+    console.error("fetchPaper error:", err);
+    return null;
+  }
+}
+/////////////////////////////////////////////////////////////
+
+
+
+
+
 
 export const Dialog = observer(({ props }) => {
   const {
@@ -367,19 +109,39 @@ export const Dialog = observer(({ props }) => {
     isInSelectedNodeIDs,
   } = props;
 
-  // Ensure chatSessionId is always set (create on first use if missing)
-  const sessionId = React.useMemo(() => {
-    if (chatSessionId) {
-      return chatSessionId;
-    }
-    const newId = `chat_${Date.now()}`;
-    updateDialogState({ chatSessionId: newId });
-    return newId;
-  }, [chatSessionId]);
 
-  const [displayMessages, setDisplayMessages] = React.useState<
-    { role: "user" | "ai"; text: string }[]
-  >(savedDisplayMessages || []);
+
+
+//////////////////////////////////////////////////////////////////// modified code
+  // Ensure chatSessionId is always set (create on first use if missing)
+  // const sessionId = React.useMemo(() => {
+  //   if (chatSessionId) {
+  //     return chatSessionId;
+  //   }
+  //   const newId = `chat_${Date.now()}`;
+  //   updateDialogState({ chatSessionId: newId });
+  //   return newId;
+  // }, [chatSessionId]);
+
+  // const [displayMessages, setDisplayMessages] = React.useState<
+  //   { role: "user" | "ai"; text: string }[]
+  // >(savedDisplayMessages || []);
+
+  const [displayMessages, setDisplayMessages] = React.useState<{ role: "user" | "ai"; text: string }[]>(
+    chatHistory || [] 
+  );
+
+  const [retrievedPapers, setRetrievedPapers] = React.useState<{title: string, id: string | null, key: string}[]>([]);
+
+///////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
   const [isWaiting, setIsWaiting] = React.useState(false);
 
   // Paper info modal state
@@ -419,13 +181,40 @@ export const Dialog = observer(({ props }) => {
     setLoadingPaperInfo(false);
   };
 
-  // Sync displayMessages to dialogStates whenever it changes
-  React.useEffect(() => {
-    updateDialogState({ displayMessages });
-  }, [displayMessages]);
+
+
+
+
+///////////////////////////////////////////////////////// modified code
+      // Sync displayMessages to dialogStates whenever it changes
+      // React.useEffect(() => {
+      //   updateDialogState({ displayMessages });
+      // }, [displayMessages]);
+
+      React.useEffect(() => {
+        setDisplayMessages(chatHistory || []);
+    }, [chatHistory]);
+/////////////////////////////////////////////////////////
+
+
 
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+
+
+//////////////////////////////////////////////////////////////// modified code
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatHistory, isWaiting]);
+/////////////////////////////////////////////////////////////////
+
+
+
+
   const prevMessageCountRef = React.useRef(0);
 
   // Auto scroll to the latest message only when new messages are added
@@ -521,79 +310,113 @@ export const Dialog = observer(({ props }) => {
     saveAll: false
   });
 
+
+
+///////////////////////////////////////////////////////////////// modified code
   const chatRequest = () => {
     if (!chatText.trim()) return;
 
-    // 🔵 Log the outgoing query (ported)
-    Logger.logLLMInteraction({
-      component: "Dialog",
-      action: "chatQuery",
-      query: chatText,
-      chatHistory: chatHistory,
-      historyLength: chatHistory.length,
-      chat_history_raw: [...displayMessages, { role: "user", text: chatText }],
-    });
-
-    setDisplayMessages((prev) => [...prev, { role: "user", text: chatText }]);
-    updateDialogState({ chatText: "" });
-
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
-
+    // 1. Clear previous retrieval state
+    setRetrievedPapers([]); 
     setIsWaiting(true);
 
+    // 2. Optimistically add the USER message to the UI immediately
+    const userMessage = { role: "user", text: chatText };
+    
+    // Update global state with the new user message
+    updateDialogState((prev: any) => ({
+      chatHistory: [...prev.chatHistory, userMessage],
+      chatText: "", // Clear input
+    }));
+
+    // Prepare history to send to backend (existing history + new user msg)
+    const baseHistory = [...chatHistory, userMessage];
+
+    // 3. Start the Fetch Request
     fetch(`${baseUrl}chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        chat_id: props.tabId,
         text: chatText,
-        chat_id: sessionId, // Use persistent chat ID to maintain conversation history
+        chat_history_raw: baseHistory,
       }),
     }).then((response) => {
-      const reader = response.body!.getReader();
+      // 4. Initialize the Stream Reader
+      if (!response.body) return;
+      const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
-      let partial = "";
-      let firstChunk = true;
+      
+      let partialResponse = ""; // Accumulates the full text for final processing
+      let isFirstChunk = true;
 
+      // 5. Define the Recursive Reader Function
       const readChunk = ({ done, value }: ReadableStreamReadResult<Uint8Array>) => {
+        // --- CASE A: Stream is Finished ---
         if (done) {
           setIsWaiting(false);
+          
+          // Parse all papers found in the complete response for the "ALL" buttons
+          const papers: { title: string; id: string | null; key: string }[] = [];
+          const lines = partialResponse.split("\n");
 
-          // 🟢 Log the completed LLM response (ported)
-          Logger.logLLMInteraction({
-            component: "Dialog",
-            action: "chatResponse",
-            query: chatText,
-            responseLength: partial.length,
-            chatHistory: chatHistory,
-          });
-
-          // Also append to external chatHistory like before
-          const newChatHistory = [...chatHistory, { human: chatText, ai: partial }];
-          updateDialogState({ chatHistory: newChatHistory });
+          for (const line of lines) {
+            const { id, title, key } = parseTitleAndId(line);
+            if (key && !papers.some((p) => p.key === key)) {
+               // Only add if it looks like a valid paper line
+               if(title) papers.push({ id, title, key });
+            }
+          }
+          console.log("Stream complete. Papers found:", papers);
+          setRetrievedPapers(papers);
           return;
         }
 
-        partial += decoder.decode(value);
+        // --- CASE B: Process New Chunk ---
+        const newTextChunk = decoder.decode(value);
+        partialResponse += newTextChunk;
 
-        if (firstChunk) {
-          setIsWaiting(false);
-          setDisplayMessages((prev) => [...prev, { role: "ai", text: "" }]);
-          firstChunk = false;
+        // If this is the very first bit of text, create the "AI" message bubble
+        if (isFirstChunk) {
+          isFirstChunk = false;
+          setIsWaiting(false); // Stop the "Thinking..." spinner
+          
+          updateDialogState((prev: any) => ({
+            chatHistory: [...prev.chatHistory, { role: "ai", text: "" }],
+          }));
         }
 
-        setDisplayMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: "ai", text: partial };
-          return updated;
+        // Append the new chunk to the *last* message (the AI's message)
+        updateDialogState((prev: any) => {
+          const historyCopy = [...prev.chatHistory];
+          const lastMsgIndex = historyCopy.length - 1;
+          const lastMsg = historyCopy[lastMsgIndex];
+
+          if (lastMsg && lastMsg.role === "ai") {
+            historyCopy[lastMsgIndex] = {
+              ...lastMsg,
+              text: lastMsg.text + newTextChunk,
+            };
+          }
+          return { chatHistory: historyCopy };
         });
 
+        // Read the next chunk
         reader.read().then(readChunk);
       };
+
+      // Kick off the reading loop
       reader.read().then(readChunk);
+    }).catch(err => {
+      console.error("Stream error:", err);
+      setIsWaiting(false);
     });
   };
+/////////////////////////////////////////////////////////////////
+
+
+
+
 
   const extractText = (children: React.ReactNode): string => {
     if (typeof children === "string") return children;
@@ -638,6 +461,9 @@ export const Dialog = observer(({ props }) => {
     return text.replace(/\[\[ID:[^\]]+\]\]/g, '').trim();
   };
 
+
+
+
   // Helper function to check if a line is metadata (Authors, Year, Source, etc.)
   const isMetadataLine = (text: string): boolean => {
     if (!text) return false;
@@ -652,32 +478,266 @@ export const Dialog = observer(({ props }) => {
     return metadataPattern.test(trimmed) || standaloneIdPattern.test(trimmed);
   };
 
+
+
+
+////////////////////////////////////////////////////////////////////////////////////// modified code
+  // const renderPaperBlock = (title: string, id: string | null, raw: string) => {
+  //   // 🔹 Check if this is summary text (not an individual paper)
+  //   if (isSummaryText(raw)) {
+  //     // For summary text, strip ID tags and display as normal text
+  //     const cleanedText = stripIDTags(raw);
+  //     return <span>{cleanedText}</span>;
+  //   }
+
+  //   // 🔹 If no Title was parsed OR title === raw text, then it's not a paper title
+  //   if (!id && (!title || title === raw)) {
+  //     return <span>{raw}</span>; // Normal text → display as is
+  //   }
+
+  //   // Check if buttons should be disabled
+  //   const paperObj = { ID: id };
+  //   const isAlreadySelected = id && isInSelectedNodeIDs && isInSelectedNodeIDs(id);
+  //   const isAlreadyInSimilar = id && isInSimilarInputPapers && isInSimilarInputPapers(paperObj);
+  //   const isAlreadySaved = id && isInSavedPapers && isInSavedPapers(paperObj);
+
+  //   // 🔹 Otherwise it's a paper title → render in blue + show buttons
+  //   return (
+  //     <div style={{ marginBottom: "0.5em" }}>
+  //       <span
+  //         style={{ color: "blue", fontWeight: "bold", cursor: "pointer" }}
+  //         onClick={() => {
+  //           // 🟣 Open paper info modal when clicking on paper title
+  //           Logger.logUIInteraction({
+  //             component: "Dialog",
+  //             action: "selectPaperFromResponse",
+  //             paperTitle: title,
+  //             previousSelectedPaper: chatSelectedPaper,
+  //             paperId: id || undefined,
+  //           });
+  //           updateDialogState({ chatSelectedPaper: title });
+  //           // Open info modal
+  //           openPaperInfoModal(title, id);
+  //         }}
+  //       >
+  //         {title}
+  //       </span>
+
+  //       <div style={{ marginTop: "0.2em" }}>
+  //         <DefaultButton
+  //           iconProps={{ iconName: "Locate" }}
+  //           styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
+  //           disabled={isAlreadySelected}
+  //           onClick={() => {
+  //             // 🔍 Locate (by ID first, else by title) + logs
+  //             if (id) {
+  //               Logger.logUIInteraction({
+  //                 component: "Dialog",
+  //                 action: "locateSelectedPaper",
+  //                 paperTitle: title,
+  //                 paperId: id,
+  //               });
+  //               getPaperById(id).then((paper) => {
+  //                 if (paper && paper["ID"] != null) {
+  //                   Logger.logUIInteraction({
+  //                     component: "Dialog",
+  //                     action: "locateSelectedPaperSuccess",
+  //                     paperTitle: title,
+  //                     paperId: paper["ID"],
+  //                     via: "id",
+  //                   });
+  //                   addToSelectNodeIDs([paper["ID"]], "scatterplot");
+  //                 } else {
+  //                   Logger.logUIInteraction({
+  //                     component: "Dialog",
+  //                     action: "locateSelectedPaperNotFound",
+  //                     paperTitle: title,
+  //                     paperId: id,
+  //                     via: "id",
+  //                   });
+  //                 }
+  //               });
+  //             } else {
+  //               Logger.logUIInteraction({
+  //                 component: "Dialog",
+  //                 action: "locateSelectedPaper",
+  //                 paperTitle: title,
+  //               });
+  //               getPaperByTitle(title).then((papers) => {
+  //                 if (papers.length > 0) {
+  //                   Logger.logUIInteraction({
+  //                     component: "Dialog",
+  //                     action: "locateSelectedPaperSuccess",
+  //                     paperTitle: title,
+  //                     paperId: papers[0].ID,
+  //                     papersFound: papers.length,
+  //                     via: "title",
+  //                   });
+  //                   addToSelectNodeIDs(papers.map((d) => d["ID"]), "scatterplot");
+  //                 } else {
+  //                   Logger.logUIInteraction({
+  //                     component: "Dialog",
+  //                     action: "locateSelectedPaperNotFound",
+  //                     paperTitle: title,
+  //                     via: "title",
+  //                   });
+  //                 }
+  //               });
+  //             }
+  //           }}
+  //         />
+
+  //         <DefaultButton
+  //           iconProps={{ iconName: "PlusCircle" }}
+  //           styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
+  //           disabled={isAlreadyInSimilar}
+  //           onClick={() => {
+  //             // ➕ Add to similar input + logs
+  //             if (id) {
+  //               Logger.logUIInteraction({
+  //                 component: "Dialog",
+  //                 action: "addSelectedPaperToSimilarInput",
+  //                 paperTitle: title,
+  //                 paperId: id,
+  //               });
+  //               getPaperById(id).then((paper) => {
+  //                 if (paper) {
+  //                   Logger.logUIInteraction({
+  //                     component: "Dialog",
+  //                     action: "addSelectedPaperToSimilarInputSuccess",
+  //                     paperTitle: title,
+  //                     paperId: paper["ID"],
+  //                   });
+  //                   addToSimilarInputPapers(paper);
+  //                 } else {
+  //                   Logger.logUIInteraction({
+  //                     component: "Dialog",
+  //                     action: "addSelectedPaperToSimilarInputNotFound",
+  //                     paperTitle: title,
+  //                     paperId: id,
+  //                   });
+  //                 }
+  //               });
+  //             } else {
+  //               Logger.logUIInteraction({
+  //                 component: "Dialog",
+  //                 action: "addSelectedPaperToSimilarInput",
+  //                 paperTitle: title,
+  //               });
+  //               getPaperByTitle(title).then((papers) => {
+  //                 if (papers.length > 0) {
+  //                   Logger.logUIInteraction({
+  //                     component: "Dialog",
+  //                     action: "addSelectedPaperToSimilarInputSuccess",
+  //                     paperTitle: title,
+  //                     paperId: papers[0].ID,
+  //                   });
+  //                   addToSimilarInputPapers(papers[0]);
+  //                 } else {
+  //                   Logger.logUIInteraction({
+  //                     component: "Dialog",
+  //                     action: "addSelectedPaperToSimilarInputNotFound",
+  //                     paperTitle: title,
+  //                   });
+  //                 }
+  //               });
+  //             }
+  //           }}
+  //         />
+
+  //         <DefaultButton
+  //           iconProps={{ iconName: "Save" }}
+  //           styles={{ root: { minWidth: 0 } }}
+  //           disabled={isAlreadySaved}
+  //           onClick={() => {
+  //             // 💾 Save + logs
+  //             if (id) {
+  //               Logger.logUIInteraction({
+  //                 component: "Dialog",
+  //                 action: "saveSelectedPaper",
+  //                 paperTitle: title,
+  //                 paperId: id,
+  //               });
+  //               getPaperById(id).then((paper) => {
+  //                 if (paper) {
+  //                   Logger.logUIInteraction({
+  //                     component: "Dialog",
+  //                     action: "saveSelectedPaperSuccess",
+  //                     paperTitle: title,
+  //                     paperId: paper["ID"],
+  //                   });
+  //                   addToSavedPapers(paper);
+  //                 } else {
+  //                   Logger.logUIInteraction({
+  //                     component: "Dialog",
+  //                     action: "saveSelectedPaperNotFound",
+  //                     paperTitle: title,
+  //                     paperId: id,
+  //                   });
+  //                 }
+  //               });
+  //             } else {
+  //               Logger.logUIInteraction({
+  //                 component: "Dialog",
+  //                 action: "saveSelectedPaper",
+  //                 paperTitle: title,
+  //               });
+  //               getPaperByTitle(title).then((papers) => {
+  //                 if (papers.length > 0) {
+  //                   Logger.logUIInteraction({
+  //                     component: "Dialog",
+  //                     action: "saveSelectedPaperSuccess",
+  //                     paperTitle: title,
+  //                     paperId: papers[0].ID,
+  //                   });
+  //                   addToSavedPapers(papers[0]);
+  //                 } else {
+  //                   Logger.logUIInteraction({
+  //                     component: "Dialog",
+  //                     action: "saveSelectedPaperNotFound",
+  //                     paperTitle: title,
+  //                   });
+  //                 }
+  //               });
+  //             }
+  //           }}
+  //         />
+  //       </div>
+  //     </div>
+  //   );
+  // };
+
   const renderPaperBlock = (title: string, id: string | null, raw: string) => {
-    // 🔹 Check if this is summary text (not an individual paper)
-    if (isSummaryText(raw)) {
-      // For summary text, strip ID tags and display as normal text
-      const cleanedText = stripIDTags(raw);
-      return <span>{cleanedText}</span>;
+    // 1. If it's not a valid paper title line, just render cleaned text
+    if (!title || title === raw || !/Title:\s*[^\n]+/i.test(raw)) {
+      const cleaned = raw.replace(/\[\[ID:[^\]]+\]\]/g, "");
+      return <span>{cleaned}</span>;
     }
-
-    // 🔹 If no Title was parsed OR title === raw text, then it's not a paper title
-    if (!id && (!title || title === raw)) {
-      return <span>{raw}</span>; // Normal text → display as is
-    }
-
+  
+    // 2. Clean the title (remove ID tags)
+    const cleanTitle = title.replace(/\[\[ID:[^\]]+\]\]/g, "").trim();
+  
+    // 3. Extract the Summary (Remove Title line and ID tags from the raw block)
+    const summary = raw
+      .replace(/\*\*Title:[\s\S]*?\[\[ID:[^\]]+\]\]\*\*/gi, "")
+      .replace(/Title:\s*[^\n]+/gi, "")
+      .replace(/<!--ID:[^>]+-->/g, "")
+      .replace(/\[\[ID:[^\]]+\]\]/g, "")
+      .trim();
+  
     // Check if buttons should be disabled
     const paperObj = { ID: id };
     const isAlreadySelected = id && isInSelectedNodeIDs && isInSelectedNodeIDs(id);
     const isAlreadyInSimilar = id && isInSimilarInputPapers && isInSimilarInputPapers(paperObj);
     const isAlreadySaved = id && isInSavedPapers && isInSavedPapers(paperObj);
-
+  
     // 🔹 Otherwise it's a paper title → render in blue + show buttons
     return (
       <div style={{ marginBottom: "0.5em" }}>
         <span
           style={{ color: "blue", fontWeight: "bold", cursor: "pointer" }}
           onClick={() => {
-            // 🟣 Open paper info modal when clicking on paper title
+            // Open paper info modal when clicking on paper title
             Logger.logUIInteraction({
               component: "Dialog",
               action: "selectPaperFromResponse",
@@ -690,16 +750,16 @@ export const Dialog = observer(({ props }) => {
             openPaperInfoModal(title, id);
           }}
         >
-          {title}
+          {cleanTitle}             
         </span>
-
+  
         <div style={{ marginTop: "0.2em" }}>
           <DefaultButton
             iconProps={{ iconName: "Locate" }}
             styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
             disabled={isAlreadySelected}
             onClick={() => {
-              // 🔍 Locate (by ID first, else by title) + logs
+              // Locate (by ID first, else by title) + logs
               if (id) {
                 Logger.logUIInteraction({
                   component: "Dialog",
@@ -756,7 +816,7 @@ export const Dialog = observer(({ props }) => {
               }
             }}
           />
-
+  
           <DefaultButton
             iconProps={{ iconName: "PlusCircle" }}
             styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
@@ -801,6 +861,8 @@ export const Dialog = observer(({ props }) => {
                       action: "addSelectedPaperToSimilarInputSuccess",
                       paperTitle: title,
                       paperId: papers[0].ID,
+                      papersFound: papers.length,
+                      via: "title",
                     });
                     addToSimilarInputPapers(papers[0]);
                   } else {
@@ -814,13 +876,13 @@ export const Dialog = observer(({ props }) => {
               }
             }}
           />
-
+  
           <DefaultButton
             iconProps={{ iconName: "Save" }}
             styles={{ root: { minWidth: 0 } }}
             disabled={isAlreadySaved}
             onClick={() => {
-              // 💾 Save + logs
+              // Save + logs
               if (id) {
                 Logger.logUIInteraction({
                   component: "Dialog",
@@ -859,6 +921,8 @@ export const Dialog = observer(({ props }) => {
                       action: "saveSelectedPaperSuccess",
                       paperTitle: title,
                       paperId: papers[0].ID,
+                      papersFound: papers.length,
+                      via: "title",
                     });
                     addToSavedPapers(papers[0]);
                   } else {
@@ -873,9 +937,28 @@ export const Dialog = observer(({ props }) => {
             }}
           />
         </div>
+        {/* 📝 Render the extracted summary text */}
+        {summary && (
+          <div
+            style={{
+              color: "#333",
+              fontSize: "0.95rem",
+              lineHeight: "1.5em",
+              whiteSpace: "pre-wrap",
+              marginLeft: "0.2em",
+              marginTop: "0.5em"
+            }}
+          >
+            {summary}
+          </div>
+        )}
       </div>
     );
   };
+/////////////////////////////////////////////////////////////////////////////////
+
+
+
 
   return (
     <div className="chat-window">
@@ -1092,7 +1175,11 @@ export const Dialog = observer(({ props }) => {
               setButtonsClicked(prev => ({ ...prev, saveAll: true }));
             }}
           />
-          <DefaultButton
+
+
+
+{/*////////////////////////////////////////////////////////////////////modified code */}
+          {/* <DefaultButton
             text="Clear"
             iconProps={{ iconName: "Delete" }}
             styles={{ root: { minWidth: 0, padding: "0 6px", marginLeft: "8px" } }}
@@ -1113,9 +1200,47 @@ export const Dialog = observer(({ props }) => {
                 chatSessionId: newSessionId,
               });
             }}
+          /> */}
+
+          <DefaultButton
+            text="Clear"
+            iconProps={{ iconName: "Delete" }}
+            styles={{ root: { minWidth: 0, padding: "0 6px", marginLeft: "8px" } }}
+            onClick={() => {
+              // 1. Log the action
+              // Note: We use chatSessionId from props, as 'sessionId' variable was commented out
+              Logger.logUIInteraction({
+                component: "Dialog",
+                action: "clearConversation",
+                messageCount: displayMessages.length,
+                previousSessionId: chatSessionId, 
+              });
+
+              // 2. Generate a new Session ID for the backend
+              const newSessionId = `chat_${Date.now()}`;
+
+              // 3. Clear Local Component State (UI immediate update)
+              setDisplayMessages([]);
+              setRetrievedPapers([]); // Clear any parsed papers held in memory
+              setButtonsClicked({ locateAll: false, addAll: false, saveAll: false }); // Reset "ALL" buttons to enabled
+              setIsWaiting(false); // Stop loading spinner if active
+
+              // 4. Update Parent/MobX State (Source of Truth)
+              // This ensures persistence if the user switches tabs and comes back
+              updateDialogState({
+                displayMessages: [],
+                chatHistory: [], // Clear the history array sent to backend
+                chatSessionId: newSessionId,
+                chatText: "",    // Clear any drafted text input
+                chatSelectedPaper: null // Optional: Deselect any currently active paper
+              });
+            }}
           />
         </div>
       </div>
+{/*///////////////////////////////////////////////////////////////////////////////////////////*/}
+
+
 
       {/* Paper Info Modal */}
       <Modal
