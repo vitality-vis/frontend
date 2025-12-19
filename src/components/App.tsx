@@ -259,6 +259,8 @@ interface AppProps {
 class App extends React.Component<AppProps, AppState> {
     writingPauseTimeout: ReturnType<typeof setTimeout> | null = null;
     practiceTasksCompleted: Set<string> = new Set();
+    contentChangeTimer: ReturnType<typeof setTimeout> | null = null;
+    periodicLogTimer: ReturnType<typeof setInterval> | null = null;
 
     constructor(props: any) {
         super(props);
@@ -441,29 +443,112 @@ class App extends React.Component<AppProps, AppState> {
 
 
     handleNotesChange = (content: string) => {
-        this.setState({notesContent: content}, () => {
+        const plainText = content.replace(/<[^>]+>/g, '').trim();
+        const contentLength = plainText.length;
+
+        this.setState({
+            notesContent: content,
+            lastWritingActivity: Date.now()
+        }, () => {
             // Practice task: Complete note task if user has written at least 10 characters
-            const plainText = content.replace(/<[^>]+>/g, '').trim();
-            if (this.props.isPractice && plainText.length >= 10) {
+            if (this.props.isPractice && contentLength >= 10) {
                 this.completePracticeTask('note');
             }
-        })
+        });
+
         try {
             localStorage.setItem('research_notes', content)
         }
         catch(error) {
             console.warn('Error with saving the research notes', error)
         }
+
+        // Log content change with debouncing
+        if (this.contentChangeTimer) {
+            clearTimeout(this.contentChangeTimer);
+        }
+
+        this.contentChangeTimer = setTimeout(() => {
+            Logger.logTextEditorEvent({
+                component: 'App_ResearchNotes',
+                action: 'content_change',
+                actionType: 'typing',
+                content: content,
+                contentLength: contentLength,
+                writingSessionId: this.state.writingSessionId,
+                timeSpent: this.state.writingStartTime ? Date.now() - this.state.writingStartTime : 0
+            });
+        }, 2000); // Log after 2 seconds of inactivity
+    };
+
+    handleQuillFocus = () => {
+        const sessionId = `session_${Date.now()}`;
+        const startTime = Date.now();
+
+        this.setState({
+            isCurrentlyWriting: true,
+            writingSessionId: sessionId,
+            writingStartTime: startTime,
+            lastWritingActivity: startTime
+        });
+
+        Logger.logTextEditorEvent({
+            component: 'App_ResearchNotes',
+            action: 'focus',
+            actionType: 'start_writing',
+            writingSessionId: sessionId
+        });
+
+        // Start periodic logging every 30 seconds while editor is focused
+        this.periodicLogTimer = setInterval(() => {
+            if (this.state.isCurrentlyWriting) {
+                const plainText = this.state.notesContent.replace(/<[^>]+>/g, '').trim();
+                Logger.logTextEditorEvent({
+                    component: 'App_ResearchNotes',
+                    action: 'periodic_update',
+                    actionType: 'writing_progress',
+                    contentLength: plainText.length,
+                    writingSessionId: this.state.writingSessionId,
+                    timeSpent: Date.now() - this.state.writingStartTime
+                });
+            }
+        }, 30000); // Log every 30 seconds
+    };
+
+    handleQuillBlur = () => {
+        const plainText = this.state.notesContent.replace(/<[^>]+>/g, '').trim();
+        const timeSpent = this.state.writingStartTime ? Date.now() - this.state.writingStartTime : 0;
+
+        this.setState({
+            isCurrentlyWriting: false
+        });
+
+        Logger.logTextEditorEvent({
+            component: 'App_ResearchNotes',
+            action: 'blur',
+            actionType: 'pause_writing',
+            contentLength: plainText.length,
+            writingSessionId: this.state.writingSessionId,
+            timeSpent: timeSpent
+        });
+
+        // Clear periodic logging timer
+        if (this.periodicLogTimer) {
+            clearInterval(this.periodicLogTimer);
+            this.periodicLogTimer = null;
+        }
     };
 
     logQuillContent = () => {
-        // const plainText = this.state.notesContent.replace(/<[^>]+>/g, "");
+        const plainText = this.state.notesContent.replace(/<[^>]+>/g, '').trim();
         Logger.logTextEditorEvent({
             component: 'App_ResearchNotes',
             action: 'next',
             actionType: 'finish_writing',
             content: this.state.notesContent,
-            // contentLength: this.state.notesContent.length
+            contentLength: plainText.length,
+            writingSessionId: this.state.writingSessionId,
+            timeSpent: this.state.writingStartTime ? Date.now() - this.state.writingStartTime : 0
         })
     }
 
@@ -1153,7 +1238,19 @@ class App extends React.Component<AppProps, AppState> {
         this.loadSavedNotes();
         this.loadSavedPapers();
     }
- 
+
+    componentWillUnmount() {
+        // Clean up timers
+        if (this.contentChangeTimer) {
+            clearTimeout(this.contentChangeTimer);
+        }
+        if (this.periodicLogTimer) {
+            clearInterval(this.periodicLogTimer);
+        }
+        if (this.writingPauseTimeout) {
+            clearTimeout(this.writingPauseTimeout);
+        }
+    }
 
     loadSavedNotes = () => {
         try {
@@ -2728,6 +2825,8 @@ class App extends React.Component<AppProps, AppState> {
                                         <ReactQuill
                                             value={this.state.notesContent}
                                             onChange={this.handleNotesChange}
+                                            onFocus={this.handleQuillFocus}
+                                            onBlur={this.handleQuillBlur}
                                             placeholder="Write your preliminary literature review here..."
                                             style={{
                                                 height: '100%',
