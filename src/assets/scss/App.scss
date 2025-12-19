@@ -442,7 +442,31 @@ body, .ms-Label, .ms-Pivot, .ms-Dropdown, .ms-Button, .ms-SearchBox, text {
     border: 1px solid var(--color-border);
     border-bottom-left-radius: var(--radius-sm);
     box-shadow: var(--shadow-xs);
-    
+
+    // Better paragraph spacing
+    p {
+      margin: 0.75em 0;
+      line-height: 1.6;
+
+      &:first-child {
+        margin-top: 0;
+      }
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    // Better list formatting
+    ul, ol {
+      margin: 0.5em 0;
+      padding-left: 1.5em;
+
+      li {
+        margin: 0.25em 0;
+      }
+    }
+
     // Paper title links in AI responses
     span[style*="color: blue"] {
       color: var(--color-primary) !important;
@@ -451,11 +475,29 @@ body, .ms-Label, .ms-Pivot, .ms-Dropdown, .ms-Button, .ms-SearchBox, text {
       background: var(--color-primary-light);
       border-radius: var(--radius-sm);
       transition: all var(--transition-fast);
-      
+      display: inline-block;
+      margin: 2px 0;
+
       &:hover {
         background: var(--color-primary);
         color: white !important;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       }
+    }
+
+    // Better formatting for strong/bold text
+    strong {
+      font-weight: 600;
+      color: var(--color-text);
+    }
+
+    // Code blocks
+    code {
+      background: rgba(0,0,0,0.05);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.9em;
     }
   }
 }

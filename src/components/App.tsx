@@ -415,7 +415,14 @@ class App extends React.Component<AppProps, AppState> {
             activeKey: '1', // Track the active tab
             nextTabId: 2, // Next available tab ID
             dialogStates: {
-                '1': {chatText: '', chatHistory: [], chatResponse: '', chatSelectedPaper: '', displayMessages: []}  // Initial state for the first dialog
+                '1': {
+                    chatText: '',
+                    chatHistory: [],
+                    chatResponse: '',
+                    chatSelectedPaper: '',
+                    displayMessages: [],
+                    chatSessionId: `chat_${Date.now()}_1`  // Unique persistent ID for first tab
+                }
             },
             offset: 0,
             hasMoreData: true,
@@ -954,7 +961,14 @@ class App extends React.Component<AppProps, AppState> {
             nextTabId: prevState.nextTabId + 1, // Increment counter
             dialogStates: {
                 ...prevState.dialogStates,
-                [newId]: {chatText: "", chatHistory: [], chatResponse: "", chatSelectedPaper: "", displayMessages: []}
+                [newId]: {
+                    chatText: "",
+                    chatHistory: [],
+                    chatResponse: "",
+                    chatSelectedPaper: "",
+                    displayMessages: [],
+                    chatSessionId: `chat_${Date.now()}_${newId}` // Unique persistent ID per tab
+                }
             }
         }));
 

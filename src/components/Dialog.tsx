@@ -326,11 +326,25 @@ const parseTitleAndId = (raw: string) => {
   const match = raw.match(/\[\[ID:([^\]]+)\]\]/); // Match [[ID:xxx]]
   const id = match ? match[1] : null;
 
-  // Only take the part after "Title:" until the first period
   let title = raw;
-  const titleMatch = raw.match(/Title:\s*([^\.]+)/i);
+
+  // Check if there's a "Title:" prefix (handle both **Title:** and Title:)
+  const titleMatch = raw.match(/\*{0,2}Title:\*{0,2}\s*([^\[.\n]+)/i);
   if (titleMatch) {
     title = titleMatch[1].trim();
+    // Remove trailing period if present
+    title = title.replace(/\.\s*$/, '');
+  } else if (id) {
+    // Extract everything before [[ID:xxx]]
+    const beforeId = raw.split('[[ID:')[0].trim();
+
+    // Remove any metadata after the title (could be inline or on same line)
+    // Pattern matches: Authors:, Year:, Source:, Venue:, etc.
+    title = beforeId
+      .split(/\n/)[0]  // Take only first line if multiline
+      .replace(/\s+(Authors?:|Year:|Source:|Venue:|ID:).*$/gi, '')  // Remove inline metadata
+      .replace(/\.\s*$/, '')  // Remove trailing period
+      .trim();
   }
 
   console.log("parseTitleAndId → raw:", raw, "title:", title, "id:", id);
@@ -343,6 +357,7 @@ export const Dialog = observer(({ props }) => {
     chatHistory,
     chatSelectedPaper,
     displayMessages: savedDisplayMessages,
+    chatSessionId,
     updateDialogState,
     addToSelectNodeIDs,
     addToSimilarInputPapers,
@@ -351,6 +366,16 @@ export const Dialog = observer(({ props }) => {
     isInSavedPapers,
     isInSelectedNodeIDs,
   } = props;
+
+  // Ensure chatSessionId is always set (create on first use if missing)
+  const sessionId = React.useMemo(() => {
+    if (chatSessionId) {
+      return chatSessionId;
+    }
+    const newId = `chat_${Date.now()}`;
+    updateDialogState({ chatSessionId: newId });
+    return newId;
+  }, [chatSessionId]);
 
   const [displayMessages, setDisplayMessages] = React.useState<
     { role: "user" | "ai"; text: string }[]
@@ -523,7 +548,7 @@ export const Dialog = observer(({ props }) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         text: chatText,
-        chat_id: `chat_${Date.now()}`, // Use timestamp-based chat ID for session isolation
+        chat_id: sessionId, // Use persistent chat ID to maintain conversation history
       }),
     }).then((response) => {
       const reader = response.body!.getReader();
@@ -613,6 +638,20 @@ export const Dialog = observer(({ props }) => {
     return text.replace(/\[\[ID:[^\]]+\]\]/g, '').trim();
   };
 
+  // Helper function to check if a line is metadata (Authors, Year, Source, etc.)
+  const isMetadataLine = (text: string): boolean => {
+    if (!text) return false;
+    const trimmed = text.trim();
+
+    // Match lines like "**Authors:** ...", "**Year:** ...", "**Source:** ...", etc.
+    const metadataPattern = /^\*{0,2}(Authors?|Year|Source|Venue|ID):\*{0,2}/i;
+
+    // Also match standalone "ID: xxx" lines
+    const standaloneIdPattern = /^ID:\s*\d+\s*$/i;
+
+    return metadataPattern.test(trimmed) || standaloneIdPattern.test(trimmed);
+  };
+
   const renderPaperBlock = (title: string, id: string | null, raw: string) => {
     // 🔹 Check if this is summary text (not an individual paper)
     if (isSummaryText(raw)) {
@@ -653,8 +692,6 @@ export const Dialog = observer(({ props }) => {
         >
           {title}
         </span>
-
-        {id && <div style={{ color: "gray", fontSize: "0.75em" }}>ID: {id}</div>}
 
         <div style={{ marginTop: "0.2em" }}>
           <DefaultButton
@@ -855,17 +892,35 @@ export const Dialog = observer(({ props }) => {
                   components={{
                     strong: ({ node, ...props }) => {
                       const raw = extractText(props.children);
+
+                      // Filter out metadata lines completely
+                      if (isMetadataLine(raw)) {
+                        return null;
+                      }
+
                       const { title, id } = parseTitleAndId(raw);
-                      return renderPaperBlock(title, id, raw); // ✅ Pass raw
+                      return renderPaperBlock(title, id, raw);
                     },
                     li: ({ node, children }) => {
                       const raw = extractText(children);
+
+                      // Filter out metadata lines in list items
+                      if (isMetadataLine(raw)) {
+                        return null;
+                      }
+
                       const { title, id } = parseTitleAndId(raw);
-                      return renderPaperBlock(title, id, raw); // ✅ Pass raw
+                      return renderPaperBlock(title, id, raw);
                     },
                     p: ({ node, children }) => {
-                      // Check if paragraph contains summary text with IDs
                       const raw = extractText(children);
+
+                      // Filter out metadata lines
+                      if (isMetadataLine(raw)) {
+                        return null;
+                      }
+
+                      // Check if paragraph contains summary text with IDs
                       if (raw && /\[\[ID:[^\]]+\]\]/g.test(raw)) {
                         // Check if this looks like a summary paragraph
                         if (isSummaryText(raw)) {
@@ -873,8 +928,17 @@ export const Dialog = observer(({ props }) => {
                           return <p>{cleanedText}</p>;
                         }
                       }
+
                       // Otherwise render normally
                       return <p>{children}</p>;
+                    },
+                    // Also filter metadata in plain text nodes
+                    text: ({ node, ...props }) => {
+                      const text = props.children as string;
+                      if (typeof text === 'string' && isMetadataLine(text)) {
+                        return null;
+                      }
+                      return <>{text}</>;
                     },
                   }}
                 >
@@ -1028,89 +1092,140 @@ export const Dialog = observer(({ props }) => {
               setButtonsClicked(prev => ({ ...prev, saveAll: true }));
             }}
           />
+          <DefaultButton
+            text="Clear"
+            iconProps={{ iconName: "Delete" }}
+            styles={{ root: { minWidth: 0, padding: "0 6px", marginLeft: "8px" } }}
+            onClick={() => {
+              Logger.logUIInteraction({
+                component: "Dialog",
+                action: "clearConversation",
+                messageCount: displayMessages.length,
+                previousSessionId: sessionId,
+              });
+
+              // Clear messages and generate new chat session ID for fresh conversation
+              const newSessionId = `chat_${Date.now()}`;
+              setDisplayMessages([]);
+              updateDialogState({
+                displayMessages: [],
+                chatHistory: [],
+                chatSessionId: newSessionId,
+              });
+            }}
+          />
         </div>
       </div>
 
       {/* Paper Info Modal */}
       <Modal
+        styles={{ main: { maxWidth: 700 } }}
         isOpen={isModalOpen}
         onDismiss={() => setModalState(false)}
         isBlocking={false}
-        containerClassName="paper-info-modal"
-        styles={{
-          main: {
-            maxWidth: 600,
-            padding: 24,
-            borderRadius: 12,
-          },
-        }}
       >
-        {loadingPaperInfo ? (
-          <div style={{ padding: 20, textAlign: "center" }}>Loading...</div>
-        ) : paperInfo ? (
-          <Stack tokens={{ childrenGap: 16 }}>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
-              {paperInfo.Title}
-            </h2>
-            <div style={{ fontSize: 14, color: "#666" }}>
-              <strong>Authors:</strong> {paperInfo.Authors}
-            </div>
-            <div style={{ fontSize: 14, color: "#666" }}>
-              <strong>Year:</strong> {paperInfo.Year}
-            </div>
-            <div style={{ fontSize: 14, color: "#666" }}>
-              <strong>Venue:</strong> {paperInfo.Venue}
-            </div>
-            <div style={{ fontSize: 14 }}>
-              <strong>Abstract:</strong>
-              <p style={{ marginTop: 8, lineHeight: 1.6 }}>
-                {paperInfo.Abstract}
-              </p>
-            </div>
-            {paperInfo.DOI && (
-              <div style={{ fontSize: 14 }}>
-                <strong>DOI:</strong>{" "}
-                <a
-                  href={`https://doi.org/${paperInfo.DOI}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: "var(--color-primary)" }}
-                >
-                  {paperInfo.DOI}
-                </a>
+        <div className="p-lg">
+          {loadingPaperInfo ? (
+            <div style={{ padding: 20, textAlign: "center" }}>Loading...</div>
+          ) : paperInfo ? (
+            <>
+              <h2 className="p-0 m-0">
+                {paperInfo.Title}
+                <IconButton
+                  className="float-right iconButton"
+                  iconProps={{ iconName: "Times" }}
+                  ariaLabel="Close popup modal"
+                  onClick={() => setModalState(false)}
+                />
+              </h2>
+              <br />
+              <div>
+                <b>Authors</b>:{" "}
+                {paperInfo.Authors
+                  ? Array.isArray(paperInfo.Authors)
+                    ? paperInfo.Authors.filter(Boolean).join(", ")
+                    : paperInfo.Authors
+                  : null}
+                <br />
+                <b>Source</b>: {paperInfo.Source || paperInfo.Venue}
+                <br />
+                <b>Year</b>: {paperInfo.Year}
+                <br />
+                <b>No. of Citations</b>: {paperInfo.CitationCounts}
+                <br />
+                <b>ID</b>: {paperInfo.ID}
+                <br />
               </div>
-            )}
-            <Stack horizontal tokens={{ childrenGap: 12 }} style={{ marginTop: 16 }}>
-              <ActionButton
-                iconProps={{ iconName: "Add" }}
-                text="Add to Selection"
-                onClick={() => {
-                  if (paperInfo && paperInfo.ID) {
-                    addToSelectNodeIDs([paperInfo.ID], "scatterplot");
-                    setModalState(false);
-                  }
-                }}
-              />
-              <ActionButton
-                iconProps={{ iconName: "Save" }}
-                text="Save Paper"
-                onClick={() => {
-                  if (paperInfo) {
+              <p>
+                <b>Abstract</b>: {paperInfo.Abstract}
+              </p>
+              <div>
+                <b>Keywords</b>:{" "}
+                {paperInfo.Keywords
+                  ? Array.isArray(paperInfo.Keywords)
+                    ? paperInfo.Keywords.filter(Boolean).join(", ")
+                    : paperInfo.Keywords
+                  : null}
+              </div>
+              <br />
+              <hr></hr>
+              <Stack tokens={{ childrenGap: 8 }} horizontal>
+                <ActionButton
+                  iconProps={{ iconName: "PlusCircle" }}
+                  disabled={isInSimilarInputPapers && isInSimilarInputPapers(paperInfo)}
+                  onClick={() => {
+                    Logger.logUIInteraction({
+                      component: "Dialog",
+                      action: "addToSimilarPapersFromModal",
+                      paperId: paperInfo.ID,
+                      paperTitle: paperInfo.Title,
+                    });
+                    addToSimilarInputPapers(paperInfo);
+                  }}
+                  allowDisabledFocus
+                >
+                  Select
+                </ActionButton>
+                <ActionButton
+                  disabled={isInSavedPapers && isInSavedPapers(paperInfo)}
+                  iconProps={{ iconName: "Save" }}
+                  onClick={() => {
+                    Logger.logUIInteraction({
+                      component: "Dialog",
+                      action: "savePaperFromModal",
+                      paperId: paperInfo.ID,
+                      paperTitle: paperInfo.Title,
+                    });
                     addToSavedPapers(paperInfo);
-                    setModalState(false);
-                  }
-                }}
-              />
-              <ActionButton
-                iconProps={{ iconName: "Cancel" }}
-                text="Close"
-                onClick={() => setModalState(false)}
-              />
-            </Stack>
-          </Stack>
-        ) : (
-          <div style={{ padding: 20, textAlign: "center" }}>Paper not found</div>
-        )}
+                  }}
+                  allowDisabledFocus
+                >
+                  Save
+                </ActionButton>
+                <ActionButton
+                  iconProps={{ iconName: "GraduationCap" }}
+                  onClick={() => {
+                    Logger.logUIInteraction({
+                      component: "Dialog",
+                      action: "openGoogleScholar",
+                      paperId: paperInfo.ID,
+                      paperTitle: paperInfo.Title,
+                    });
+                    const url =
+                      "https://scholar.google.com/scholar?hl=en&q=" +
+                      encodeURI(paperInfo.Title);
+                    window.open(url, "_blank");
+                  }}
+                  allowDisabledFocus
+                >
+                  Google Scholar
+                </ActionButton>
+              </Stack>
+            </>
+          ) : (
+            <div style={{ padding: 20, textAlign: "center" }}>Paper not found</div>
+          )}
+        </div>
       </Modal>
     </div>
   );
