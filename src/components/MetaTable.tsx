@@ -564,24 +564,19 @@ function filterMapping(filter, dataAuthors, dataSources, dataKeywords, columnId,
         return { Filter: DefaultColumnFilter, filter: 'fuzzyText' };
     } else if (filter === "range") {
         let min, max;
+
+        // Dynamically calculate min and max based on column type
         if (columnId === "Count") {
-            // Dynamically calculate min and max from the data
             min = Math.min(...columnData);
             max = Math.max(...columnData);
-        }return {
-            Filter: (props) => (
-                <NumberRangeColumnFilter
-                    {...props}
-                    id={columnId}
-                    min={min ?? undefined}
-                    max={max ?? undefined}
-                />
-            ),
-            filter: "between",
-        };
-        // Check if the column is Year or CitationCount to apply specific ranges
-        min = columnId === 'Year' ? staticMinYear : columnId === 'CitationCount' ? staticMinCitationCounts : undefined;
-        max = columnId === 'Year' ? staticMaxYear : columnId === 'CitationCount' ? staticMaxCitationCounts : undefined;
+        } else if (columnId === 'Year') {
+            min = staticMinYear;
+            max = staticMaxYear;
+        } else if (columnId === 'CitationCounts') {
+            min = staticMinCitationCounts;
+            max = staticMaxCitationCounts;
+        }
+
         return {
             Filter: (props) => (
                 <NumberRangeColumnFilter
@@ -591,7 +586,7 @@ function filterMapping(filter, dataAuthors, dataSources, dataKeywords, columnId,
                     max={max ?? undefined}
                 />
             ),
-            filter: 'between',
+            filter: "between",
         };
     } else if (filter === "multiselect-tokens") {
         return { Filter: (props) => <MultiSelectTokensColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords} />, filter: 'includesValue' };
@@ -1384,7 +1379,7 @@ function Table({
                                             selectedKey={null}
                                             placeholder="Column"
                                             onChange={onChange}
-                                            dropdownWidth={120}
+                                            dropdownWidth={200}
                                             options={options}
                                             onRenderCaretDown={() => {
                                                 return <Icon className="iconButton" iconName="Plus"></Icon>

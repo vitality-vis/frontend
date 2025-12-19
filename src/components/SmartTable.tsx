@@ -762,9 +762,9 @@ function filterMapping(filter, dataAuthors, dataSources, dataKeywords,
             filter: 'between',
         };
     } else if (filter === "range") {
-        // Check if the column is Year or CitationCount to apply specific ranges
-        const min = columnId === 'Year' ? staticMinYear : columnId === 'CitationCount' ? staticMinCitationCounts : undefined;
-        const max = columnId === 'Year' ? staticMaxYear : columnId === 'CitationCount' ? staticMaxCitationCounts : undefined;
+        // Check if the column is Year or CitationCounts to apply specific ranges
+        const min = columnId === 'Year' ? staticMinYear : columnId === 'CitationCounts' ? staticMinCitationCounts : undefined;
+        const max = columnId === 'Year' ? staticMaxYear : columnId === 'CitationCounts' ? staticMaxCitationCounts : undefined;
         return {
             Filter: (props) => (
                 <NumberRangeColumnFilter
@@ -1582,7 +1582,7 @@ function Table({
                                     selectedKey={null}
                                     placeholder="Column"
                                     onChange={onChange}
-                                    dropdownWidth={120}
+                                    dropdownWidth={200}
                                     options={options}
                                     onRenderCaretDown={() => {
                                         return <Icon className="iconButton" iconName="Plus"></Icon>

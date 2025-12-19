@@ -31,10 +31,21 @@ const steps: Step[] = [
   },
   {
     target: "#savedPapersButton",
-    content: "Click here to view your saved papers.",
+    content: "Click here to view your saved papers. In the next step, we'll explore the Saved Papers panel.",
     placement: 'bottom',
     // disableBeacon: true,
     disableScrolling: true
+  },
+  {
+    target: "#savedPapersPanel",
+    content: "This is the Saved Papers panel. Here you can view all papers you've saved for your research (top table), see AI-generated summaries and prompts (left panel), and write your preliminary literature review notes (right panel).",
+    placement: 'bottom',
+    disableBeacon: true,
+    styles: {
+      spotlight: {
+        borderRadius: 4
+      }
+    }
   },
   {
     target: "#globalSettingsArea",
@@ -68,12 +79,6 @@ const steps: Step[] = [
     target: "#chatWindowsPanel",
     content: "This is the Chat Windows panel where you can have conversations with AI about your research papers.",
     placement: 'left',
-    disableBeacon: true
-  },
-  {
-    target: "#chatModeDropdown",
-    content: "Choose between two chat modes: 🗣 Normal Chat (general conversation) or 📚 RAG Chat (Retrieval-Augmented Generation - answers based on your saved papers and research context).",
-    placement: 'top',
     disableBeacon: true,
     locale: {last: "Finish"}
   }
@@ -83,14 +88,95 @@ const steps: Step[] = [
   // Add more steps as needed
 ];
   
+// Helper function to wait for a DOM element to exist
+const waitForTarget = (selector: string, cb: () => void, timeoutMs = 3000) => {
+  const start = Date.now();
+  const tick = () => {
+    if (document.querySelector(selector)) return cb();
+    if (Date.now() - start > timeoutMs) {
+      console.warn(`Joyride: Target ${selector} not found within ${timeoutMs}ms`);
+      return;
+    }
+    requestAnimationFrame(tick);
+  };
+  tick();
+};
+
+// Helper function to wait for a DOM element to disappear
+const waitForTargetToDisappear = (selector: string, cb: () => void, timeoutMs = 3000) => {
+  const start = Date.now();
+  const tick = () => {
+    if (!document.querySelector(selector)) return cb();
+    if (Date.now() - start > timeoutMs) {
+      console.warn(`Joyride: Target ${selector} still exists after ${timeoutMs}ms`);
+      cb(); // proceed anyway
+      return;
+    }
+    requestAnimationFrame(tick);
+  };
+  tick();
+};
+
+// Helper functions for panel state management
+const isSavedPapersOpen = () => {
+  const isOpen = !!document.querySelector('#savedPapersPanel');
+  console.log(`[Joyride] isSavedPapersOpen: ${isOpen}`);
+  return isOpen;
+};
+
+const openSavedPapers = () => {
+  console.log('[Joyride] openSavedPapers() called');
+  if (isSavedPapersOpen()) {
+    console.log('[Joyride] Panel already open, skipping');
+    return;
+  }
+  console.log('[Joyride] Clicking savedPapersButton to open panel');
+  document.getElementById('savedPapersButton')?.click();
+};
+
+const closeSavedPapers = () => {
+  console.log('[Joyride] closeSavedPapers() called');
+  if (!isSavedPapersOpen()) {
+    console.log('[Joyride] Panel already closed, skipping');
+    return;
+  }
+  console.log('[Joyride] Clicking close button to close panel');
+  const closeButton = document.querySelector('[aria-label="Close"]') as HTMLButtonElement | null;
+  closeButton?.click();
+};
+
 const JoyrideTutorial = ({currentStep, totalSteps}) => {
   const { goNext } = useStepNav();
   const [run, setRun] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [tourCompleted, setTourCompleted] = useState(false);
-  
+
   // Time tracking
   const stepStartTimeRef = useRef<number>(0);
+
+  // Ensure panel is open for step 3 (saved papers panel step)
+  useEffect(() => {
+    if (stepIndex === 3) {
+      console.log(`[Joyride] Step ${stepIndex}: Ensuring saved papers panel is open`);
+      // Only open if not already open
+      if (!isSavedPapersOpen()) {
+        console.log('[Joyride] Panel was closed, opening it...');
+        openSavedPapers();
+      }
+
+      // Scroll target into view to ensure visibility
+      const targetId = steps[stepIndex]?.target as string;
+      if (targetId) {
+        setTimeout(() => {
+          const element = document.querySelector(targetId);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            console.log(`[Joyride] Scrolled ${targetId} into view`);
+          }
+        }, 100);
+      }
+    }
+  }, [stepIndex]);
 
   const handleMetadataLoaded = () => {
     setRun(true);
@@ -124,19 +210,44 @@ const JoyrideTutorial = ({currentStep, totalSteps}) => {
 
   const handleJoyrideCallback = useCallback((data: any) => {
     const { action, index, status, type } = data;
-    
+
+    console.log(`[Joyride Callback] type=${type}, action=${action}, index=${index}, status=${status}`);
+
+    // Handle target not found error - only for boundary transitions
+    // Don't interfere with normal step transitions (3→4, 4→5, etc.)
+    if (type === 'error:target_not_found') {
+      console.warn(`[Joyride] ERROR: Target not found for step ${index}, action=${action}, target=${steps[index]?.target}`);
+
+      // Only retry if we're in a boundary transition (opening or closing panel)
+      // Boundary forward: index 2→3 (opening panel), index 3→4 (closing panel)
+      // Boundary backward: index 3→2 (closing panel), index 4→3 (opening panel)
+      const isBoundaryTransition =
+        (index === 2 && action === 'next') ||  // Opening panel
+        (index === 3 && action === 'next') ||  // Closing panel (going forward)
+        (index === 3 && action === 'prev') ||  // Closing panel (going back)
+        (index === 4 && action === 'prev');    // Re-opening panel (going back)
+
+      if (isBoundaryTransition) {
+        const targetId = steps[index]?.target as string;
+        console.log(`[Joyride] Boundary transition detected, waiting for target: ${targetId}`);
+        waitForTarget(targetId, () => {
+          console.log(`[Joyride] Target found! Retrying step ${index}`);
+          setStepIndex(index); // Retry the same step
+        });
+      } else {
+        console.log(`[Joyride] Normal transition error, ignoring (stepIndex will update via state)`);
+      }
+      return;
+    }
+
     if (type === 'step:after') {
       const endTime = Date.now();
       const duration = (endTime - stepStartTimeRef.current) / 1000; // in seconds
 
       if (action === 'next') {
+        console.log(`[Joyride] NEXT clicked at step ${index} (going to ${index + 1})`);
+
         // Log time spent on current step when going to next
-        // logEvent('joyride_step_timing', {
-        //   stepIndex: index,
-        //   action: 'next',
-        //   secondsSpent: duration,
-        //   stepContent: steps[index]?.content || 'Unknown step'
-        // });
         Logger.logStudyEvent(
           {
             component: 'joyride',
@@ -146,17 +257,49 @@ const JoyrideTutorial = ({currentStep, totalSteps}) => {
             stepContent: steps[index]?.content || 'Unknown step'
           }
         )
-        
+
+        // === FORWARD BOUNDARY TRANSITIONS ===
+
+        // 2 → 3: OPEN Saved Papers panel
+        if (index === 2) {
+          console.log('[Joyride] Boundary: 2→3, Opening saved papers panel');
+          openSavedPapers();
+          // Wait for the panel target to exist before advancing
+          waitForTarget('#savedPapersPanel', () => {
+            console.log('[Joyride] Panel opened, advancing to step 3');
+            setStepIndex(3);
+            stepStartTimeRef.current = Date.now();
+          });
+          return;
+        }
+
+        // 3 → 4: CLOSE Saved Papers panel
+        if (index === 3) {
+          console.log('[Joyride] Boundary: 3→4, Closing saved papers panel');
+          closeSavedPapers();
+          // Wait for panel to disappear, then advance to next step
+          waitForTargetToDisappear('#savedPapersPanel', () => {
+            console.log('[Joyride] Panel closed, advancing to step 4');
+            setStepIndex(4);
+            stepStartTimeRef.current = Date.now();
+          });
+          return;
+        }
+
+        // Normal next (no boundary)
+        console.log(`[Joyride] Normal next: ${index}→${index + 1}, panel should stay as-is`);
         setStepIndex(index + 1);
         if (index + 1 === steps.length) {
           setTourCompleted(true);
         } else {
-          // Start timing for next step
           stepStartTimeRef.current = Date.now();
         }
+        return;
       }
-      
+
       if (action === 'prev') {
+        console.log(`[Joyride] PREV clicked at step ${index} (going to ${index - 1})`);
+
         // Log time spent on current step when going back
         Logger.logStudyEvent(
           {
@@ -167,10 +310,40 @@ const JoyrideTutorial = ({currentStep, totalSteps}) => {
             stepContent: steps[index]?.content || 'Unknown step'
           }
         )
-        
+
+        // === BACKWARD BOUNDARY TRANSITIONS ===
+
+        // 3 → 2: CLOSE Saved Papers panel when leaving panel step
+        if (index === 3) {
+          console.log('[Joyride] Boundary: 3→2, Closing saved papers panel');
+          closeSavedPapers();
+          // Wait until panel is gone, then show step 2 (the button)
+          waitForTargetToDisappear('#savedPapersPanel', () => {
+            console.log('[Joyride] Panel closed, going back to step 2');
+            setStepIndex(2);
+            stepStartTimeRef.current = Date.now();
+          });
+          return;
+        }
+
+        // 4 → 3: OPEN Saved Papers panel when going back into panel step
+        if (index === 4) {
+          console.log('[Joyride] Boundary: 4→3, Opening saved papers panel');
+          openSavedPapers();
+          // Wait for the panel target to exist before going back
+          waitForTarget('#savedPapersPanel', () => {
+            console.log('[Joyride] Panel opened, going back to step 3');
+            setStepIndex(3);
+            stepStartTimeRef.current = Date.now();
+          });
+          return;
+        }
+
+        // Normal prev (no boundary)
+        console.log(`[Joyride] Normal prev: ${index}→${index - 1}, panel should stay as-is`);
         setStepIndex(index - 1);
-        // Start timing for previous step
         stepStartTimeRef.current = Date.now();
+        return;
       }
     }
     
@@ -219,6 +392,19 @@ const JoyrideTutorial = ({currentStep, totalSteps}) => {
         styles={{
           options: {
             primaryColor: '#000',
+            zIndex: 1000001,
+          },
+          overlay: {
+            zIndex: 1000001,
+          },
+          spotlight: {
+            zIndex: 1000002,
+          },
+          tooltip: {
+            zIndex: 1000003,
+          },
+          tooltipContainer: {
+            zIndex: 1000003,
           }
         }}
       />}
@@ -260,9 +446,9 @@ const JoyrideTutorial = ({currentStep, totalSteps}) => {
                 marginBottom: '16px',
                 textAlign: 'center'
               }}>
-                You have finished the tour.
+                You've completed the walkthrough!
               </h2>
-              
+
               <p style={{
                 fontSize: '16px',
                 color: '#34495e',
@@ -270,7 +456,7 @@ const JoyrideTutorial = ({currentStep, totalSteps}) => {
                 marginBottom: '24px',
                 textAlign: 'center'
               }}>
-                You may browse the interface or click "Next" to proceed.
+                Feel free to browse around and explore the interface, or click "Next" when you're ready to proceed.
               </p>
               
               <button 

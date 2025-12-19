@@ -558,14 +558,18 @@ class App extends React.Component<AppProps, AppState> {
                 let minYear = yearFilter ? yearFilter.value[0] : undefined;
                 // console.log('minYear',minYear)
                 let maxYear = yearFilter ? yearFilter.value[1] : undefined;
-                // Reset to undefined if minYear is 1974 or maxYear is 2023
-                minYear = minYear === 1974 ? undefined : minYear;
-                maxYear = maxYear === 2023 ? undefined : maxYear;
+                // Reset to undefined only if BOTH are at defaults (full range = no filter)
+                if (minYear === this.state.minYear && maxYear === this.state.maxYear) {
+                    minYear = undefined;
+                    maxYear = undefined;
+                }
                 let minCitationCounts = citationFilter ? citationFilter.value[0] : undefined;
                 let maxCitationCounts = citationFilter ? citationFilter.value[1] : undefined;
-                // Reset to undefined if minCitationCounts is 1 or maxCitationCounts is 1611
-                minCitationCounts = minCitationCounts === 0 ? undefined : minCitationCounts;
-                maxCitationCounts = maxCitationCounts === 1611 ? undefined : maxCitationCounts;
+                // Reset to undefined only if BOTH are at defaults (full range = no filter)
+                if (minCitationCounts === this.state.minCitationCounts && maxCitationCounts === this.state.maxCitationCounts) {
+                    minCitationCounts = undefined;
+                    maxCitationCounts = undefined;
+                }
 
                 const searchText = columnFilterValues["all"]
                     .filter(f => f.id === 'Title') // Filter for entries with id 'Title'
@@ -1422,18 +1426,34 @@ class App extends React.Component<AppProps, AppState> {
                 .then(response => response.json())
                 .then((data) => {
                     updateSimilarPaperIDs(data);
+                    const scores = data.length > 0 ? data.map(d => d.score || 0) : [0]; // in case some docs have no score or empty data
+                    const minScore = Math.min(...scores);
+                    const maxScore = Math.max(...scores);
+                    // Reset filters for similarity results to prevent stale filters from previous searches
+                    const resetColumnFilterValues = {...parent.state.columnFilterValues};
+                    resetColumnFilterValues["similar"] = [];
+                    const resetGlobalFilterValue = {...parent.state.globalFilterValue};
+                    resetGlobalFilterValue["similar"] = "";
                     parent.setState({
                         "dataSimilar": data,
                         "spinner": false,
-                        "similarityPanelSelectedKey": String(2) // Redirect to the `Output Similar` tab.
-                    });
-                    
-                    // Abstract similarity search completion
-                    Logger.logLLMInteraction({
-                        component: 'App',
-                        action: 'similarity_search_by_abstract_complete',
-                        resultsCount: data?.length || 0,
-                        embeddingType: parent.state.embeddingType.key
+                        "similarityPanelSelectedKey": String(2), // Redirect to the `Output Similar` tab.
+                        similarMinScore: minScore,
+                        similarMaxScore: maxScore,
+                        columnFilterValues: resetColumnFilterValues,
+                        globalFilterValue: resetGlobalFilterValue
+                    }, () => {
+                        console.log("Updated State (By Abstract):", this.state.dataSimilar); // Log updated state
+
+                        // Abstract similarity search completion
+                        Logger.logLLMInteraction({
+                            component: 'App',
+                            action: 'similarity_search_by_abstract_complete',
+                            resultsCount: data?.length || 0,
+                            minScore: minScore,
+                            maxScore: maxScore,
+                            embeddingType: parent.state.embeddingType.key
+                        });
                     });
                 });
         }
@@ -1471,18 +1491,25 @@ class App extends React.Component<AppProps, AppState> {
                 .then(response => response.json())
                 .then((data) => {
                     updateSimilarPaperIDs(data);
-                    const scores = data.map(d => d.score || 0); // in case some docs have no score
+                    const scores = data.length > 0 ? data.map(d => d.score || 0) : [0]; // in case some docs have no score or empty data
                     const minScore = Math.min(...scores);
                     const maxScore = Math.max(...scores);
+                    // Reset filters for similarity results to prevent stale filters from previous searches
+                    const resetColumnFilterValues = {...parent.state.columnFilterValues};
+                    resetColumnFilterValues["similar"] = [];
+                    const resetGlobalFilterValue = {...parent.state.globalFilterValue};
+                    resetGlobalFilterValue["similar"] = "";
                     parent.setState({
                         dataSimilar: data,
                         spinner: false,
                         similarityPanelSelectedKey: String(2), // Redirect to the `Output Similar` tab
                         similarMinScore: minScore,
-                        similarMaxScore: maxScore
+                        similarMaxScore: maxScore,
+                        columnFilterValues: resetColumnFilterValues,
+                        globalFilterValue: resetGlobalFilterValue
                     }, () => {
                         console.log("Updated State:", this.state.dataSimilar); // Log updated state
-                        
+
                         // Similarity search completion
                         Logger.logLLMInteraction({
                             component: 'App',
@@ -2597,18 +2624,21 @@ class App extends React.Component<AppProps, AppState> {
                     >
                         <br/>
                         <a ref={this.state.checkoutLinkRef}></a>
-                        <SmartTable props={savedPapersTableProps} setSpinner={this.setSpinner}></SmartTable>
+                        <div id="savedPapersPanel">
+                            <div id="savedPapersSmartTable">
+                                <SmartTable props={savedPapersTableProps} setSpinner={this.setSpinner}></SmartTable>
+                            </div>
 
 
 
-                        <div style={{
-                            display: 'flex',
-                            flexDirection: 'row',
-                            gap: '20px',
-                            marginTop: '20px',
-                            }}>
-                            {/* LLM Output */}
                             <div style={{
+                                display: 'flex',
+                                flexDirection: 'row',
+                                gap: '20px',
+                                marginTop: '20px',
+                                }}>
+                                {/* LLM Output */}
+                                <div id="savedPapersLLMOutput" style={{
                                 flex: 1,
                                 padding: '16px',
                                 backgroundColor: '#ffffffba',
@@ -2661,7 +2691,7 @@ class App extends React.Component<AppProps, AppState> {
                             </div>
 
                             {/* Research Notes */}
-                            <div style={{
+                            <div id="savedPapersResearchNotes" style={{
                                 flex: 1,
                                 padding: '16px',
                                 backgroundColor: '#ffffffba',
@@ -2718,6 +2748,7 @@ class App extends React.Component<AppProps, AppState> {
                             </div>
 
 
+                        </div>
                         </div>
 
                     </Panel>
@@ -2806,9 +2837,11 @@ class App extends React.Component<AppProps, AppState> {
                                                     this.setState({searchByAbstractLimit: item})
                                                 }}
                                                 options={maxSimilarPapersDropdownOptions}
+                                                styles={{root: {minWidth: 90}}}
                                             />
                                             <PrimaryButton style={{zIndex: 2}} text="Find Similar Papers"
-                                                           onClick={getSimilarPapersByAbstract} allowDisabledFocus/>
+                                                           onClick={getSimilarPapersByAbstract} allowDisabledFocus
+                                                           disabled={(!this.state.searchAbstract || this.state.searchAbstract.trim().length === 0) && (!this.state.searchTitle || this.state.searchTitle.trim().length === 0)}/>
                                         </Stack>
                                         <div className="m-t-md"></div>
                                         {/* Do not show title when switch to 'ada' embedding */}

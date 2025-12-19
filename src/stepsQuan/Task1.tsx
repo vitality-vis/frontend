@@ -208,14 +208,20 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
       const yearFilter = getFilter("Year");
       let minY = yearFilter?.value?.[0];
       let maxY = yearFilter?.value?.[1];
-      if (minY === minYear) minY = undefined;
-      if (maxY === maxYear) maxY = undefined;
+      // Reset to undefined only if BOTH are at defaults (full range = no filter)
+      if (minY === minYear && maxY === maxYear) {
+        minY = undefined;
+        maxY = undefined;
+      }
 
       const citationFilter = getFilter("CitationCounts");
       let minC = citationFilter?.value?.[0];
       let maxC = citationFilter?.value?.[1];
-      if (minC === minCitationCounts) minC = undefined;
-      if (maxC === maxCitationCounts) maxC = undefined;
+      // Reset to undefined only if BOTH are at defaults (full range = no filter)
+      if (minC === minCitationCounts && maxC === maxCitationCounts) {
+        minC = undefined;
+        maxC = undefined;
+      }
 
       const payload = {
         limit: 1000,
@@ -284,14 +290,20 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
       const yearFilter = getFilter("Year");
       let minY = yearFilter?.value?.[0];
       let maxY = yearFilter?.value?.[1];
-      if (minY === minYear) minY = undefined;
-      if (maxY === maxYear) maxY = undefined;
+      // Reset to undefined only if BOTH are at defaults (full range = no filter)
+      if (minY === minYear && maxY === maxYear) {
+        minY = undefined;
+        maxY = undefined;
+      }
 
       const citationFilter = getFilter("CitationCounts");
       let minC = citationFilter?.value?.[0];
       let maxC = citationFilter?.value?.[1];
-      if (minC === minCitationCounts) minC = undefined;
-      if (maxC === maxCitationCounts) maxC = undefined;
+      // Reset to undefined only if BOTH are at defaults (full range = no filter)
+      if (minC === minCitationCounts && maxC === maxCitationCounts) {
+        minC = undefined;
+        maxC = undefined;
+      }
 
       const payload = {
         limit: 1000,
@@ -353,14 +365,20 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
       const yearFilter = getFilter("Year");
       let minY = yearFilter?.value?.[0];
       let maxY = yearFilter?.value?.[1];
-      if (minY === minYear) minY = undefined;
-      if (maxY === maxYear) maxY = undefined;
+      // Reset to undefined only if BOTH are at defaults (full range = no filter)
+      if (minY === minYear && maxY === maxYear) {
+        minY = undefined;
+        maxY = undefined;
+      }
 
       const citationFilter = getFilter("CitationCounts");
       let minC = citationFilter?.value?.[0];
       let maxC = citationFilter?.value?.[1];
-      if (minC === minCitationCounts) minC = undefined;
-      if (maxC === maxCitationCounts) maxC = undefined;
+      // Reset to undefined only if BOTH are at defaults (full range = no filter)
+      if (minC === minCitationCounts && maxC === maxCitationCounts) {
+        minC = undefined;
+        maxC = undefined;
+      }
 
       const payload = {
         limit: -1,
