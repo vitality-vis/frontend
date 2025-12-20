@@ -204,12 +204,9 @@ export const Dialog = observer(({ props }) => {
 
 //////////////////////////////////////////////////////////////// modified code
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const chatMessagesContainerRef = React.useRef<HTMLDivElement>(null);
 
-  React.useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [chatHistory, isWaiting]);
+  // Removed auto-scroll on every chatHistory change to prevent page jumping
 /////////////////////////////////////////////////////////////////
 
 
@@ -220,8 +217,9 @@ export const Dialog = observer(({ props }) => {
   // Auto scroll to the latest message only when new messages are added
   React.useEffect(() => {
     // Only scroll if messages were actually added (not on initial render)
-    if (displayMessages.length > prevMessageCountRef.current && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    if (displayMessages.length > prevMessageCountRef.current && chatMessagesContainerRef.current) {
+      // Scroll only within the chat container, not the entire page
+      chatMessagesContainerRef.current.scrollTop = chatMessagesContainerRef.current.scrollHeight;
     }
     prevMessageCountRef.current = displayMessages.length;
 
@@ -963,7 +961,7 @@ export const Dialog = observer(({ props }) => {
   return (
     <div className="chat-window">
       {/* Chat messages */}
-      <div className="chat-messages">
+      <div className="chat-messages" ref={chatMessagesContainerRef}>
         {displayMessages.map((msg, idx) => (
           <div key={idx} className={`chat-bubble ${msg.role}`}>
             {msg.role === "user" ? (
