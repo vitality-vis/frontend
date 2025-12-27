@@ -2,9 +2,25 @@ import { debounce } from "lodash";
 import socket from "./initsocket"
 import { isLoggingEnabled } from "../utils/loggingConfig";
 
-// Enhanced logging utility for comprehensive UI interaction tracking
+// Enhanced logging utility with retry mechanism and acknowledgment
 // Integrates with existing logEvent system to maintain userId, studyId, sessionId tracking
 // Logging can be globally disabled for standalone mode via loggingConfig
+
+// Event queue for failed events
+interface QueuedEvent {
+    eventName: string;
+    eventData: any;
+    userId: string | null;
+    studyId: string | null;
+    sessionId: string;
+    timestamp: number;
+    retryCount: number;
+}
+
+const eventQueue: QueuedEvent[] = [];
+const MAX_RETRY_ATTEMPTS = 3;
+const RETRY_DELAY = 2000; // 2 seconds
+const MAX_QUEUE_SIZE = 1000; // Prevent memory issues
 
 const getCreateSessionId = ():string => {
     let id = localStorage.getItem('sessionId');
@@ -16,6 +32,82 @@ const getCreateSessionId = ():string => {
     return id;
 }
 
+// Process queued events when connection is restored
+function processQueue() {
+    if (!socket.connected || eventQueue.length === 0) {
+        return;
+    }
+
+    console.log(`📤 Processing ${eventQueue.length} queued events...`);
+
+    // Process in batches to avoid overwhelming the connection
+    const batch = eventQueue.splice(0, 10);
+    batch.forEach(event => {
+        sendEventWithRetry(event);
+    });
+
+    // Continue processing if queue still has items
+    if (eventQueue.length > 0) {
+        setTimeout(processQueue, 500);
+    }
+}
+
+// Send event with acknowledgment and retry logic
+function sendEventWithRetry(event: QueuedEvent) {
+    if (!socket.connected) {
+        // Add back to queue if not connected
+        if (event.retryCount < MAX_RETRY_ATTEMPTS) {
+            eventQueue.push(event);
+        } else {
+            console.warn(`⚠️ Event dropped after ${MAX_RETRY_ATTEMPTS} retries:`, event.eventName);
+        }
+        return;
+    }
+
+    let acknowledged = false;
+
+    // Emit with acknowledgment callback
+    socket.emit("log_event", {
+        userId: event.userId,
+        studyId: event.studyId,
+        sessionId: event.sessionId,
+        timestamp: event.timestamp,
+        eventName: event.eventName,
+        eventData: event.eventData,
+    }, (ack: any) => {
+        // Acknowledgment received from server
+        acknowledged = true;
+        if (ack?.status === 'error') {
+            console.error(`❌ Server rejected event: ${event.eventName}`, ack.message);
+            // Retry if server error
+            retryEvent(event);
+        }
+        // Success - no action needed
+    });
+
+    // Set timeout for acknowledgment
+    setTimeout(() => {
+        // If we reach here and event wasn't acknowledged, retry
+        if (!acknowledged) {
+            console.warn(`⏱️ No acknowledgment received for: ${event.eventName}`);
+            retryEvent(event);
+        }
+    }, 5000); // 5 second timeout
+}
+
+function retryEvent(event: QueuedEvent) {
+    if (event.retryCount < MAX_RETRY_ATTEMPTS) {
+        event.retryCount++;
+        console.log(`🔄 Retrying event (${event.retryCount}/${MAX_RETRY_ATTEMPTS}):`, event.eventName);
+
+        setTimeout(() => {
+            sendEventWithRetry(event);
+        }, RETRY_DELAY * event.retryCount); // Exponential backoff
+    } else {
+        console.warn(`⚠️ Event dropped after ${MAX_RETRY_ATTEMPTS} retries:`, event.eventName);
+    }
+}
+
 export function logEvent(eventName:string, eventData: any) {
     // Check if logging is enabled (disabled in standalone mode)
     if (!isLoggingEnabled()) {
@@ -25,17 +117,44 @@ export function logEvent(eventName:string, eventData: any) {
     const userId = localStorage.getItem('userId')
     const studyId = localStorage.getItem('studyId')
 
-  // unifying structure to emit events with userid etc and the specific event
-  socket.emit("log_event", {
-    userId,
-    studyId,
-    sessionId: getCreateSessionId(),
-    timestamp: Date.now(), // Add timestamp in ms since epoch
-    eventName,
-    eventData,
-  })
+    const event: QueuedEvent = {
+        userId,
+        studyId,
+        sessionId: getCreateSessionId(),
+        timestamp: Date.now(),
+        eventName,
+        eventData,
+        retryCount: 0
+    };
 
+    // If not connected, queue the event
+    if (!socket.connected) {
+        if (eventQueue.length < MAX_QUEUE_SIZE) {
+            eventQueue.push(event);
+            console.log(`📝 Event queued (offline): ${eventName} [Queue: ${eventQueue.length}]`);
+        } else {
+            console.warn(`⚠️ Queue full, dropping event: ${eventName}`);
+        }
+        return;
+    }
+
+    // Send immediately if connected
+    sendEventWithRetry(event);
 }
+
+// Connection event handlers
+socket.on('connect', () => {
+    console.log('✅ Socket connected - processing queued events');
+    processQueue();
+});
+
+socket.on('disconnect', () => {
+    console.log('❌ Socket disconnected - events will be queued');
+});
+
+socket.on('connect_error', (error) => {
+    console.error('⚠️ Socket connection error:', error.message);
+});
 
 // eventdata depends on what kind of interaction user performs
 interface BaseEventData {

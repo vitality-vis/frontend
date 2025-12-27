@@ -1195,7 +1195,7 @@ class App extends React.Component<AppProps, AppState> {
             const citationCounts = data.citation_counts || [];
 
             const minYear = years.length > 0 ? Math.min(...years) : 1975;
-            const maxYear = years.length > 0 ? Math.max(...years) : 2024;
+            const maxYear = years.length > 0 ? Math.max(...years) : 2025;
             const minCitationCounts = citationCounts.length > 0 ? Math.min(...citationCounts) : -1;
             const maxCitationCounts = citationCounts.length > 0 ? Math.max(...citationCounts) : 1000;
 

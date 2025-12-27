@@ -557,7 +557,7 @@ function DefaultColumnFilter({
         />)
 }
 
-function filterMapping(filter, dataAuthors, dataSources, dataKeywords, columnId, staticMinYear = 1975, staticMaxYear = 2024, staticMinCitationCounts = 0, staticMaxCitationCounts = 1000, columnData, tableType) {
+function filterMapping(filter, dataAuthors, dataSources, dataKeywords, columnId, staticMinYear = 1975, staticMaxYear = 2025, staticMinCitationCounts = 0, staticMaxCitationCounts = 1000, columnData, tableType) {
     if (filter === "multiselect") {
         return { Filter: (props) => <MultiSelectColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords} tableType={tableType} />, filter: 'includesValue' };
     } else if (filter === "default") {

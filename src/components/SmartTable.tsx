@@ -717,6 +717,13 @@ function DefaultColumnFilter({
         value={value}
         placeholder="Search"
         onSearch={(newValue) => {
+          // Log the search interaction
+          Logger.logTableInteraction({
+            component: 'SmartTable',
+            action: 'titleFilterSearch',
+            filterId: id,
+            searchTerm: newValue || '',
+          });
           // Only trigger filter on Enter key press
           setFilter(newValue || undefined);
         }}
@@ -730,7 +737,7 @@ function DefaultColumnFilter({
 
 function filterMapping(filter, dataAuthors, dataSources, dataKeywords,
                        setSpinner, columnId, staticMinYear = 1975,
-                       staticMaxYear = 2024, staticMinCitationCounts = 0,
+                       staticMaxYear = 2025, staticMinCitationCounts = 0,
                        staticMaxCitationCounts = 1000,
                        similarMinScore=0,
                        similarMaxScore=1) {

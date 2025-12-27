@@ -14,7 +14,7 @@ export const useStepNav = () => {
   
   // total steps per study (max index, not count)
   const studyStepCounts = {
-    1: 6, // 7 total steps: indices 0-6 (Consent, PreInterview, Video, Practice, LiteratureReview, Task, PostInterview)
+    1: 7, // 8 total steps: indices 0-7 (Consent, PreInterview, Video, JoyrideTutorial, Practice, LiteratureReview, Task, PostInterview)
     2: 9, // 10 total steps: indices 0-9 (Consent, PreQuestionnaire, Task1, Task2, Video, JoyrideTutorial, Practice, Task3, Task, PostInterview)
     // add more studies as needed
   };

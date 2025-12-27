@@ -30,7 +30,7 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
   const [dataSources, setDataSources] = useState<string[]>([]);
   const [dataKeywords, setDataKeywords] = useState<string[]>([]);
   const [minYear, setMinYear] = useState<number>(1975);
-  const [maxYear, setMaxYear] = useState<number>(2024);
+  const [maxYear, setMaxYear] = useState<number>(2025);
   const [minCitationCounts, setMinCitationCounts] = useState<number>(0);
   const [maxCitationCounts, setMaxCitationCounts] = useState<number>(1000);
   const [columnFilterValues, setColumnFilterValues] = useState<any[]>([]);
@@ -165,7 +165,7 @@ const Task1: React.FC<{ currentStep: number; totalSteps: number }> = ({
       setDataKeywords(keywords || []);
 
       setMinYear(years.length ? Math.min(...years) : 1975);
-      setMaxYear(years.length ? Math.max(...years) : 2024);
+      setMaxYear(years.length ? Math.max(...years) : 2025);
       setMinCitationCounts(citationCounts.length ? Math.min(...citationCounts) : 0);
       setMaxCitationCounts(citationCounts.length ? Math.max(...citationCounts) : 1000);
     } catch (e) {
