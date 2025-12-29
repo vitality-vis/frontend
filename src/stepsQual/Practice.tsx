@@ -162,6 +162,7 @@ const Practice = ({currentStep, totalSteps}) => {
 
   const completedCount = tasks.filter(t => t.completed).length;
   const progressPercentage = (completedCount / tasks.length) * 100;
+  const allTasksComplete = completedCount === tasks.length;
 
   console.log('Practice component rendering, showWelcome:', showWelcome);
 
@@ -172,7 +173,22 @@ const Practice = ({currentStep, totalSteps}) => {
       showPrev
       notPractice={false}
       onNext={handleNext}
+      highlightNext={allTasksComplete}
     >
+      <style>
+        {`
+          @keyframes slideInRight {
+            from {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+        `}
+      </style>
       {/* Task Guide Panel */}
       <div style={{
         position: 'fixed',
@@ -301,16 +317,63 @@ const Practice = ({currentStep, totalSteps}) => {
         )}
       </div>
 
+      {/* Completion Banner */}
+      {allTasksComplete && (
+        <div style={{
+          position: 'fixed',
+          top: '80px',
+          right: '20px',
+          width: '350px',
+          backgroundColor: '#d4edda',
+          border: '2px solid #28a745',
+          borderRadius: '12px',
+          padding: '16px',
+          boxShadow: '0 4px 16px rgba(40, 167, 69, 0.3)',
+          zIndex: 1000,
+          animation: 'slideInRight 0.5s ease-out'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <div style={{
+              fontSize: '32px',
+              lineHeight: 1
+            }}>
+              
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{
+                fontWeight: 700,
+                fontSize: '16px',
+                color: '#155724',
+                marginBottom: '4px'
+              }}>
+                All Practice Tasks Complete!
+              </div>
+              <div style={{
+                fontSize: '14px',
+                color: '#155724',
+                lineHeight: 1.4
+              }}>
+                Great job! Click the <strong>Next</strong> button when you're ready to continue.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isLoading && (
-        <LoadingScreen 
-          message="Loading VitaLITy..." 
+        <LoadingScreen
+          message="Loading VitaLITy..."
           subMessage="Preparing the literature review tool"
           progress={loadingProgress}
         />
       )}
-      <App 
-        ref={appRef} 
-        isPractice={true} 
+      <App
+        ref={appRef}
+        isPractice={true}
         onPracticeTaskComplete={markTaskComplete}
         onMetadataLoaded={() => setIsLoading(false)}
         onLoadingProgress={(progress) => setLoadingProgress(progress)}

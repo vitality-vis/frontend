@@ -12,6 +12,7 @@ export type StepLayoutProps = {
   disableNext?: boolean;
   notPractice?: boolean;
   nextButtonText?: string;
+  highlightNext?: boolean;
   children: React.ReactNode;
 };
 
@@ -22,12 +23,13 @@ const StepLayout = ({
   disableNext = false,
   notPractice = true,
   nextButtonText = "Next",
+  highlightNext = false,
   onNext: customOnNext,
-  onPrev: customOnPrev, 
+  onPrev: customOnPrev,
   children,
 }: StepLayoutProps) => {
   const { goNext, goPrev } = useStepNav();
-  
+
   const handleNext = customOnNext || goNext;
   const handlePrev = customOnPrev || goPrev;
 
@@ -131,39 +133,58 @@ const StepLayout = ({
           {/* Right: Next button */}
           <div style={{ width: 150, display: "flex", justifyContent: "flex-end", marginLeft: "auto", zIndex: 2 }}>
             {showNext && (
-              <button
-                style={{
-                  background: colors.primary.main,
-                  color: colors.neutral.darkest,
-                  fontWeight: typography.fontWeight.bold,
-                  fontSize: typography.fontSize.lg,
-                  border: "none",
-                  borderRadius: borderRadius.md,
-                  padding: `${spacing.sm} ${spacing.lg}`,
-                  cursor: !disableNext ? "pointer" : "not-allowed",
-                  opacity: !disableNext ? 1 : 0.5,
-                  transition: `all ${transitions.normal}`,
-                  boxShadow: shadows.sm,
-                }}
-                onClick={handleNext}
-                disabled={disableNext}
-                onMouseEnter={(e) => {
-                  if (!disableNext) {
-                    (e.target as HTMLButtonElement).style.background = colors.primary.dark;
-                    (e.target as HTMLButtonElement).style.transform = 'translateY(-1px)';
-                    (e.target as HTMLButtonElement).style.boxShadow = shadows.md;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!disableNext) {
-                    (e.target as HTMLButtonElement).style.background = colors.primary.main;
-                    (e.target as HTMLButtonElement).style.transform = 'translateY(0)';
-                    (e.target as HTMLButtonElement).style.boxShadow = shadows.sm;
-                  }
-                }}
-              >
-                {nextButtonText}
-              </button>
+              <>
+                <style>
+                  {`
+                    @keyframes pulse-glow {
+                      0%, 100% {
+                        box-shadow: 0 0 10px rgba(255, 199, 0, 0.5), 0 0 20px rgba(255, 199, 0, 0.3);
+                      }
+                      50% {
+                        box-shadow: 0 0 20px rgba(255, 199, 0, 0.8), 0 0 30px rgba(255, 199, 0, 0.5);
+                      }
+                    }
+                  `}
+                </style>
+                <button
+                  style={{
+                    background: colors.primary.main,
+                    color: colors.neutral.darkest,
+                    fontWeight: typography.fontWeight.bold,
+                    fontSize: typography.fontSize.lg,
+                    border: "none",
+                    borderRadius: borderRadius.md,
+                    padding: `${spacing.sm} ${spacing.lg}`,
+                    cursor: !disableNext ? "pointer" : "not-allowed",
+                    opacity: !disableNext ? 1 : 0.5,
+                    transition: `all ${transitions.normal}`,
+                    boxShadow: highlightNext ? '0 0 15px rgba(255, 199, 0, 0.6), 0 0 25px rgba(255, 199, 0, 0.4)' : shadows.sm,
+                    animation: highlightNext ? 'pulse-glow 2s ease-in-out infinite' : 'none',
+                  }}
+                  onClick={handleNext}
+                  disabled={disableNext}
+                  onMouseEnter={(e) => {
+                    if (!disableNext) {
+                      (e.target as HTMLButtonElement).style.background = colors.primary.dark;
+                      (e.target as HTMLButtonElement).style.transform = 'translateY(-1px)';
+                      if (!highlightNext) {
+                        (e.target as HTMLButtonElement).style.boxShadow = shadows.md;
+                      }
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!disableNext) {
+                      (e.target as HTMLButtonElement).style.background = colors.primary.main;
+                      (e.target as HTMLButtonElement).style.transform = 'translateY(0)';
+                      if (!highlightNext) {
+                        (e.target as HTMLButtonElement).style.boxShadow = shadows.sm;
+                      }
+                    }
+                  }}
+                >
+                  {nextButtonText}
+                </button>
+              </>
             )}
           </div>
         </div>

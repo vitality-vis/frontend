@@ -8,7 +8,7 @@ import { Logger } from "../socket/logger";
 const Consent = ({currentStep, totalSteps}) => {
   const { goNext } = useStepNav();
   const [checked, setChecked] = useState(false);
-  const [optOutVisualImage, setOptOutVisualImage] = useState(false);
+  const [consentToVisualImage, setConsentToVisualImage] = useState(true);
 
   React.useEffect(() => {
     Logger.logStudyEvent(
@@ -237,12 +237,12 @@ const Consent = ({currentStep, totalSteps}) => {
               <label style={{ fontSize: 16, display: "inline-flex", alignItems: "center", color: "#555" }}>
                 <input
                   type="checkbox"
-                  checked={optOutVisualImage}
-                  onChange={e => setOptOutVisualImage(e.target.checked)}
+                  checked={consentToVisualImage}
+                  onChange={e => setConsentToVisualImage(e.target.checked)}
                   style={{ width: 20, height: 20, marginRight: 12 }}
                 />
                 <span style={{ fontStyle: "italic" }}>
-                  (Optional) I do NOT consent to use of my visual image in scientific works or materials that promote the research
+                  (Optional) I consent to use of my visual image in scientific works or materials that promote the research
                 </span>
               </label>
             </div>
@@ -268,7 +268,7 @@ const Consent = ({currentStep, totalSteps}) => {
                     interactionName: 'consentGiven',
                     response: 'yes',
                     consentToParticipate: checked,
-                    optOutVisualImage: optOutVisualImage
+                    consentToVisualImage: consentToVisualImage
                   }
                 );
 

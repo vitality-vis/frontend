@@ -2857,6 +2857,36 @@ class App extends React.Component<AppProps, AppState> {
                                             }}
                                         />
                                     </div>
+                                    {this.props.isPractice && (() => {
+                                        const plainText = this.state.notesContent.replace(/<[^>]+>/g, '').trim();
+                                        const charCount = plainText.length;
+                                        const minChars = 10;
+                                        const isComplete = charCount >= minChars;
+                                        return (
+                                            <div style={{
+                                                marginTop: '8px',
+                                                padding: '8px 12px',
+                                                backgroundColor: isComplete ? '#d4edda' : '#fff3cd',
+                                                border: `1px solid ${isComplete ? '#28a745' : '#ffc107'}`,
+                                                borderRadius: '4px',
+                                                fontSize: '13px',
+                                                color: isComplete ? '#155724' : '#856404',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px'
+                                            }}>
+                                                <span style={{ fontWeight: 600 }}>
+                                                    {isComplete ? '✓' : '⚠️'}
+                                                </span>
+                                                <span>
+                                                    {isComplete
+                                                        ? `Great! You've written ${charCount} characters.`
+                                                        : `Write at least ${minChars} characters to complete the note task (${charCount}/${minChars})`
+                                                    }
+                                                </span>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </div>
 

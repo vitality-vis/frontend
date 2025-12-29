@@ -21,7 +21,7 @@ import { decodeStudyCode, encodeStudyId } from "../utils/studyConfig";
 
 
 const studySteps = {
-  1: [Consent, PreInterview, Video, JoyrideTutorial, Practice, LiteratureReview, Task, PostInterview],
+  1: [Consent, PreInterview, JoyrideTutorial, Practice, LiteratureReview, Task, PostInterview],
   2: [Consent, PreQuestionnaire, Task1, Task2, Video, JoyrideTutorial, Practice, Task3, Task, PostInterview],
 };
 
