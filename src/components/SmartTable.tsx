@@ -406,15 +406,18 @@ function MultiSelectTokensColumnFilter({
     // Calculate the options for filtering
     // using the preFilteredRows
     let options = [];
-    if (id === 'Author' && dataAuthors) {
-        // Use the passed set of authors
+    if (id === 'Authors' && dataAuthors) {
+        // Use the passed set of authors (column ID is 'Authors' plural)
+        options = [...new Set(dataAuthors)].sort();
+    } else if (id === 'Author' && dataAuthors) {
+        // Also handle 'Author' singular for backwards compatibility
         options = [...new Set(dataAuthors)].sort();
     } else if (id === 'Source' && dataSources) {
         // Use the passed set of sources
         options = [...new Set(dataSources)].sort();
-    } else if (id === 'Keyword'&&dataKeywords){
+    } else if ((id === 'Keyword' || id === 'Keywords') && dataKeywords){
+        // Handle both 'Keyword' and 'Keywords' column IDs
         options = [...new Set(dataKeywords)].sort();
-        // console.log("options",options)
     }
     else {
         options = React.useMemo(() => {
@@ -487,19 +490,40 @@ function MultiSelectTokensColumnFilter({
         }
     }, [filterValue]);
 
-    // Create Options
+    // Create Options - only for non-Authors/Keywords columns or when list is small
+    // For large lists (Authors/Keywords), we use lazy filtering
+    const isLargeList = (id === 'Authors' || id === 'Author' || id === 'Keywords' || id === 'Keyword') && options.length > 1000;
+    
     const _options = React.useMemo(() => {
         return options.map((o: string) => {
             return {label: o, value: o};
         });
     }, [options]);
 
+    // For large lists, use a custom filter that only shows results when user types
+    // This avoids the expensive createFilterOptions pre-indexing
+    const customFilterOptions = React.useCallback((opts, filterString) => {
+        if (!filterString || filterString.length < 2) {
+            // Show nothing until user types 2+ chars
+            return [];
+        }
+        const searchLower = filterString.toLowerCase();
+        // Simple case-insensitive contains matching - much faster than full-text indexing
+        return opts
+            .filter(opt => opt.label.toLowerCase().includes(searchLower))
+            .slice(0, 100); // Limit to 100 results for performance
+    }, []);
+
+    // Only use expensive createFilterOptions for small lists
     const _filterOptions = React.useMemo(() => {
+        if (isLargeList) {
+            return customFilterOptions;
+        }
         return createFilterOptions({
             options: _options,
             indexStrategy: indexStrategy
         });
-    }, [_options]);
+    }, [_options, isLargeList, customFilterOptions]);
 
     // Render a multi-select box
     return (
@@ -509,11 +533,12 @@ function MultiSelectTokensColumnFilter({
             multi
             isSearchable={true}
             clearable={true}
-            placeholder={"Search"}
+            placeholder={isLargeList ? "Search" : "Search"}
             maxHeight={100}
             value={multiselectTokenSelectedOptions}
             onChange={onChange}
             defaultValue={multiselectTokenSelectedOptions}
+            noResultsText={isLargeList ? "Type at least 2 characters to search" : "No results found"}
         />
     )
 }
@@ -1085,9 +1110,10 @@ function Table({
                                         Logger.logTableInteraction({
                                             component: 'SmartTable',
                                             action: 'addToSimilarPapers',
-                                            rowId: row.original.id,
-                                            paperTitle: row.original.title,
-                                            currentFilter: globalFilter || '',
+                                            tableType: tableType,
+                                            rowId: row.original?.ID,
+                                            paperTitle: row.original?.Title,
+                                            activeFilters: filters,
                                             visibleRows: rows?.length || 0
                                         });
                                         addToSimilarInputPapers(row.original);
@@ -1132,6 +1158,13 @@ function Table({
                                     disabled={isInSavedPapers(row.original)}
                                     iconProps={{iconName: "Save"}}
                                     onClick={() => {
+                                        Logger.logTableInteraction({
+                                            component: 'SmartTable',
+                                            action: 'savePaper',
+                                            tableType: tableType,
+                                            rowId: row.original?.ID,
+                                            paperTitle: row.original?.Title
+                                        });
                                         addToSavedPapers(row.original);
                                     }}
                                     className="iconButton"
@@ -1182,7 +1215,7 @@ function Table({
                                             rowId: row.original.id,
                                             paperTitle: row.original.title,
                                             rowIndex: row.index,
-                                            currentFilter: globalFilter || '',
+                                            activeFilters: filters,
                                             visibleRows: rows?.length || 0
                                         });
                                         deleteRow(row.index)
@@ -1272,7 +1305,7 @@ function Table({
             columnName: String(item.text),
             method: 'dropdown',
             tableType: tableType,
-            currentFilter: globalFilter || '',
+            activeFilters: filters,
             visibleRows: rows?.length || 0
         });
         toggleHideColumn(item.key);
@@ -1446,7 +1479,7 @@ function Table({
             component: 'SmartTable',
             action: 'loadMoreData',
             currentRowCount: data?.length || 0,
-            currentFilter: globalFilter || ''
+            activeFilters: filters
         });
 
         setIsLoading(true);
@@ -1463,7 +1496,7 @@ function Table({
             component: 'SmartTable',
             action: 'loadAllData',
             currentRowCount: data?.length || 0,
-            currentFilter: globalFilter || ''
+            activeFilters: filters
         });
 
         setIsLoadingAll(true); // New state for loading all data
@@ -1635,7 +1668,7 @@ function Table({
                                                     component: 'SmartTable',
                                                     action: 'saveAllPapers',
                                                     rowCount: dataFiltered?.length || 0,
-                                                    currentFilter: globalFilter || '',
+                                                    activeFilters: filters,
                                                     visibleRows: rows?.length || 0
                                                 });
                                                 addToSavedPapers?.(data);
@@ -1656,7 +1689,7 @@ function Table({
                                                     component: 'SmartTable',
                                                     action: 'deleteAllRows',
                                                     rowCount: dataFiltered?.length || 0,
-                                                    currentFilter: globalFilter || '',
+                                                    activeFilters: filters,
                                                     visibleRows: rows?.length || 0
                                                 });
                                                 deleteRow?.(data);
@@ -1757,7 +1790,7 @@ function Table({
                                                     component: 'SmartTable',
                                                     action: 'exportBib',
                                                     rowCount: dataFiltered?.length || 0,
-                                                    currentFilter: globalFilter || '',
+                                                    activeFilters: filters,
                                                     visibleRows: rows?.length || 0
                                                 });
                                                 checkoutPapers();
@@ -1797,7 +1830,7 @@ function Table({
                                           columnName: column.render('Header'),
                                           method: 'inline_button',
                                           tableType: tableType,
-                                          currentFilter: globalFilter || '',
+                                          activeFilters: filters,
                                           visibleRows: rows?.length || 0
                                       });
                                       toggleHideColumn(column.id);

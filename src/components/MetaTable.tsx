@@ -1060,7 +1060,7 @@ function Table({
             columnName: String(item.text),
             method: 'dropdown',
             tableType: tableType,
-            currentFilter: globalFilter || '',
+            activeFilters: filters,
             visibleRows: rows?.length || 0
         });
         toggleHideColumn(item.key);
@@ -1244,7 +1244,7 @@ function Table({
             action: 'loadMoreData',
             tableType: tableType,
             currentRowCount: data?.length || 0,
-            currentFilter: globalFilter || ''
+            activeFilters: filters
         });
 
         setIsLoading(true);
@@ -1262,7 +1262,7 @@ function Table({
             action: 'loadAllData',
             tableType: tableType,
             currentRowCount: data?.length || 0,
-            currentFilter: globalFilter || ''
+            activeFilters: filters
         });
 
         setIsLoadingAll(true); // New state for loading all data
@@ -1606,7 +1606,7 @@ function Table({
                                           columnName: column.render('Header'),
                                           method: 'inline_button',
                                           tableType: tableType,
-                                          currentFilter: globalFilter || '',
+                                          activeFilters: filters,
                                           visibleRows: rows?.length || 0
                                       });
                                       toggleHideColumn(column.id);

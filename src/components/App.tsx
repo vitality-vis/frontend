@@ -1176,6 +1176,14 @@ class App extends React.Component<AppProps, AppState> {
             // Safeguards and data processing
             let authorsSummary = data.authors_summary || [];
             const authors = authorsSummary.map(item => item._id);
+            
+            // DEBUG: Check what authors we received
+            console.log(`DEBUG App.tsx: Received ${authors.length} authors from backend`);
+            const arpitAuthors = authors.filter(a => a && a.toLowerCase().includes('arpit'));
+            console.log(`DEBUG App.tsx: Authors containing 'arpit':`, arpitAuthors);
+            const emilyAuthors = authors.filter(a => a && a.toLowerCase().includes('emily wall'));
+            console.log(`DEBUG App.tsx: Authors containing 'emily wall':`, emilyAuthors);
+            
             authorsSummary = (authorsSummary || []).sort((a, b) => b.count - a.count);
 
             let sourcesSummary = data.sources_summary || [];

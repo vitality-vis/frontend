@@ -570,6 +570,15 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
     // Modal Open/Close
     const [isModalOpen, setModalState] = React.useState(false);
     const [selectedPapers, setSelectedPapers] = useState([]); // For storing selected papers' details
+    // Pagination state for modal to avoid stack overflow when many papers are selected
+    const PAPERS_PER_PAGE = 25;
+    const [modalPapersToShow, setModalPapersToShow] = React.useState(PAPERS_PER_PAGE);
+    // Reset pagination when modal opens or selection changes
+    React.useEffect(() => {
+        if (isModalOpen) {
+            setModalPapersToShow(PAPERS_PER_PAGE);
+        }
+    }, [isModalOpen, selectNodes.length]);
     const fetchPaperDetails = async (paperID) => {
         try {
             const paperData = await getPaperById(paperID);
@@ -843,7 +852,13 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                     isBlocking={false}
                 >
                     <div className="p-lg">
-                        {selectNodes.map((selectNode, idx) => {
+                        {/* Header showing count when many papers selected */}
+                        {selectNodes.length > PAPERS_PER_PAGE && (
+                            <div style={{marginBottom: 16, padding: '8px 12px', background: '#f3f3f3', borderRadius: 4}}>
+                                <b>Showing {Math.min(modalPapersToShow, selectNodes.length)} of {selectNodes.length} selected papers</b>
+                            </div>
+                        )}
+                        {selectNodes.slice(0, modalPapersToShow).map((selectNode, idx) => {
                             if(selectNode && "Title" in selectNode) {
                                 // Individual component for each paper's details
                                 const PaperDetail = ({paperID}) => {
@@ -954,10 +969,11 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                                         </div>
                                     );
                                 };
+                                const paginatedNodes = selectNodes.slice(0, modalPapersToShow);
                                 return (
                                     <React.Fragment key={selectNode.ID}>
                                         <PaperDetail paperID={selectNode.ID}/>
-                                        {selectNodes.length - 1 !== idx && (
+                                        {paginatedNodes.length - 1 !== idx && (
                                             <>
                                                 <div className="m-t-sm"></div>
                                                 <div style={{height: 5, background: "black", width: "100%"}}></div>
@@ -969,6 +985,16 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                                     return null;
                                 }
                             })}
+                        {/* Show more button when there are more papers to display */}
+                        {modalPapersToShow < selectNodes.length && (
+                            <div style={{textAlign: 'center', marginTop: 16}}>
+                                <DefaultButton
+                                    text={`Show more (${Math.min(PAPERS_PER_PAGE, selectNodes.length - modalPapersToShow)} more)`}
+                                    onClick={() => setModalPapersToShow(prev => prev + PAPERS_PER_PAGE)}
+                                    iconProps={{iconName: "ChevronDown"}}
+                                />
+                            </div>
+                        )}
                     </div>
                 </Modal>
             </div>
