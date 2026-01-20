@@ -1,17 +1,122 @@
-# VitaLITy - frontend
+# VitaLITy - Frontend
 
-## Installation
-1. Clone  or download the repository
-2. `yarn install` (or `npm install` for npm)
+A visual analytics tool for promoting serendipitous discovery of academic literature using Transformers.
 
-### (Node.js, NPM) versions tested on
-- (`v14.8.0`, `6.14.7`)
+---
 
-## Run
-- Ensure that the `baseUrl` variable in the [frontend](https://github.com/vitality-vis/frontend)/src/components/App.tsx file is in line with the [rest-api](https://github.com/vitality-vis/rest-api) port.
-- `yarn run start-dev`
-- Open `http://localhost:8080`
+## 📋 Table of Contents
+- [Prerequisites](#-prerequisites)
+- [Installation](#-installation)
+- [Development](#-development)
+- [Production Build](#-production-build)
+- [Project Structure](#-project-structure)
+- [Testing](#-testing)
+- [Credits](#credits)
 
+---
+
+## 🔧 Prerequisites
+
+| Requirement | Minimum Version | Tested/Recommended |
+|-------------|----------------|-------------------|
+| Node.js | v14.8.0+ | v25.1.0 |
+| npm | 6.14.7+ | 11.6.2 |
+| yarn | 1.22+ | 1.22+ (recommended) |
+
+**Note:** The project works with both legacy (v14.8.0) and modern Node.js versions (v25+).
+
+**Required:** The [rest-api](https://github.com/vitality-vis/rest-api) backend must be running for full functionality.
+
+---
+
+## 📦 Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/vitality-vis/frontend.git
+cd frontend
+
+# Install dependencies
+yarn install
+# or
+npm install
+```
+
+---
+
+## 🚀 Development
+
+### Quick Start
+
+```bash
+# Make sure the backend API is running first (see rest-api repo)
+
+# Start the development server
+yarn start-dev
+
+# Open in your browser
+# http://localhost:8080/vitality2/
+```
+
+That's it! The app will automatically reload when you make changes.
+
+### Backend Connection
+
+The frontend expects the backend API to be running on `http://localhost:3000`. 
+
+Make sure to start the [rest-api](https://github.com/vitality-vis/rest-api) backend before running the frontend.
+
+---
+
+## 🏗️ Building for Production
+
+To compile TypeScript to JavaScript and create a production-ready bundle:
+
+```bash
+# Build for production
+yarn build
+```
+
+**Build output:**
+```
+dist/
+├── index.html
+├── js/
+│   └── bundle.[hash].min.js    # Compiled & minified JavaScript
+└── img/                         # Static assets
+```
+
+The `dist/` folder is ready to be served at `/vitality2/` on any static web server (nginx, Apache, etc.).
+
+---
+
+## 📁 Project Structure
+
+```
+frontend/
+├── src/
+│   ├── components/       # Core UI components (App, SmartTable, PaperScatter, etc.)
+│   ├── socket/           # WebSocket connection
+│   ├── utils/            # Utility functions & configs
+│   ├── hooks/            # React hooks
+│   ├── styles/           # SCSS stylesheets
+│   ├── assets/           # Static assets (images, icons)
+│   ├── config.ts         # API configuration
+│   └── index.tsx         # Application entry point
+├── configs/webpack/      # Webpack configurations
+├── tests/                # Test files
+└── package.json
+```
+
+---
+
+## 🧪 Testing
+
+```bash
+yarn test
+```
+
+---
 
 ### Credits
 vitaLITy was created by 

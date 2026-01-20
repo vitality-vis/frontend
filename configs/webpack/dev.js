@@ -15,19 +15,19 @@ module.exports = merge(commonConfig, {
   output: {
     filename: 'js/bundle.[hash].min.js',
     path: resolve(__dirname, '../../dist'),
-    publicPath: '/vitality2study/',
+    publicPath: '/vitality2/',
   },
   devServer: {
     port: 8080,
     historyApiFallback: {
-      index: '/vitality2study/',
+      index: '/vitality2/',
       rewrites: [
-        { from: /^\/vitality2study/, to: '/vitality2study/index.html' }
+        { from: /^\/vitality2/, to: '/vitality2/index.html' }
       ]
     },
     hot: false, // enable HMR on the server
     devMiddleware: {
-      publicPath: '/vitality2study/',
+      publicPath: '/vitality2/',
     },
   },
   devtool: 'eval-cheap-module-source-map',

@@ -1,4 +1,4 @@
-// production config for STUDY mode (with logging)
+// production config
 const merge = require('webpack-merge');
 const {resolve} = require('path');
 
@@ -10,7 +10,7 @@ module.exports = merge(commonConfig, {
   output: {
     filename: 'js/bundle.[hash].min.js',
     path: resolve(__dirname, '../../dist'),
-    publicPath: '/vitality2study/',
+    publicPath: '/vitality2/',
   },
   devtool: 'source-map',
   plugins: [],

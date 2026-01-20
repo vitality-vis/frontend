@@ -24,16 +24,10 @@
   "homepage": "https://github.com/vitality-vis/frontend",
   "scripts": {
     "build": "export NODE_OPTIONS=--openssl-legacy-provider && yarn run clean-dist && webpack --config=configs/webpack/prod.js",
-    "build:study": "export NODE_OPTIONS=--openssl-legacy-provider && yarn run clean-dist && webpack --config=configs/webpack/prod.js",
-    "build:standalone": "export NODE_OPTIONS=--openssl-legacy-provider && yarn run clean-dist-standalone && webpack --config=configs/webpack/prod-standalone.js",
-    "build:both": "yarn run build:study && yarn run build:standalone",
     "clean-dist": "rimraf dist/*",
-    "clean-dist-standalone": "rimraf dist-standalone/*",
     "lint": "eslint './src/**/*.{js,ts,tsx}' --quiet",
     "start": "npm run start-dev",
     "start-dev": "webpack-dev-server --config=configs/webpack/dev.js",
-    "start-dev:study": "webpack-dev-server --config=configs/webpack/dev.js",
-    "start-dev:standalone": "webpack-dev-server --config=configs/webpack/dev-standalone.js",
     "start-prod": "yarn run build && node express.js",
     "test": "jest --coverage --watchAll --config=configs/jest.json"
   },
