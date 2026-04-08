@@ -1,6 +1,16 @@
 The list of UI components that may be needed such as the chat box, search result display.
+- search box:
+  - a unified interface for keyword search, vector search, and agentic search
 - search results
 - filter functions, by author, year, etc.
 - agentic workflow:
   - to see what the workflow is, and
   - allow user to change it
+  - textual or visual?
+- chat box
+  - chat to find papers and chat with papers
+- saved papers
+  - a simple paper management mechanism, e.g., support organising papers by projects
+- visualisation?
+  - visualise paper corpus, search results, saved papers, what to explore, etc. projection or other vis methods
+  - visualise analytic & agent provenance
