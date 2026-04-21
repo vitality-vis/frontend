@@ -24,7 +24,7 @@ The procedure also works for general literature research beyond standalone revie
 - Goal/purpose
 - Research questions
 - Concept definition
-- Scope
+- Scope/coverage
 - Inclusion criteria
 - Papers
 - Categories/Codebook
