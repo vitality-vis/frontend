@@ -14,3 +14,6 @@ The list of UI components that may be needed such as the chat box, search result
 - visualisation?
   - visualise paper corpus, search results, saved papers, what to explore, etc. projection or other vis methods
   - visualise analytic & agent provenance
+  - neural map? show topics/papers that are connected somehow
+- brief ideas
+  - based on chat history, suggest some insights
