@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vitality 3 - Prototype A</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07111f;
+      --bg-2: #0b1628;
+      --panel: rgba(15, 23, 42, 0.72);
+      --panel-2: rgba(255, 255, 255, 0.05);
+      --panel-3: rgba(255, 255, 255, 0.07);
+      --border: rgba(255, 255, 255, 0.10);
+      --text: #e5eefc;
+      --muted: #94a3b8;
+      --white: #ffffff;
+      --cyan: #22d3ee;
+      --sky: #38bdf8;
+      --violet: #a855f7;
+      --fuchsia: #d946ef;
+      --emerald: #34d399;
+      --amber: #fbbf24;
+      --slate: #cbd5e1;
+      --radius-xl: 24px;
+      --radius-2xl: 28px;
+      --radius-3xl: 30px;
+      --shadow: 0 24px 60px rgba(0,0,0,0.28);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", sans-serif;
+      overflow: hidden;
+    }
+
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(34, 211, 238, 0.14), transparent 30%),
+        radial-gradient(circle at top right, rgba(168, 85, 247, 0.14), transparent 28%),
+        radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.12), transparent 24%),
+        var(--bg);
+    }
+
+    .app {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .container {
+      width: min(1600px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(20px);
+      background: rgba(2, 6, 23, 0.55);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 220px;
+    }
+
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--cyan), var(--sky), var(--violet));
+      box-shadow: 0 14px 34px rgba(34, 211, 238, 0.22);
+      display: grid;
+      place-items: center;
+      color: #04111f;
+      font-weight: 800;
+      font-size: 16px;
+    }
+
+    .brand-title {
+      font-size: 21px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .global-search {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.05);
+      border-radius: 22px;
+      padding: 12px 14px;
+      min-width: 0;
+    }
+
+    .global-search input,
+    .chat-input input {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .global-search input::placeholder,
+    .chat-input input::placeholder { color: #64748b; }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr) 430px;
+      gap: 12px;
+      padding: 12px 0;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-3xl);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .card-inner { padding: 14px; }
+    .card-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .title-kicker {
+      font-size: 14px;
+      color: #7dd3fc;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .title-main {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      margin-top: 4px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #f8fafc;
+    }
+
+    .muted { color: var(--muted); }
+    .small { font-size: 12px; }
+    .icon { opacity: 0.9; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      line-height: 1;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .badge-outline {
+      border-color: var(--border);
+      color: var(--slate);
+      background: transparent;
+    }
+
+    .badge-cyan { background: rgba(34, 211, 238, 0.12); color: #cffafe; }
+    .badge-violet { background: rgba(168, 85, 247, 0.12); color: #ede9fe; }
+    .badge-emerald { background: rgba(52, 211, 153, 0.12); color: #d1fae5; }
+    .badge-amber { background: rgba(251, 191, 36, 0.12); color: #fde68a; }
+    .badge-slate { background: rgba(255,255,255,0.08); color: var(--slate); }
+
+    .btn {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      padding: 12px 16px;
+      border-radius: 18px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--white);
+      color: #0f172a;
+      border-color: transparent;
+    }
+
+    .btn-cyan {
+      background: var(--cyan);
+      color: #082032;
+      border-color: transparent;
+    }
+
+    .sidebar,
+    .rightbar {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .mini-panel,
+    .pill-row,
+    .paper-item,
+    .helper-card,
+    .metric-card,
+    .node-note,
+    .inspector-list-item,
+    .quick-action,
+    .inline-card {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.05);
+      border-radius: 20px;
+    }
+
+    .mini-panel { padding: 12px; }
+    .mini-panel strong,
+    .metric-card strong { display: block; font-size: 20px; margin-top: 4px; }
+
+    .pill-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+    }
+
+    .paper-list,
+    .message-list,
+    .inspector-list,
+    .quick-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .paper-item {
+      padding: 12px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03));
+    }
+
+    .paper-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .paper-title {
+      font-size: 13px;
+      line-height: 1.35;
+      font-weight: 500;
+      color: #f8fafc;
+    }
+
+    .paper-meta {
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .helper-card { padding: 16px; }
+
+    .chip-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .main-column {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .chat-card {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .chat-header {
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .chat-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric-card {
+      padding: 14px;
+    }
+
+    .message-list {
+      flex: 1;
+      overflow: hidden;
+      padding-right: 4px;
+    }
+
+    .message {
+      max-width: 88%;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 14px;
+      background: rgba(255,255,255,0.06);
+    }
+
+    .message.user {
+      margin-left: auto;
+      background: rgba(34, 211, 238, 0.10);
+      border-color: rgba(34, 211, 238, 0.20);
+    }
+
+    .message-role {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .message p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.7;
+      color: #dbe8f6;
+    }
+
+    .message-support {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .inline-card {
+      padding: 8px 10px;
+      font-size: 11px;
+      color: var(--slate);
+      background: rgba(2, 6, 23, 0.45);
+    }
+
+    .chat-composer {
+      border: 1px solid var(--border);
+      background: rgba(2, 6, 23, 0.45);
+      border-radius: 24px;
+      padding: 10px;
+    }
+
+    .composer-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .quick-chip {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.05);
+      color: var(--slate);
+      font-size: 11px;
+      border-radius: 999px;
+      padding: 6px 10px;
+    }
+
+    .chat-input {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.05);
+      padding: 12px;
+    }
+
+    .map-box {
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      padding: 10px;
+    }
+
+    .inspector-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .node-note,
+    .inspector-list-item,
+    .quick-action {
+      padding: 12px;
+    }
+
+    .inspector-list-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--slate);
+    }
+
+    .section-spacing { margin-bottom: 12px; }
+
+    .network-svg {
+      width: 100%;
+      height: 250px;
+      display: block;
+    }
+
+    @media (max-width: 1320px) {
+      .layout {
+        grid-template-columns: 290px minmax(0, 1fr);
+      }
+      .rightbar {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 960px) {
+      .topbar-inner,
+      .layout {
+        grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .global-search {
+        width: 100%;
+      }
+
+      .topbar-inner {
+        align-items: stretch;
+      }
+
+      .metrics,
+      .message-support,
+      .inspector-grid,
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .message { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="container topbar-inner">
+        <div class="brand">
+          <div class="brand-mark">V3</div>
+          <div>
+            <div class="brand-title">Vitality 3</div>
+          </div>
+        </div>
+
+        <label class="global-search">
+          <span class="icon">🔎</span>
+          <input type="text" value="visual literature review with verified citations" />
+          <span class="badge badge-cyan">Deep search</span>
+        </label>
+
+        <div class="top-actions">
+          <button class="btn btn-primary">Export report</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container layout">
+      <aside class="sidebar">
+        <section class="card">
+          <div class="card-inner">
+            <div class="card-title-row">
+              <div class="section-title">☰ Discovery Rail</div>
+              <span class="badge badge-outline">6,692 papers</span>
+            </div>
+
+            <div class="stats-grid">
+              <div class="mini-panel">
+                <div class="small muted">Active cluster</div>
+                <strong>Chat Review</strong>
+              </div>
+              <div class="mini-panel">
+                <div class="small muted">Evidence score</div>
+                <strong>84 / 100</strong>
+              </div>
+            </div>
+
+            <div class="pill-row">
+              <span class="icon">⚲</span>
+              <span style="font-size:14px;color:#cbd5e1;">Verified only</span>
+              <span class="badge badge-emerald" style="margin-left:auto;">On</span>
+            </div>
+
+            <div class="paper-list">
+              <article class="paper-item">
+                <div class="paper-top">
+                  <div class="paper-title">Human-AI Review Workflows in Scientific Discovery</div>
+                  <span class="badge badge-emerald">strong</span>
+                </div>
+                <div class="paper-meta"><span>CHI</span><span>•</span><span>2025</span><span>•</span><span>Methods</span></div>
+              </article>
+
+              <article class="paper-item">
+                <div class="paper-top">
+                  <div class="paper-title">Mapping Literature Landscapes with Embedding Graphs</div>
+                  <span class="badge badge-amber">mixed</span>
+                </div>
+                <div class="paper-meta"><span>Nature Digital Science</span><span>•</span><span>2024</span><span>•</span><span>Visualization</span></div>
+              </article>
+
+              <article class="paper-item">
+                <div class="paper-top">
+                  <div class="paper-title">Verified Citations for Research Chat Systems</div>
+                  <span class="badge badge-emerald">strong</span>
+                </div>
+                <div class="paper-meta"><span>ACL</span><span>•</span><span>2025</span><span>•</span><span>Evidence</span></div>
+              </article>
+
+              <article class="paper-item">
+                <div class="paper-top">
+                  <div class="paper-title">Agentic Search for Deep Literature Reviews</div>
+                  <span class="badge badge-violet">emerging</span>
+                </div>
+                <div class="paper-meta"><span>arXiv</span><span>•</span><span>2024</span><span>•</span><span>Agents</span></div>
+              </article>
+
+              <article class="paper-item">
+                <div class="paper-top">
+                  <div class="paper-title">Interactive Topic Maps for Systematic Reviews</div>
+                  <span class="badge badge-emerald">strong</span>
+                </div>
+                <div class="paper-meta"><span>IEEE VIS</span><span>•</span><span>2023</span><span>•</span><span>Topic map</span></div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+      </aside>
+
+      <section class="main-column">
+        <section class="card chat-card">
+          <div class="chat-header">
+            <div class="card-title-row" style="margin-bottom:0;">
+              <div>
+                <div class="title-kicker">🤖 AI chat + evidence synthesis</div>
+                <div class="title-main">Conversation Workspace</div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+                <span class="badge badge-cyan">inline citations</span>
+                <span class="badge badge-violet">claim tracing</span>
+                <span class="badge badge-emerald">map-linked results</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-body">
+            <div class="metrics">
+              <div class="metric-card">
+                <div class="small" style="color:#cbd5e1;">🛡 Confidence panel</div>
+                <strong>High</strong>
+                <div class="small muted">Based on 34 highly relevant papers and 112 supporting citation links.</div>
+              </div>
+              <div class="metric-card">
+                <div class="small" style="color:#cbd5e1;">⑂ Topic branches</div>
+                <strong>7</strong>
+                <div class="small muted">Includes evidence, agents, maps, datasets, evaluation, UX, and domain studies.</div>
+              </div>
+              <div class="metric-card">
+                <div class="small" style="color:#cbd5e1;">⏱ Search pass</div>
+                <strong>3 / 5</strong>
+                <div class="small muted">Recursive search still exploring contradictions and edge cases.</div>
+              </div>
+            </div>
+
+            <div class="message-list">
+              <article class="message">
+                <div class="message-role">🤖 Research Copilot</div>
+                <p>I clustered 186 papers into 7 themes. The strongest evidence is around verified citations, agentic retrieval, and map-based exploration.</p>
+                <div class="chip-cloud">
+                  <span class="badge badge-slate">186 papers</span>
+                  <span class="badge badge-slate">7 clusters</span>
+                  <span class="badge badge-slate">34 highly relevant</span>
+                </div>
+                <div class="message-support">
+                  <div class="inline-card">Paper 1 · Strong support</div>
+                  <div class="inline-card">Paper 2 · Mixed evidence</div>
+                  <div class="inline-card">Paper 3 · Method overlap</div>
+                </div>
+              </article>
+
+              <article class="message user">
+                <div class="message-role">💬 You</div>
+                <p>Show me papers that connect citation verification with conversational literature review.</p>
+              </article>
+
+              <article class="message">
+                <div class="message-role">🤖 Research Copilot</div>
+                <p>I found 12 papers. Three stand out because they combine evidence tracing, claim validation, and interactive exploration. I highlighted them in the map and pinned them in the evidence rail.</p>
+                <div class="chip-cloud">
+                  <span class="badge badge-slate">12 matches</span>
+                  <span class="badge badge-slate">3 highlighted</span>
+                  <span class="badge badge-slate">2 contradictory findings</span>
+                </div>
+                <div class="message-support">
+                  <div class="inline-card">Paper 1 · Strong support</div>
+                  <div class="inline-card">Paper 2 · Mixed evidence</div>
+                  <div class="inline-card">Paper 3 · Method overlap</div>
+                </div>
+              </article>
+            </div>
+
+            <div class="chat-composer">
+              <div class="composer-actions">
+                <span class="quick-chip">Summarize cluster</span>
+                <span class="quick-chip">Open evidence table</span>
+                <span class="quick-chip">Compare cited papers</span>
+                <span class="quick-chip">Generate draft section</span>
+              </div>
+              <div class="chat-input">
+                <input type="text" value="visual literature review with verified citations" />
+                <button class="btn btn-cyan">Ask</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <aside class="rightbar">
+        <section class="card">
+          <div class="card-inner">
+            <div class="card-title-row">
+              <div>
+                <div class="title-kicker" style="color:#f0abfc;">🕸 Visualization map</div>
+                <div style="font-size:24px;font-weight:700;letter-spacing:-0.03em;margin-top:4px;">Topic Network</div>
+              </div>
+              <button class="btn">Filters</button>
+            </div>
+
+            <div class="chip-cloud section-spacing">
+              <span class="badge badge-cyan">cluster view</span>
+              <span class="badge badge-emerald">evidence overlays</span>
+              <span class="badge badge-violet">citations on click</span>
+            </div>
+
+            <div class="map-box">
+              <svg class="network-svg" viewBox="0 0 560 360" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <radialGradient id="glow" cx="50%" cy="50%" r="60%">
+                    <stop offset="0%" stop-color="rgba(34,211,238,0.35)"/>
+                    <stop offset="100%" stop-color="rgba(34,211,238,0)"/>
+                  </radialGradient>
+                </defs>
+                <rect x="0" y="0" width="560" height="360" rx="24" fill="rgba(15,23,42,0.72)"/>
+                <circle cx="280" cy="180" r="130" fill="url(#glow)"/>
+
+                <g stroke="rgba(148,163,184,0.28)" stroke-linecap="round">
+                  <line x1="292" y1="190" x2="110" y2="140" stroke-width="2.4"/>
+                  <line x1="292" y1="190" x2="250" y2="78" stroke-width="2.4"/>
+                  <line x1="292" y1="190" x2="386" y2="132" stroke-width="2.4"/>
+                  <line x1="292" y1="190" x2="476" y2="232" stroke-width="2.4"/>
+                  <line x1="292" y1="190" x2="346" y2="292" stroke-width="2.4"/>
+                  <line x1="292" y1="190" x2="198" y2="276" stroke-width="2.4"/>
+                  <line x1="110" y1="140" x2="476" y2="232" stroke-width="1.2"/>
+                  <line x1="250" y1="78" x2="346" y2="292" stroke-width="1.2"/>
+                  <line x1="386" y1="132" x2="346" y2="292" stroke-width="1.2"/>
+                  <line x1="198" y1="276" x2="84" y2="258" stroke-width="1.2"/>
+                  <line x1="110" y1="140" x2="386" y2="132" stroke-width="1.2"/>
+                </g>
+
+                <g>
+                  <circle cx="292" cy="190" r="44" fill="rgba(255,255,255,0.08)"/>
+                  <circle cx="292" cy="190" r="34" fill="rgba(34,211,238,0.9)" stroke="#bae6fd" stroke-width="2"/>
+                  <text x="292" y="194" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">Chat-driven review</text>
+
+                  <circle cx="110" cy="140" r="30" fill="rgba(52,211,153,0.9)" stroke="#d1fae5" stroke-width="2"/>
+                  <text x="110" y="144" text-anchor="middle" fill="#fff" font-size="10" font-weight="600">Verified citations</text>
+
+                  <circle cx="250" cy="78" r="22" fill="rgba(168,85,247,0.9)" stroke="#ede9fe" stroke-width="2"/>
+                  <text x="250" y="82" text-anchor="middle" fill="#fff" font-size="10" font-weight="600">Agentic search</text>
+
+                  <circle cx="386" cy="132" r="26" fill="rgba(217,70,239,0.9)" stroke="#f5d0fe" stroke-width="2"/>
+                  <text x="386" y="136" text-anchor="middle" fill="#fff" font-size="10" font-weight="600">Topic maps</text>
+
+                  <circle cx="476" cy="232" r="21" fill="rgba(52,211,153,0.9)" stroke="#d1fae5" stroke-width="2"/>
+                  <text x="476" y="236" text-anchor="middle" fill="#fff" font-size="10" font-weight="600">Contradictions</text>
+
+                  <circle cx="346" cy="292" r="24" fill="rgba(251,191,36,0.9)" stroke="#fde68a" stroke-width="2"/>
+                  <text x="346" y="296" text-anchor="middle" fill="#fff" font-size="10" font-weight="600">Methods</text>
+
+                  <circle cx="198" cy="276" r="20" fill="rgba(251,191,36,0.9)" stroke="#fde68a" stroke-width="2"/>
+                  <text x="198" y="280" text-anchor="middle" fill="#fff" font-size="10" font-weight="600">Benchmarks</text>
+
+                  <circle cx="84" cy="258" r="18" fill="rgba(148,163,184,0.9)" stroke="#e2e8f0" stroke-width="2"/>
+                  <text x="84" y="262" text-anchor="middle" fill="#fff" font-size="10" font-weight="600">Surveys</text>
+                </g>
+              </svg>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-inner">
+            <div class="title-kicker" style="color:#86efac;">🧭 Node inspector</div>
+            <div style="font-size:24px;font-weight:700;letter-spacing:-0.03em;margin-top:6px;">Chat-driven review</div>
+
+            <div class="node-note section-spacing" style="margin-top:16px;">
+              <div style="font-size:14px;line-height:1.9;color:#cbd5e1;">This node groups related papers. Clicking it updates chat context and reveals supporting or conflicting evidence.</div>
+            </div>
+
+            <div class="inspector-grid section-spacing">
+              <div class="mini-panel">
+                <div class="small muted">Linked papers</div>
+                <strong>27</strong>
+              </div>
+              <div class="mini-panel">
+                <div class="small muted">Confidence</div>
+                <strong>91%</strong>
+              </div>
+            </div>
+
+            <div class="inspector-list section-spacing">
+              <div class="inspector-list-item">✦ Inline evidence cards</div>
+              <div class="inspector-list-item">✦ Claim support / contradiction</div>
+              <div class="inspector-list-item">✦ One-click jump to related papers</div>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+</body>
+</html>
