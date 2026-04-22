@@ -11,6 +11,8 @@ The list of UI components that may be needed such as the chat box, search result
   - chat to find papers and chat with papers
 - saved papers
   - a simple paper management mechanism, e.g., support organising papers by projects
+- text editor
+  - for writing (free-form notes or formal writing)
 - visualisation?
   - visualise paper corpus, search results, saved papers, what to explore, etc. projection or other vis methods
   - visualise analytic & agent provenance
