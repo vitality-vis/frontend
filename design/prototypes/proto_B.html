@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vitality 3 - Prototype B</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --bg-soft: #eef3fa;
+      --panel: rgba(255, 255, 255, 0.84);
+      --line: rgba(15, 23, 42, 0.08);
+      --line-strong: rgba(15, 23, 42, 0.14);
+      --text: #172033;
+      --muted: #64748b;
+      --blue: #4577ff;
+      --blue-soft: #e9f0ff;
+      --purple: #7c5cff;
+      --purple-soft: #f1edff;
+      --teal: #14b8a6;
+      --amber: #f59e0b;
+      --rose: #fb7185;
+      --radius-xl: 22px;
+      --radius-2xl: 28px;
+      --radius-3xl: 34px;
+      --shadow-lg: 0 18px 55px rgba(38, 57, 88, 0.10);
+      --shadow-md: 0 12px 30px rgba(38, 57, 88, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: "Inter", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(69, 119, 255, 0.12), transparent 26%),
+        radial-gradient(circle at top right, rgba(124, 92, 255, 0.11), transparent 22%),
+        linear-gradient(180deg, #f8fbff 0%, #f4f7fb 100%);
+    }
+
+    body { overflow: hidden; }
+
+    .shell {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 16px;
+      padding: 16px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(16px);
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      box-shadow: 0 14px 26px rgba(69, 119, 255, 0.24);
+    }
+
+    .brand small {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 3px;
+    }
+
+    .brand strong {
+      font-size: 18px;
+      letter-spacing: -0.03em;
+    }
+
+    .search-center {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border-radius: 30px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(18px);
+    }
+
+    .search-main {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-soft);
+      border: 1px solid rgba(69, 119, 255, 0.10);
+      padding: 12px 14px;
+      border-radius: 22px;
+      min-width: 0;
+    }
+
+    .search-main input,
+    .composer-input input {
+      border: 0;
+      outline: none;
+      background: transparent;
+      width: 100%;
+      min-width: 0;
+      font-size: 14px;
+      color: var(--text);
+      font-family: inherit;
+    }
+
+    .search-main input::placeholder,
+    .composer-input input::placeholder { color: #90a0b7; }
+
+    .search-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill,
+    .button,
+    .micro-pill {
+      border: 1px solid transparent;
+      border-radius: 999px;
+      font-family: inherit;
+      font-weight: 600;
+    }
+
+    .pill {
+      padding: 10px 14px;
+      background: #fff;
+      color: var(--muted);
+      border-color: var(--line);
+      font-size: 13px;
+    }
+
+    .pill.active {
+      color: var(--blue);
+      background: var(--blue-soft);
+      border-color: rgba(69, 119, 255, 0.16);
+    }
+
+    .button {
+      padding: 12px 18px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .button.primary {
+      background: linear-gradient(135deg, var(--blue), #6a83ff);
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 16px 28px rgba(69, 119, 255, 0.22);
+    }
+
+    .button.secondary {
+      background: rgba(255, 255, 255, 0.76);
+      color: var(--text);
+      border-color: var(--line);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+    }
+
+    .layout {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr) minmax(400px, 1.18fr);
+      gap: 16px;
+    }
+
+    .panel,
+    .chat-surface,
+    .hero {
+      min-height: 0;
+      border-radius: var(--radius-3xl);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(18px);
+      overflow: hidden;
+    }
+
+    .panel-inner { padding: 16px; }
+
+    .sidebar,
+    .rightbar,
+    .main {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .section-count {
+      color: var(--blue);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      padding-top: 4px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .section-head h2,
+    .section-head h3,
+    .hero-title {
+      margin: 5px 0 0;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+    }
+
+    .section-head h2 { font-size: 26px; }
+    .section-head h3 { font-size: 22px; }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.58;
+    }
+
+    .workspace-card,
+    .collection-card,
+    .map-legend-item,
+    .context-card,
+    .mini-metric,
+    .suggestion,
+    .message-card,
+    .source-card,
+    .inspector-card {
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+    }
+
+    .workspace-card,
+    .collection-card,
+    .map-legend-item,
+    .context-card,
+    .mini-metric,
+    .suggestion,
+    .source-card,
+    .inspector-card {
+      padding: 14px;
+    }
+
+    .workspace-stack,
+    .collection-list,
+    .sources-list,
+    .legend-list,
+    .suggestion-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .workspace-card strong,
+    .collection-card strong,
+    .source-card strong,
+    .mini-metric strong,
+    .inspector-card strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 15px;
+    }
+
+    .micro-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 10px;
+      font-size: 11px;
+      background: #fff;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      margin-right: 6px;
+      margin-top: 6px;
+    }
+
+    .main {
+      overflow: hidden;
+    }
+
+    .hero {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 252px;
+      gap: 14px;
+      padding: 16px;
+      background:
+        radial-gradient(circle at top right, rgba(124, 92, 255, 0.13), transparent 24%),
+        radial-gradient(circle at left center, rgba(69, 119, 255, 0.16), transparent 24%),
+        linear-gradient(180deg, rgba(255,255,255,0.86), rgba(255,255,255,0.74));
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -60px -80px auto;
+      width: 220px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(69, 119, 255, 0.10), transparent 68%);
+      pointer-events: none;
+    }
+
+    .hero-title {
+      font-size: 29px;
+    }
+
+    .hero p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      line-height: 1.55;
+      max-width: 50ch;
+      font-size: 13px;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .hero-metrics {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      align-self: stretch;
+    }
+
+    .mini-metric {
+      background: rgba(255,255,255,0.84);
+    }
+
+    .mini-metric strong {
+      font-size: 22px;
+      margin: 6px 0 4px;
+    }
+
+    .chat-surface {
+      flex: 1;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .chat-top {
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .chat-stream {
+      min-height: 0;
+      overflow: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background:
+        linear-gradient(180deg, rgba(238, 243, 250, 0.58), rgba(255,255,255,0.24));
+    }
+
+    .message-card {
+      max-width: 82%;
+      padding: 14px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .message-card.user {
+      margin-left: auto;
+      background: linear-gradient(135deg, #4f79ff, #6885ff);
+      color: white;
+      border-color: transparent;
+    }
+
+    .message-role {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin-bottom: 8px;
+      color: inherit;
+      opacity: 0.92;
+    }
+
+    .message-card p {
+      margin: 0;
+      line-height: 1.72;
+      font-size: 14px;
+      color: inherit;
+    }
+
+    .message-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .message-links .micro-pill {
+      background: rgba(244, 247, 251, 0.95);
+    }
+
+    .message-card.user .micro-pill {
+      background: rgba(255,255,255,0.16);
+      border-color: rgba(255,255,255,0.22);
+      color: white;
+    }
+
+    .composer {
+      padding: 14px 16px 16px;
+      border-top: 1px solid var(--line);
+      background: rgba(255,255,255,0.82);
+    }
+
+    .suggestion-list {
+      flex-direction: row;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .suggestion {
+      padding: 10px 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .composer-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .composer-input {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--line-strong);
+      background: var(--bg-soft);
+    }
+
+    .rightbar .panel:first-child {
+      flex: 1.42;
+    }
+
+    .rightbar .panel:last-child {
+      flex: 0.58;
+    }
+
+    .map-shell {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 0;
+      gap: 10px;
+    }
+
+    .map-box {
+      min-height: 360px;
+      border-radius: 28px;
+      border: 1px solid rgba(69, 119, 255, 0.12);
+      background:
+        radial-gradient(circle at center, rgba(69, 119, 255, 0.10), transparent 42%),
+        linear-gradient(180deg, #f7faff 0%, #eef4ff 100%);
+      position: relative;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5);
+    }
+
+    .map-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(69,119,255,0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(69,119,255,0.07) 1px, transparent 1px);
+      background-size: 38px 38px;
+      mask-image: radial-gradient(circle at center, black 48%, transparent 100%);
+      opacity: 0.7;
+    }
+
+    .map-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .legend-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding-bottom: 4px;
+    }
+
+    .map-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      line-height: 1.35;
+      color: var(--muted);
+      padding: 12px 14px;
+      min-height: 46px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+    }
+
+    .context-card {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .context-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: var(--purple-soft);
+      color: var(--purple);
+      font-weight: 700;
+      flex: 0 0 auto;
+    }
+
+    .inspector-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .sidebar .panel:first-child {
+      flex: 0.95;
+    }
+
+    .sidebar .panel:last-child {
+      flex: 0.78;
+    }
+
+    .scrollable {
+      min-height: 0;
+      overflow: auto;
+    }
+
+    @media (max-width: 1380px) {
+      .layout {
+        grid-template-columns: 240px minmax(0, 1fr) 360px;
+      }
+
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .legend-list {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 1100px) {
+      body { overflow: auto; }
+
+      .shell {
+        height: auto;
+      }
+
+      .topbar,
+      .layout,
+      .search-center,
+      .composer-row {
+        grid-template-columns: 1fr;
+      }
+
+      .message-card {
+        max-width: 100%;
+      }
+
+      .inspector-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">V3</div>
+        <div>
+          <small>Research workspace</small>
+          <strong>Vitality 3</strong>
+        </div>
+      </div>
+
+      <div class="search-center">
+        <label class="search-main">
+          <input type="text" value="Find conversational literature review systems with citation verification" />
+        </label>
+
+        <div class="search-actions">
+          <button class="pill active">Semantic</button>
+          <button class="pill">Verified only</button>
+          <button class="pill">Last 3 years</button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <button class="button primary">Export</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <section class="panel">
+          <div class="panel-inner scrollable">
+            <div class="section-head">
+              <div>
+                <div class="eyebrow">Left rail</div>
+                <h3>Research Deck</h3>
+              </div>
+              <div class="section-count">24 sources</div>
+            </div>
+
+            <div class="workspace-stack">
+              <div class="workspace-card">
+                <strong>Current objective</strong>
+                <div class="muted">Build a trustworthy review flow with grounded answers and visible evidence paths.</div>
+                <span class="micro-pill">Review mode</span>
+                <span class="micro-pill">Evidence-first</span>
+              </div>
+
+              <div class="workspace-card">
+                <strong>Active workspace</strong>
+                <div class="muted">Conversational review - HCI + IR + Scientific Discovery</div>
+                <span class="micro-pill">6 clusters</span>
+                <span class="micro-pill">11 pinned papers</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-inner scrollable">
+            <div class="section-head">
+              <div>
+                <div class="eyebrow">Collections</div>
+                <h3>Curated lanes</h3>
+              </div>
+            </div>
+
+            <div class="collection-list">
+              <div class="collection-card">
+                <strong>Evidence tracing</strong>
+                <div class="muted">9 papers - strong consensus</div>
+              </div>
+
+              <div class="collection-card">
+                <strong>Interactive maps</strong>
+                <div class="muted">6 papers - visualization-heavy</div>
+              </div>
+
+              <div class="collection-card">
+                <strong>Agentic review flows</strong>
+                <div class="muted">7 papers - mixed quality</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="main">
+        <section class="hero">
+          <div>
+            <div class="eyebrow">Central workspace</div>
+            <h1 class="hero-title">Research flow with evidence and map context.</h1>
+            <p>The main interaction stays in the center while sources and the visualization remain visible on the sides for faster review.</p>
+
+            <div class="hero-actions">
+              <button class="button primary">Generate a brief</button>
+            </div>
+          </div>
+
+          <div class="hero-metrics">
+            <div class="mini-metric">
+              <div class="muted">Confidence band</div>
+              <strong>High</strong>
+              <div class="muted">Grounded in 18 relevant sources.</div>
+            </div>
+
+            <div class="mini-metric">
+              <div class="muted">Mapped themes</div>
+              <strong>6</strong>
+              <div class="muted">Evidence, UX, IR, evaluation, maps, synthesis.</div>
+            </div>
+
+            <div class="mini-metric">
+              <div class="muted">Open questions</div>
+              <strong>3</strong>
+              <div class="muted">A few evaluation tradeoffs still need review.</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="chat-surface">
+          <div class="chat-top">
+            <div>
+              <div class="eyebrow">Main workspace</div>
+              <h2 style="margin:6px 0 0;font-size:28px;letter-spacing:-0.04em;">Conversation Hub</h2>
+            </div>
+
+            <div>
+              <span class="micro-pill">Citations inline</span>
+              <span class="micro-pill">Map-linked</span>
+              <span class="micro-pill">Source aware</span>
+            </div>
+          </div>
+
+          <div class="chat-stream">
+            <article class="message-card">
+              <div class="message-role">V3 Assistant</div>
+              <p>I found a recurring pattern: the most usable systems keep the conversation clean, but let users open evidence only when needed. The strongest papers pair summary, source links, and visual grouping.</p>
+
+              <div class="message-links">
+                <span class="micro-pill">4 strong papers</span>
+                <span class="micro-pill">2 conflicting findings</span>
+                <span class="micro-pill">Map nodes highlighted</span>
+              </div>
+            </article>
+
+            <article class="message-card user">
+              <div class="message-role">Researcher</div>
+              <p>Show the studies that connect conversational review interfaces with citation verification and explain where the disagreements are.</p>
+            </article>
+
+            <article class="message-card">
+              <div class="message-role">V3 Assistant</div>
+              <p>There are three useful clusters: systems focused on trustworthy citations, systems focused on exploration UX, and systems mixing both. The main disagreement is how much evidence detail should appear in the conversation by default.</p>
+
+              <div class="message-links">
+                <span class="micro-pill">Cluster A - trust</span>
+                <span class="micro-pill">Cluster B - UX</span>
+                <span class="micro-pill">Cluster C - hybrid</span>
+              </div>
+            </article>
+
+            <article class="message-card">
+              <div class="message-role">V3 Assistant</div>
+              <p>I linked the strongest hybrid papers into the Visualization Map so you can jump from the answer directly into the topic structure.</p>
+            </article>
+          </div>
+
+          <div class="composer">
+            <div class="suggestion-list">
+              <div class="suggestion">Summarize a cluster</div>
+              <div class="suggestion">Explain contradictions</div>
+              <div class="suggestion">Draft related work</div>
+              <div class="suggestion">Create comparison table</div>
+            </div>
+
+            <div class="composer-row">
+              <label class="composer-input">
+                <input type="text" value="Compare trustworthy chat systems with map-based review interfaces" />
+              </label>
+              <button class="button primary">Send</button>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <aside class="rightbar">
+        <section class="panel">
+          <div class="panel-inner map-shell">
+            <div class="section-head" style="margin-bottom:0;">
+              <div>
+                <div class="eyebrow" style="color: var(--purple);">Visualization Map</div>
+                <h3>Research Constellation</h3>
+              </div>
+            </div>
+
+            <div class="map-box">
+              <div class="map-grid"></div>
+              <svg class="map-svg" viewBox="40 10 320 290" xmlns="http://www.w3.org/2000/svg">
+                <g stroke-linecap="round" fill="none">
+                  <path d="M188 170 L92 92" stroke="rgba(69,119,255,0.26)" stroke-width="3.8"/>
+                  <path d="M188 170 L156 42" stroke="rgba(124,92,255,0.28)" stroke-width="3.5"/>
+                  <path d="M188 170 L288 86" stroke="rgba(20,184,166,0.30)" stroke-width="3.8"/>
+                  <path d="M188 170 L330 184" stroke="rgba(251,113,133,0.24)" stroke-width="3.5"/>
+                  <path d="M188 170 L270 286" stroke="rgba(245,158,11,0.30)" stroke-width="3.5"/>
+                  <path d="M188 170 L118 270" stroke="rgba(69,119,255,0.20)" stroke-width="3.5"/>
+                  <path d="M92 92 L288 86" stroke="rgba(15,23,42,0.10)" stroke-width="1.8"/>
+                  <path d="M118 270 L270 286" stroke="rgba(15,23,42,0.10)" stroke-width="1.8"/>
+                  <path d="M156 42 L270 286" stroke="rgba(15,23,42,0.10)" stroke-width="1.6"/>
+                  <path d="M92 92 L118 270" stroke="rgba(15,23,42,0.08)" stroke-width="1.4"/>
+                  <path d="M288 86 L330 184" stroke="rgba(15,23,42,0.08)" stroke-width="1.4"/>
+                </g>
+
+                <g>
+                  <circle cx="188" cy="170" r="68" fill="rgba(69,119,255,0.14)"/>
+                  <circle cx="188" cy="170" r="54" fill="rgba(69,119,255,0.18)"/>
+                  <circle cx="188" cy="170" r="42" fill="#4577ff"/>
+                  <text x="188" y="163" fill="white" text-anchor="middle" font-size="14" font-weight="700">Research</text>
+                  <text x="188" y="182" fill="white" text-anchor="middle" font-size="14" font-weight="700">Workspace</text>
+
+                  <circle cx="92" cy="92" r="29" fill="#14b8a6"/>
+                  <text x="92" y="97" fill="white" text-anchor="middle" font-size="10.5" font-weight="700">Evidence</text>
+
+                  <circle cx="156" cy="42" r="24" fill="#7c5cff"/>
+                  <text x="156" y="47" fill="white" text-anchor="middle" font-size="10" font-weight="700">Agents</text>
+
+                  <circle cx="288" cy="86" r="31" fill="#6a83ff"/>
+                  <text x="288" y="91" fill="white" text-anchor="middle" font-size="10" font-weight="700">UX Maps</text>
+
+                  <circle cx="330" cy="184" r="26" fill="#fb7185"/>
+                  <text x="330" y="189" fill="white" text-anchor="middle" font-size="10" font-weight="700">Gaps</text>
+
+                  <circle cx="270" cy="286" r="29" fill="#f59e0b"/>
+                  <text x="270" y="291" fill="white" text-anchor="middle" font-size="10" font-weight="700">Methods</text>
+
+                  <circle cx="118" cy="270" r="25" fill="#8fa8ff"/>
+                  <text x="118" y="275" fill="white" text-anchor="middle" font-size="10" font-weight="700">Surveys</text>
+                </g>
+              </svg>
+            </div>
+
+            <div class="legend-list">
+              <div class="map-legend-item"><span class="dot" style="background:#4577ff;"></span> Conversation-centered cluster</div>
+              <div class="map-legend-item"><span class="dot" style="background:#14b8a6;"></span> Strong evidence lane</div>
+              <div class="map-legend-item"><span class="dot" style="background:#7c5cff;"></span> Agent workflows</div>
+              <div class="map-legend-item"><span class="dot" style="background:#fb7185;"></span> Contradictions and gaps</div>
+              <div class="map-legend-item"><span class="dot" style="background:#f59e0b;"></span> Methods</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-inner scrollable">
+            <div class="section-head">
+              <div>
+                <div class="eyebrow" style="color: var(--teal);">Context panel</div>
+                <h3>Inspector</h3>
+              </div>
+            </div>
+
+            <div class="sources-list">
+              <div class="context-card">
+                <div class="context-icon">A</div>
+                <div>
+                  <strong style="display:block;font-size:14px;">Active node</strong>
+                  <div class="muted">Research Workspace - 12 linked papers</div>
+                </div>
+              </div>
+
+              <div class="inspector-card">
+                <strong>Why this map matters</strong>
+                <div class="muted">Selecting any node updates the context and narrows the visible evidence set.</div>
+              </div>
+
+              <div class="inspector-grid">
+                <div class="source-card">
+                  <strong>Confidence</strong>
+                  <div class="muted">89%</div>
+                </div>
+
+                <div class="source-card">
+                  <strong>Linked themes</strong>
+                  <div class="muted">6</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+</body>
+</html>

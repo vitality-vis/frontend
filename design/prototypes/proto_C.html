@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vitality3 — Prototype C</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f7f3ed;
+      --paper: #fffdfa;
+      --paper-soft: #fbf6ef;
+      --soft: #f1e8dc;
+      --line: rgba(95, 70, 43, 0.12);
+      --line-strong: rgba(95, 70, 43, 0.2);
+      --text: #231b15;
+      --muted: #6c5b4d;
+      --orange: #cb6b2f;
+      --orange-deep: #b7581b;
+      --orange-soft: #f5e3d5;
+      --orange-pale: #fcf4ec;
+      --sage: #667061;
+      --slate: #3d4b57;
+      --shadow: 0 18px 46px rgba(63, 43, 21, 0.08);
+      --shadow-soft: 0 10px 24px rgba(63, 43, 21, 0.05);
+      --r-lg: 18px;
+      --r-xl: 24px;
+      --r-2xl: 30px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background:
+        radial-gradient(circle at top left, rgba(203,107,47,0.08), transparent 22%),
+        radial-gradient(circle at bottom right, rgba(102,112,97,0.05), transparent 20%),
+        var(--bg);
+      color: var(--text);
+      font-family: "IBM Plex Sans", sans-serif;
+    }
+
+    body { overflow: hidden; }
+
+    .app {
+      height: 100vh;
+      width: min(1600px, calc(100% - 48px));
+      margin: 0 auto;
+      padding: 16px 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 14px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .brand,
+    .search-shell,
+    .toolbar,
+    .panel {
+      background: rgba(255,253,250,0.95);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: 22px;
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--orange), #dd8a4c);
+      color: white;
+      font-weight: 700;
+      font-family: "Sora", sans-serif;
+      box-shadow: 0 12px 24px rgba(203,107,47,0.18);
+    }
+
+    .brand small {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 4px;
+    }
+
+    .brand strong {
+      font-size: 18px;
+      letter-spacing: -0.03em;
+    }
+
+    .search-shell {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border-radius: 24px;
+    }
+
+    .search-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      border-radius: 18px;
+      background: var(--soft);
+      border: 1px solid rgba(203,107,47,0.10);
+      min-width: 0;
+    }
+
+    .search-bar input,
+    .composer-input input {
+      width: 100%;
+      min-width: 0;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    .search-bar input::placeholder,
+    .composer-input input::placeholder { color: #998878; }
+
+    .search-actions,
+    .toolbar,
+    .hero-actions,
+    .quick-prompts,
+    .map-toolbar,
+    .tag-row,
+    .evidence-row,
+    .topic-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .toolbar {
+      padding: 10px;
+      border-radius: 22px;
+    }
+
+    .chip,
+    .tag,
+    .btn {
+      border-radius: 999px;
+      font-family: inherit;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+
+    .chip,
+    .tag {
+      padding: 7px 11px;
+      font-size: 11px;
+      background: white;
+      color: var(--muted);
+      border-color: var(--line);
+    }
+
+    .chip.active,
+    .tag.active {
+      color: var(--orange-deep);
+      background: var(--orange-pale);
+      border-color: rgba(203,107,47,0.18);
+    }
+
+    .btn {
+      padding: 10px 15px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, var(--orange), #d88746);
+      color: white;
+      box-shadow: 0 12px 24px rgba(203,107,47,0.16);
+    }
+
+    .btn.secondary {
+      background: white;
+      color: var(--text);
+      border-color: var(--line);
+    }
+
+    .layout {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 384px minmax(0, 1fr) 276px;
+      gap: 14px;
+    }
+
+    .column,
+    .main {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .main { overflow: hidden; }
+
+    .panel {
+      min-height: 0;
+      border-radius: var(--r-2xl);
+      overflow: hidden;
+    }
+
+    .panel-inner {
+      padding: 16px;
+      min-height: 0;
+    }
+
+    .scrollable {
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--orange);
+    }
+
+    h1, h2, h3 {
+      font-family: "Sora", sans-serif;
+      margin: 0;
+      letter-spacing: -0.04em;
+      font-weight: 700;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .section-head h2 { font-size: 26px; margin-top: 5px; }
+    .section-head h3 { font-size: 21px; margin-top: 5px; }
+
+    .muted {
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.62;
+    }
+
+    .stack,
+    .source-list,
+    .legend,
+    .insight-list,
+    .topic-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .card,
+    .source-item,
+    .metric,
+    .legend-item,
+    .insight,
+    .message,
+    .quick-pill,
+    .topic-card {
+      background: var(--paper-soft);
+      border: 1px solid var(--line);
+      border-radius: var(--r-lg);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .card,
+    .source-item,
+    .metric,
+    .legend-item,
+    .insight,
+    .quick-pill,
+    .topic-card {
+      padding: 13px;
+    }
+
+    .card strong,
+    .source-item strong,
+    .metric strong,
+    .insight strong,
+    .topic-card strong {
+      display: block;
+    }
+
+    .metric strong {
+      font-size: 22px;
+      margin: 6px 0 4px;
+      color: var(--slate);
+    }
+
+    .map-shell {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 10px;
+    }
+
+    .map-box {
+      min-height: 384px;
+      border-radius: 24px;
+      border: 1px solid rgba(203,107,47,0.16);
+      background:
+        radial-gradient(circle at center, rgba(203,107,47,0.10), transparent 46%),
+        linear-gradient(180deg, #fffaf4 0%, #f7eee2 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .map-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(203,107,47,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(203,107,47,0.06) 1px, transparent 1px);
+      background-size: 34px 34px;
+      opacity: 0.82;
+      mask-image: radial-gradient(circle at center, black 56%, transparent 100%);
+    }
+
+    .map-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11.5px;
+      line-height: 1.35;
+      color: var(--muted);
+      padding: 10px 11px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+    }
+
+    .left-top { flex: 1.28; }
+
+    .left-bottom { flex: 0.68; }
+
+    .right-top { flex: 0.92; }
+
+    .right-bottom { flex: 1.08; }
+
+    .chat-shell {
+      flex: 1.4;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      border-radius: var(--r-2xl);
+      background: rgba(255,253,250,0.96);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .chat-header,
+    .composer {
+      padding: 14px 16px;
+      background: rgba(255,253,250,0.94);
+    }
+
+    .chat-header {
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .chat-stream {
+      min-height: 0;
+      overflow: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: linear-gradient(180deg, rgba(244,237,226,0.44), rgba(255,253,250,0.26));
+    }
+
+    .message {
+      max-width: 85%;
+      padding: 14px;
+    }
+
+    .message.user {
+      margin-left: auto;
+      background: linear-gradient(135deg, var(--orange), #d7813d);
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 14px 28px rgba(203,107,47,0.16);
+    }
+
+    .message-role {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+      opacity: 0.92;
+    }
+
+    .message p {
+      margin: 0;
+      font-size: 13.5px;
+      line-height: 1.72;
+    }
+
+    .message.user .tag {
+      background: rgba(255,255,255,0.14);
+      color: white;
+      border-color: rgba(255,255,255,0.18);
+    }
+
+    .composer {
+      border-top: 1px solid var(--line);
+    }
+
+    .quick-prompts { margin-bottom: 10px; }
+
+    .quick-pill {
+      padding: 9px 11px;
+      font-size: 11.5px;
+      color: var(--muted);
+      box-shadow: none;
+    }
+
+    .composer-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .composer-input {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 14px;
+      border-radius: 18px;
+      background: var(--soft);
+      border: 1px solid var(--line-strong);
+    }
+
+    .hero {
+      flex: 0.52;
+      padding: 14px 16px;
+      border-radius: var(--r-2xl);
+      background: rgba(255,253,250,0.9);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-soft);
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 12px;
+      overflow: hidden;
+    }
+
+    .hero h2 {
+      font-size: 20px;
+      margin-top: 5px;
+    }
+
+    .hero p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      line-height: 1.58;
+      max-width: 56ch;
+      font-size: 12.5px;
+    }
+
+    .hero .metric {
+      background: white;
+      box-shadow: none;
+    }
+
+    .topic-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .topic-card {
+      background: white;
+    }
+
+    .topic-card strong {
+      margin-bottom: 6px;
+    }
+
+    .brief-cta {
+      padding: 10px 16px;
+      font-size: 13px;
+      white-space: nowrap;
+      box-shadow: 0 14px 28px rgba(203,107,47,0.18);
+    }
+
+    @media (max-width: 1400px) {
+      .layout {
+        grid-template-columns: 338px minmax(0, 1fr) 258px;
+      }
+      .hero {
+        grid-template-columns: 1fr;
+      }
+      .legend,
+      .topic-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 1120px) {
+      body { overflow: auto; }
+      .app {
+        width: min(100%, calc(100% - 32px));
+        height: auto;
+      }
+      .topbar,
+      .layout,
+      .search-shell,
+      .composer-row,
+      .hero {
+        grid-template-columns: 1fr;
+      }
+      .message { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">V3</div>
+        <div>
+          <small>Research Interface</small>
+          <strong>Vitality3</strong>
+        </div>
+      </div>
+
+      <div class="search-shell">
+        <label class="search-bar">
+          <span>🔎</span>
+          <input type="text" value="conversational literature review with visual evidence mapping" />
+        </label>
+        <div class="search-actions">
+          <span class="chip active">semantic search</span>
+          <span class="chip">peer-reviewed</span>
+          <span class="chip">last 5 years</span>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <button class="btn secondary">Saved Queries</button>
+        <button class="btn primary">Export Notes</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="column">
+        <section class="panel left-top">
+          <div class="panel-inner map-shell">
+            <div class="section-head" style="margin-bottom:0;">
+              <div>
+                <div class="eyebrow">Visualization Map</div>
+                <h3>Topic Field</h3>
+              </div>
+              <span class="chip active">linked to chat</span>
+            </div>
+
+            <div class="map-toolbar">
+              <span class="chip active">clusters</span>
+              <span class="chip">citations</span>
+              <span class="chip">methods</span>
+            </div>
+
+            <div class="map-box">
+              <div class="map-grid"></div>
+              <svg class="map-svg" viewBox="12 12 336 288" xmlns="http://www.w3.org/2000/svg">
+                <g fill="none" stroke-linecap="round">
+                  <path d="M178 156 L80 92" stroke="rgba(203,107,47,0.30)" stroke-width="3.4"/>
+                  <path d="M178 156 L142 58" stroke="rgba(102,112,97,0.28)" stroke-width="3.4"/>
+                  <path d="M178 156 L278 92" stroke="rgba(61,75,87,0.24)" stroke-width="3.4"/>
+                  <path d="M178 156 L300 182" stroke="rgba(203,107,47,0.22)" stroke-width="3.4"/>
+                  <path d="M178 156 L240 258" stroke="rgba(102,112,97,0.24)" stroke-width="3.4"/>
+                  <path d="M178 156 L102 244" stroke="rgba(61,75,87,0.18)" stroke-width="3.4"/>
+                  <path d="M80 92 L278 92" stroke="rgba(95,70,43,0.10)" stroke-width="2"/>
+                  <path d="M102 244 L240 258" stroke="rgba(95,70,43,0.10)" stroke-width="2"/>
+                  <path d="M142 58 L240 258" stroke="rgba(95,70,43,0.08)" stroke-width="1.6"/>
+                </g>
+
+                <g>
+                  <circle cx="178" cy="156" r="54" fill="rgba(203,107,47,0.16)"/>
+                  <circle cx="178" cy="156" r="39" fill="#cb6b2f"/>
+                  <text x="178" y="150" text-anchor="middle" fill="white" font-size="12" font-weight="700">Research</text>
+                  <text x="178" y="167" text-anchor="middle" fill="white" font-size="12" font-weight="700">Chatbot</text>
+
+                  <circle cx="80" cy="92" r="25" fill="#667061"/>
+                  <text x="80" y="97" text-anchor="middle" fill="white" font-size="9.2" font-weight="700">Evidence</text>
+
+                  <circle cx="142" cy="58" r="22" fill="#3d4b57"/>
+                  <text x="142" y="63" text-anchor="middle" fill="white" font-size="9" font-weight="700">Search</text>
+
+                  <circle cx="278" cy="92" r="28" fill="#d98a4a"/>
+                  <text x="278" y="97" text-anchor="middle" fill="white" font-size="9" font-weight="700">UX Maps</text>
+
+                  <circle cx="300" cy="182" r="24" fill="#8d725b"/>
+                  <text x="300" y="187" text-anchor="middle" fill="white" font-size="9" font-weight="700">Gaps</text>
+
+                  <circle cx="240" cy="258" r="25" fill="#667061"/>
+                  <text x="240" y="263" text-anchor="middle" fill="white" font-size="9" font-weight="700">Methods</text>
+
+                  <circle cx="102" cy="244" r="23" fill="#3d4b57"/>
+                  <text x="102" y="249" text-anchor="middle" fill="white" font-size="9" font-weight="700">Surveys</text>
+                </g>
+              </svg>
+            </div>
+
+            <div class="legend">
+              <div class="legend-item"><span class="dot" style="background:#cb6b2f;"></span> central chatbot node</div>
+              <div class="legend-item"><span class="dot" style="background:#667061;"></span> evidence / methods</div>
+              <div class="legend-item"><span class="dot" style="background:#3d4b57;"></span> search / surveys</div>
+              <div class="legend-item"><span class="dot" style="background:#d98a4a;"></span> visualization UX</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel left-bottom">
+          <div class="panel-inner scrollable">
+            <div class="section-head">
+              <div>
+                <div class="eyebrow">Source Groups</div>
+                <h3>Collections</h3>
+              </div>
+            </div>
+
+            <div class="source-list">
+              <div class="source-item">
+                <strong>Evidence Tracing</strong>
+                <div class="muted">6 papers · strong methodological overlap</div>
+              </div>
+              <div class="source-item">
+                <strong>Visualization Interfaces</strong>
+                <div class="muted">5 papers · map-centered exploration</div>
+              </div>
+              <div class="source-item">
+                <strong>Agentic Review Systems</strong>
+                <div class="muted">4 papers · emerging design patterns</div>
+              </div>
+              <div class="source-item">
+                <strong>Evaluation Gaps</strong>
+                <div class="muted">3 papers · inconsistent metrics</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="main">
+        <section class="chat-shell">
+          <div class="chat-header">
+            <div>
+              <div class="eyebrow">Main Chatbot</div>
+              <h2>Conversation Workspace</h2>
+            </div>
+            <div class="tag-row">
+              <span class="tag active">inline citations</span>
+              <span class="tag">evidence-linked</span>
+              <span class="tag">map-connected</span>
+            </div>
+          </div>
+
+          <div class="chat-stream">
+            <article class="message">
+              <div class="message-role">Research Copilot</div>
+              <p>I found a consistent design direction in the literature: the chatbot should stay as the dominant workspace, while supporting evidence and thematic exploration remain accessible in adjacent panels.</p>
+              <div class="evidence-row">
+                <span class="tag">4 strong papers</span>
+                <span class="tag">1 mixed result</span>
+                <span class="tag">map node highlighted</span>
+              </div>
+            </article>
+
+            <article class="message user">
+              <div class="message-role">Researcher</div>
+              <p>Show me the papers that connect trustworthy citations with visual exploration, and indicate where they disagree on interface complexity.</p>
+              <div class="evidence-row">
+                <span class="tag">focus: UI/UX</span>
+                <span class="tag">focus: verification</span>
+              </div>
+            </article>
+
+            <article class="message">
+              <div class="message-role">Research Copilot</div>
+              <p>There are two main schools of thought. One favors compact chat answers with expandable evidence drawers. The other favors richer default context, where the user sees clusters, sources, and uncertainty states immediately.</p>
+              <div class="evidence-row">
+                <span class="tag">cluster A · compact chat</span>
+                <span class="tag">cluster B · rich context</span>
+                <span class="tag">cluster C · hybrid</span>
+              </div>
+            </article>
+
+            <article class="message">
+              <div class="message-role">Research Copilot</div>
+              <p>I highlighted the hybrid papers in the map panel and generated three possible insight directions in the panel on the right, so the researcher can keep moving from answer to interpretation.</p>
+            </article>
+          </div>
+
+          <div class="composer">
+            <div class="quick-prompts">
+              <div class="quick-pill">Summarize a cluster</div>
+              <div class="quick-pill">Compare two methods</div>
+              <div class="quick-pill">Draft related work</div>
+              <div class="quick-pill">Explain contradictions</div>
+            </div>
+
+            <div class="composer-row">
+              <label class="composer-input">
+                <span>✦</span>
+                <input type="text" value="Compare evidence-first chatbot interfaces with map-based literature exploration systems" />
+              </label>
+              <button class="btn primary">Send</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="hero">
+          <div>
+            <div class="eyebrow">Central Composition</div>
+            <h2>Compact research brief below the chat.</h2>
+            <p>This area works as a lighter synthesis strip instead of the main hero. It supports the chatbot, rather than competing with it, by keeping the central summary concise and secondary.</p>
+            <div class="hero-actions">
+              <button class="btn secondary">Open evidence list</button>
+              <button class="btn secondary">Compare sources</button>
+            </div>
+          </div>
+
+          <div class="stack">
+            <div class="metric">
+              <div class="muted">Confidence level</div>
+              <strong>High</strong>
+              <div class="muted">12 relevant sources with converging findings.</div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <aside class="column">
+        <section class="panel right-top">
+          <div class="panel-inner scrollable">
+            <div class="section-head">
+              <div>
+                <div class="eyebrow">Research Context</div>
+                <h3>Reading Rail</h3>
+              </div>
+              <span class="chip active">18 papers</span>
+            </div>
+
+            <div class="stack">
+              <div class="card">
+                <strong>Current objective</strong>
+                <div class="muted">Study how a primary research chatbot can remain central while still exposing transparent evidence and topic structure.</div>
+                <div class="topic-row">
+                  <span class="tag active">chat-first</span>
+                  <span class="tag">evidence-aware</span>
+                </div>
+              </div>
+
+              <div class="card">
+                <strong>Active lens</strong>
+                <div class="muted">Human-computer interaction, information retrieval, and scientific literature exploration.</div>
+              </div>
+
+              <div class="card">
+                <strong>Working question</strong>
+                <div class="muted">How much retrieval detail should be visible by default before the conversation becomes cognitively heavy?</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel right-bottom">
+          <div class="panel-inner scrollable">
+            <div class="section-head">
+              <div>
+                <div class="eyebrow">Topic Generator</div>
+                <h3>Topics & Insights</h3>
+              </div>
+              <button class="btn primary brief-cta">Get a brief!</button>
+            </div>
+
+            <div class="topic-list">
+              <div class="topic-card">
+                <strong>Topic 01 · Trust surfaces</strong>
+                <div class="muted">How citation verification changes user confidence when the answer is concise but expandable.</div>
+              </div>
+
+              <div class="topic-card">
+                <strong>Topic 02 · Map-assisted reading</strong>
+                <div class="muted">How a Visualization Map helps researchers navigate literature clusters without abandoning the main conversation.</div>
+              </div>
+
+              <div class="topic-card">
+                <strong>Insight direction</strong>
+                <div class="muted">The strongest hybrid interfaces do not overload the main chatbot. They shift density outward into topic maps, source groups, and generated insight panels.</div>
+              </div>
+
+              <div class="topic-grid">
+                <div class="topic-card">
+                  <strong>Signals</strong>
+                  <div class="muted">5 linked themes</div>
+                </div>
+                <div class="topic-card">
+                  <strong>Confidence</strong>
+                  <div class="muted">91%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+</body>
+</html>
