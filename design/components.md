@@ -14,6 +14,8 @@ The list of UI components that may be needed such as the chat box, search result
 - text editor
   - for writing (free-form notes or formal writing)
 - visualisation?
+  - paper network (citations, agree or disagree, etc.)
+    - leverage saved papers and relevance/importance to reduce network complexity
   - visualise paper corpus, search results, saved papers, what to explore, etc. projection or other vis methods
   - visualise analytic & agent provenance
   - neural map? show topics/papers that are connected somehow
