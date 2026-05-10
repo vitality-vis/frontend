@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vitality 3 - Prototype D</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #eef2f1;
+      --surface: #ffffff;
+      --surface-soft: #f7faf9;
+      --line: #d9e2df;
+      --line-strong: #c2cfca;
+      --text: #182321;
+      --muted: #65736f;
+      --soft-text: #8a9793;
+      --teal: #178d80;
+      --teal-soft: #e2f3f0;
+      --blue: #3d68c7;
+      --blue-soft: #e8efff;
+      --violet: #7561c8;
+      --violet-soft: #eeeafd;
+      --amber: #aa7414;
+      --amber-soft: #fff2d4;
+      --rose: #bd5164;
+      --rose-soft: #fae8ec;
+      --green: #4f8f4d;
+      --green-soft: #e7f2e3;
+      --shadow: 0 14px 34px rgba(33, 48, 45, 0.08);
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #f8fbfa 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    body {
+      overflow: hidden;
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app {
+      width: min(1740px, calc(100% - 28px));
+      height: 100vh;
+      margin: 0 auto;
+      padding: 12px 0;
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .component {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .brand small,
+    .component-kicker,
+    .meta {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .brand strong {
+      display: block;
+      margin-top: 3px;
+      font-size: 18px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .component-index {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      color: #ffffff;
+      background: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .component-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .component-title h2,
+    .component-title h3,
+    .component-title p {
+      margin: 0;
+    }
+
+    .component-title h2,
+    .component-title h3 {
+      color: var(--text);
+      font-size: 17px;
+      line-height: 1.15;
+    }
+
+    .component-title p {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .status-strip {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+    }
+
+    .status-strip span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .button,
+    .chip,
+    .tag,
+    .tool-button,
+    .tab-button {
+      min-height: 32px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .button {
+      min-height: 38px;
+      padding: 0 14px;
+      color: var(--text);
+    }
+
+    .button.primary {
+      color: #ffffff;
+      background: linear-gradient(135deg, var(--teal), var(--blue));
+      border-color: transparent;
+    }
+
+    .chip,
+    .tag,
+    .tool-button,
+    .tab-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 10px;
+    }
+
+    .chip.active,
+    .tag.active,
+    .tab-button.active {
+      color: var(--teal);
+      background: var(--teal-soft);
+      border-color: rgba(23, 141, 128, 0.22);
+    }
+
+    .chip.blue,
+    .tag.blue { color: var(--blue); background: var(--blue-soft); border-color: rgba(61, 104, 199, 0.20); }
+    .chip.violet,
+    .tag.violet { color: var(--violet); background: var(--violet-soft); border-color: rgba(117, 97, 200, 0.20); }
+    .chip.amber,
+    .tag.amber { color: var(--amber); background: var(--amber-soft); border-color: rgba(170, 116, 20, 0.22); }
+    .chip.rose,
+    .tag.rose { color: var(--rose); background: var(--rose-soft); border-color: rgba(189, 81, 100, 0.20); }
+    .chip.green,
+    .tag.green { color: var(--green); background: var(--green-soft); border-color: rgba(79, 143, 77, 0.20); }
+
+    .component {
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .component-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(247, 250, 249, 0.78);
+    }
+
+    .component-body {
+      min-height: 0;
+      flex: 1;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .scrollable {
+      min-height: 0;
+      overflow: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(24, 35, 33, 0.25) transparent;
+    }
+
+    .search-component .component-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .mode-tabs,
+    .row,
+    .tag-row,
+    .tool-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .search-field {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      padding: 0 12px;
+      border-radius: var(--radius);
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+    }
+
+    .search-field span {
+      color: var(--teal);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .search-field input,
+    .chat-input input {
+      width: 100%;
+      min-width: 0;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .search-tools {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .select {
+      min-height: 38px;
+      max-width: 168px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #ffffff;
+      color: var(--text);
+      font-weight: 700;
+      outline: none;
+    }
+
+    .search-context {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .context-item,
+    .filter-group,
+    .paper-card,
+    .workflow-step,
+    .conversation-card,
+    .saved-card,
+    .note-card,
+    .map-metric,
+    .mini-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+    }
+
+    .context-item,
+    .filter-group,
+    .conversation-card,
+    .saved-card,
+    .note-card,
+    .map-metric,
+    .mini-card {
+      padding: 10px;
+    }
+
+    .context-item strong,
+    .filter-group strong,
+    .saved-card strong,
+    .note-card strong,
+    .map-metric strong,
+    .mini-card strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .context-item span,
+    .filter-group p,
+    .saved-card p,
+    .note-card p,
+    .map-metric span,
+    .mini-card p,
+    .paper-card p,
+    .conversation-card span,
+    .message p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .workspace {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 310px minmax(0, 1fr) 330px 360px;
+      grid-template-rows: minmax(130px, 0.82fr) minmax(160px, 1fr) minmax(135px, 0.72fr);
+      grid-template-areas:
+        "results results filters workflow"
+        "results results chat chat"
+        "saved saved editor map";
+      gap: 10px;
+    }
+
+    .filters-component { grid-area: filters; }
+    .results-component { grid-area: results; }
+    .workflow-component { grid-area: workflow; }
+    .chat-component { grid-area: chat; }
+    .saved-component { grid-area: saved; }
+    .editor-component { grid-area: editor; }
+    .map-component { grid-area: map; }
+
+    .filter-list,
+    .saved-list,
+    .paper-list,
+    .workflow-list,
+    .chat-layout,
+    .editor-layout {
+      min-height: 0;
+    }
+
+    .filter-list,
+    .saved-list,
+    .paper-list,
+    .workflow-list {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .filter-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    .range-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--teal);
+    }
+
+    .check-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .check-row input {
+      margin-top: 2px;
+      accent-color: var(--teal);
+    }
+
+    .results-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .mini-card {
+      min-width: 0;
+    }
+
+    .mini-card .number {
+      display: block;
+      margin-bottom: 2px;
+      color: var(--text);
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .paper-list {
+      flex: 1;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .paper-card {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 74px;
+      gap: 10px;
+    }
+
+    .paper-card h3 {
+      margin: 4px 0 6px;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.28;
+    }
+
+    .score {
+      width: 60px;
+      height: 60px;
+      margin-left: auto;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: var(--teal);
+      font-size: 15px;
+      font-weight: 800;
+      background:
+        radial-gradient(circle at center, #ffffff 0 54%, transparent 55%),
+        conic-gradient(var(--teal) 0 84%, #edf2f0 84% 100%);
+      border: 1px solid rgba(23, 141, 128, 0.18);
+    }
+
+    .paper-actions {
+      display: grid;
+      gap: 7px;
+      align-content: start;
+    }
+
+    .workflow-step {
+      display: grid;
+      grid-template-columns: 32px minmax(0, 1fr);
+      gap: 10px;
+      padding: 10px;
+    }
+
+    .step-number {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius);
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      background: var(--teal);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .workflow-step:nth-child(2) .step-number { background: var(--blue); }
+    .workflow-step:nth-child(3) .step-number { background: var(--amber); }
+    .workflow-step:nth-child(4) .step-number { background: var(--violet); }
+
+    .step-content strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 12px;
+    }
+
+    .step-content textarea {
+      width: 100%;
+      min-height: 42px;
+      resize: none;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 8px;
+      outline: none;
+      color: var(--muted);
+      background: var(--surface-soft);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .chat-layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .conversation-list {
+      min-height: 0;
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      overflow: auto;
+      padding-right: 1px;
+    }
+
+    .conversation-card {
+      display: grid;
+      gap: 3px;
+    }
+
+    .conversation-card.active {
+      background: var(--teal-soft);
+      border-color: rgba(23, 141, 128, 0.24);
+    }
+
+    .conversation-card strong {
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .chat-main {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .message-list {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      padding-right: 2px;
+    }
+
+    .message {
+      max-width: 92%;
+      padding: 10px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .message.user {
+      margin-left: auto;
+      background: var(--text);
+      border-color: var(--text);
+    }
+
+    .message.user p,
+    .message.user .role {
+      color: rgba(255, 255, 255, 0.84);
+    }
+
+    .role {
+      margin-bottom: 5px;
+      color: var(--teal);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .chat-input {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-soft);
+    }
+
+    .saved-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .saved-count {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius);
+      display: grid;
+      place-items: center;
+      color: var(--blue);
+      background: var(--blue-soft);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .editor-layout {
+      flex: 1;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 9px;
+    }
+
+    .editor-toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .editor-page {
+      min-height: 0;
+      overflow: auto;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fffdfa;
+      outline: none;
+    }
+
+    .editor-page h3 {
+      margin: 0 0 9px;
+      font-size: 15px;
+    }
+
+    .editor-page p {
+      margin: 0 0 8px;
+      color: #35413e;
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+
+    .note-strip {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .map-shell {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(#eef4f2 1px, transparent 1px),
+        linear-gradient(90deg, #eef4f2 1px, transparent 1px),
+        #fbfdfc;
+      background-size: 26px 26px;
+    }
+
+    .map-svg {
+      width: 100%;
+      height: 100%;
+      min-height: 210px;
+      display: block;
+    }
+
+    .map-legend {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .map-metric span {
+      display: block;
+    }
+
+    @media (max-width: 1320px) {
+      body {
+        overflow: auto;
+      }
+
+      .app {
+        height: auto;
+        min-height: 100vh;
+      }
+
+      .workspace {
+        grid-template-columns: 300px minmax(0, 1fr);
+        grid-template-rows: auto;
+        grid-template-areas:
+          "results results"
+          "filters workflow"
+          "chat chat"
+          "saved editor"
+          "map map";
+      }
+
+      .component {
+        min-height: 300px;
+      }
+
+      .results-component {
+        min-height: 620px;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .topbar,
+      .workspace,
+      .search-component .component-body {
+        grid-template-columns: 1fr;
+      }
+
+      .workspace {
+        grid-template-areas:
+          "results"
+          "filters"
+          "workflow"
+          "chat"
+          "saved"
+          "editor"
+          "map";
+      }
+
+      .search-context,
+      .results-summary,
+      .map-legend,
+      .note-strip,
+      .chat-layout,
+      .paper-card {
+        grid-template-columns: 1fr;
+      }
+
+      .search-tools,
+      .top-actions {
+        flex-wrap: wrap;
+      }
+
+      .button,
+      .select {
+        width: 100%;
+      }
+
+      .score {
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <section class="brand">
+        <div>
+          <small>Vitality 3</small>
+          <strong>Research Workbench</strong>
+        </div>
+      </section>
+
+      <section class="status-strip" aria-label="Active review context">
+        <span>Goal: build a transparent literature-review workspace</span>
+        <span>Research question: how should search, chat, maps, and provenance cooperate?</span>
+        <span>Scope: HCI, IR, digital libraries, science mapping, 2018-2026</span>
+      </section>
+
+      <nav class="top-actions" aria-label="Workspace actions">
+        <button class="button">Export</button>
+        <button class="button primary">Save workspace</button>
+      </nav>
+    </header>
+
+    <section class="component search-component" aria-label="Component 1 search box">
+      <div class="component-header">
+        <div class="component-title">
+          <div class="component-index">01</div>
+          <div>
+            <span class="component-kicker">Search box</span>
+            <h2>Unified keyword, vector, and agentic search</h2>
+            <p>Search context carries the review goal, research question, concept definition, and coverage.</p>
+          </div>
+        </div>
+        <div class="mode-tabs">
+          <button class="tab-button active">Keyword</button>
+          <button class="tab-button">Vector</button>
+          <button class="tab-button">Agentic</button>
+        </div>
+      </div>
+
+      <div class="component-body">
+        <label class="search-field">
+          <span>Query</span>
+          <input type="text" value="transparent agentic literature review interfaces" aria-label="Search query" />
+        </label>
+
+        <div class="search-tools">
+          <select class="select" aria-label="Search scope">
+            <option>All papers</option>
+            <option>Saved papers</option>
+            <option>Current project</option>
+            <option>Search history</option>
+          </select>
+          <button class="button primary">Run search</button>
+        </div>
+
+        <div class="search-context">
+          <div class="context-item">
+            <strong>Goal / purpose</strong>
+            <span>Find papers for a transparent search-to-writing research assistant.</span>
+          </div>
+          <div class="context-item">
+            <strong>Research question</strong>
+            <span>How do chat, maps, provenance, and filters support literature review?</span>
+          </div>
+          <div class="context-item">
+            <strong>Concept definition</strong>
+            <span>Agentic review means editable retrieval, screening, coding, and synthesis steps.</span>
+          </div>
+          <div class="context-item">
+            <strong>Scope / coverage</strong>
+            <span>HCI, IR, digital libraries, science mapping, 2018-2026.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <main class="workspace">
+      <section class="component filters-component" aria-label="Component 3 filter functions">
+        <div class="component-header">
+          <div class="component-title">
+            <div class="component-index">03</div>
+            <div>
+              <span class="component-kicker">Filter functions</span>
+              <h3>Author, year, codebook, criteria</h3>
+            </div>
+          </div>
+          <button class="tool-button">Reset</button>
+        </div>
+
+        <div class="component-body scrollable">
+          <div class="filter-list">
+            <article class="filter-group">
+              <strong>Author</strong>
+              <div class="tag-row">
+                <span class="chip active">Zhang</span>
+                <span class="chip">Chen</span>
+                <span class="chip">Miller</span>
+                <span class="chip">Kapoor</span>
+              </div>
+            </article>
+
+            <article class="filter-group">
+              <strong>Year</strong>
+              <div class="range-row">
+                <input type="range" min="2018" max="2026" value="2024" aria-label="Year filter" />
+                <span class="chip amber">2019-2026</span>
+              </div>
+            </article>
+
+            <article class="filter-group">
+              <strong>Categories / codebook</strong>
+              <div class="tag-row">
+                <span class="chip blue">Retrieval</span>
+                <span class="chip active">Trust</span>
+                <span class="chip violet">Visualization</span>
+                <span class="chip rose">Writing</span>
+              </div>
+            </article>
+
+            <article class="filter-group">
+              <strong>Inclusion criteria</strong>
+              <label class="check-row"><input type="checkbox" checked> Peer-reviewed or archived scholarly source.</label>
+              <label class="check-row"><input type="checkbox" checked> Contains interface, workflow, or evaluation details.</label>
+              <label class="check-row"><input type="checkbox" checked> Relevant to search, chat, maps, provenance, or writing.</label>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="component results-component" aria-label="Component 2 search results">
+        <div class="component-header">
+          <div class="component-title">
+            <div class="component-index">02</div>
+            <div>
+              <span class="component-kicker">Search results</span>
+              <h3>Ranked papers with screening status</h3>
+            </div>
+          </div>
+          <div class="tag-row">
+            <span class="chip active">Ranked</span>
+            <span class="chip blue">Cited by saved</span>
+            <span class="chip violet">Needs notes</span>
+          </div>
+        </div>
+
+        <div class="component-body">
+          <div class="results-summary">
+            <article class="mini-card">
+              <span class="number">186</span>
+              <p>Papers found</p>
+            </article>
+            <article class="mini-card">
+              <span class="number">32</span>
+              <p>Included</p>
+            </article>
+            <article class="mini-card">
+              <span class="number">74%</span>
+              <p>Mapped to codebook</p>
+            </article>
+            <article class="mini-card">
+              <span class="number">9</span>
+              <p>Recurring authors</p>
+            </article>
+          </div>
+
+          <div class="paper-list scrollable">
+            <article class="paper-card">
+              <div>
+                <span class="meta">Li, Serrano, Kapoor - 2025 - ACM CHI</span>
+                <h3>Inspectable agents for conversational literature discovery</h3>
+                <p>Connects agent plans, citation provenance, and editable retrieval strategies inside a chat-led review workflow.</p>
+                <div class="tag-row">
+                  <span class="tag active">include</span>
+                  <span class="tag blue">agent workflow</span>
+                  <span class="tag violet">provenance</span>
+                  <span class="tag amber">core note</span>
+                </div>
+              </div>
+              <div class="paper-actions">
+                <div class="score">92</div>
+                <button class="tool-button">Save</button>
+                <button class="tool-button">Chat</button>
+              </div>
+            </article>
+
+            <article class="paper-card">
+              <div>
+                <span class="meta">Ochoa, Yuan - 2024 - JCDL</span>
+                <h3>Semantic maps for corpus exploration and evidence triage</h3>
+                <p>Shows how projection views reduce result overload when saved and high-relevance papers are made prominent.</p>
+                <div class="tag-row">
+                  <span class="tag active">include</span>
+                  <span class="tag violet">neural map</span>
+                  <span class="tag blue">vector search</span>
+                  <span class="tag rose">annotation needed</span>
+                </div>
+              </div>
+              <div class="paper-actions">
+                <div class="score">88</div>
+                <button class="tool-button">Save</button>
+                <button class="tool-button">Cite</button>
+              </div>
+            </article>
+
+            <article class="paper-card">
+              <div>
+                <span class="meta">Banerjee, Malik - 2023 - TOIS</span>
+                <h3>Evidence-aware retrieval for scientific claim synthesis</h3>
+                <p>Separates support, disagreement, method overlap, and weak evidence for structured paper coding.</p>
+                <div class="tag-row">
+                  <span class="tag amber">maybe</span>
+                  <span class="tag active">evidence coding</span>
+                  <span class="tag rose">disagreement</span>
+                  <span class="tag green">formal review</span>
+                </div>
+              </div>
+              <div class="paper-actions">
+                <div class="score">81</div>
+                <button class="tool-button">Save</button>
+                <button class="tool-button">Open</button>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="component workflow-component" aria-label="Component 4 agentic workflow">
+        <div class="component-header">
+          <div class="component-title">
+            <div class="component-index">04</div>
+            <div>
+              <span class="component-kicker">Agentic workflow</span>
+              <h3>Visible and editable plan</h3>
+            </div>
+          </div>
+          <button class="tool-button">Edit plan</button>
+        </div>
+
+        <div class="component-body scrollable">
+          <div class="workflow-list">
+            <article class="workflow-step">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <strong>Expand query</strong>
+                <textarea>Add synonyms for provenance, citation verification, paper maps, and review assistants.</textarea>
+              </div>
+            </article>
+
+            <article class="workflow-step">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <strong>Screen inclusion</strong>
+                <textarea>Keep papers that match the concept definition and include evaluation or interface details.</textarea>
+              </div>
+            </article>
+
+            <article class="workflow-step">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <strong>Code evidence</strong>
+                <textarea>Assign categories, stance, confidence, annotations, and notes before synthesis.</textarea>
+              </div>
+            </article>
+
+            <article class="workflow-step">
+              <div class="step-number">4</div>
+              <div class="step-content">
+                <strong>Generate brief</strong>
+                <textarea>Use saved chats, papers, and notes to suggest insights with citations.</textarea>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="component chat-component" aria-label="Component 5 chat bot box">
+        <div class="component-header">
+          <div class="component-title">
+            <div class="component-index">05</div>
+            <div>
+              <span class="component-kicker">Chat bot box</span>
+              <h3>Saved conversations with papers</h3>
+            </div>
+          </div>
+          <div class="tag-row">
+            <span class="chip active">Saved</span>
+            <button class="tool-button">New chat</button>
+          </div>
+        </div>
+
+        <div class="component-body">
+          <div class="chat-layout">
+            <aside class="conversation-list" aria-label="Saved conversations">
+              <article class="conversation-card active">
+                <strong>Provenance debate</strong>
+                <span>Saved 2 min ago</span>
+              </article>
+              <article class="conversation-card">
+                <strong>Map pruning</strong>
+                <span>7 messages</span>
+              </article>
+              <article class="conversation-card">
+                <strong>Trust surfaces</strong>
+                <span>12 messages</span>
+              </article>
+            </aside>
+
+            <div class="chat-main">
+              <div class="message-list">
+                <article class="message">
+                  <div class="role">Research agent</div>
+                  <p>I found papers that disagree about showing provenance by default. Two favor compact answers; three argue visible provenance improves trust during screening.</p>
+                </article>
+
+                <article class="message user">
+                  <div class="role">Researcher</div>
+                  <p>Save this conversation and link it to the editor notes.</p>
+                </article>
+
+                <article class="message">
+                  <div class="role">Research agent</div>
+                  <p>Saved to the Agentic review UI project. I also created an annotation in the free-notes editor.</p>
+                </article>
+              </div>
+
+              <label class="chat-input">
+                <input type="text" value="Ask saved papers why provenance visibility changes trust" aria-label="Chat message" />
+                <button class="button primary">Send</button>
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="component saved-component" aria-label="Component 6 saved papers and searches">
+        <div class="component-header">
+          <div class="component-title">
+            <div class="component-index">06</div>
+            <div>
+              <span class="component-kicker">Saved papers / searches</span>
+              <h3>Projects, searches, and paper sets</h3>
+            </div>
+          </div>
+          <button class="tool-button">New project</button>
+        </div>
+
+        <div class="component-body scrollable">
+          <div class="saved-list">
+            <article class="saved-card">
+              <div>
+                <strong>Agentic review UI</strong>
+                <p>18 papers, 3 saved chats, 6 notes, 2 search recipes.</p>
+              </div>
+              <div class="saved-count">18</div>
+            </article>
+
+            <article class="saved-card">
+              <div>
+                <strong>Citation trust</strong>
+                <p>Saved search: provenance AND citation verification.</p>
+              </div>
+              <div class="saved-count">14</div>
+            </article>
+
+            <article class="saved-card">
+              <div>
+                <strong>Visual exploration</strong>
+                <p>Saved map snapshots, encodings, and neural-map clusters.</p>
+              </div>
+              <div class="saved-count">10</div>
+            </article>
+
+            <article class="saved-card">
+              <div>
+                <strong>Search recipe</strong>
+                <p>Keyword + vector + agentic expansion for paper discovery.</p>
+              </div>
+              <div class="saved-count">S1</div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="component map-component" aria-label="Component 8 visualization neural map">
+        <div class="component-header">
+          <div class="component-title">
+            <div class="component-index">08</div>
+            <div>
+              <span class="component-kicker">Visualization, neural map</span>
+              <h3>Paper network and corpus projection</h3>
+            </div>
+          </div>
+          <div class="tag-row">
+            <span class="chip active">Saved only</span>
+            <span class="chip rose">Disagree edges</span>
+          </div>
+        </div>
+
+        <div class="component-body">
+          <div class="map-shell">
+            <svg class="map-svg" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Neural paper map">
+              <g stroke-linecap="round" fill="none">
+                <path d="M348 150 C268 116 214 86 124 70" stroke="rgba(23,141,128,0.38)" stroke-width="5"/>
+                <path d="M348 150 C328 82 308 48 270 32" stroke="rgba(61,104,199,0.34)" stroke-width="5"/>
+                <path d="M348 150 C438 92 500 64 606 58" stroke="rgba(117,97,200,0.32)" stroke-width="5"/>
+                <path d="M348 150 C462 168 544 210 638 242" stroke="rgba(189,81,100,0.34)" stroke-width="4" stroke-dasharray="10 8"/>
+                <path d="M348 150 C300 214 244 250 158 264" stroke="rgba(170,116,20,0.34)" stroke-width="5"/>
+                <path d="M124 70 C234 38 462 36 606 58" stroke="rgba(24,35,33,0.10)" stroke-width="2"/>
+                <path d="M158 264 C320 286 492 276 638 242" stroke="rgba(24,35,33,0.10)" stroke-width="2"/>
+                <path d="M270 32 C348 122 510 196 638 242" stroke="rgba(189,81,100,0.20)" stroke-width="2" stroke-dasharray="7 7"/>
+              </g>
+
+              <g>
+                <circle cx="348" cy="150" r="54" fill="#178d80"/>
+                <text x="348" y="145" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="800">Agentic</text>
+                <text x="348" y="163" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="800">Review</text>
+
+                <circle cx="124" cy="70" r="36" fill="#3d68c7"/>
+                <text x="124" y="75" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="800">Search</text>
+
+                <circle cx="270" cy="32" r="28" fill="#7561c8"/>
+                <text x="270" y="36" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Agents</text>
+
+                <circle cx="606" cy="58" r="38" fill="#4f8f4d"/>
+                <text x="606" y="55" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Citation</text>
+                <text x="606" y="70" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Trust</text>
+
+                <circle cx="638" cy="242" r="35" fill="#bd5164"/>
+                <text x="638" y="239" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Conflicts</text>
+                <text x="638" y="254" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Gaps</text>
+
+                <circle cx="158" cy="264" r="34" fill="#aa7414"/>
+                <text x="158" y="261" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Writing</text>
+                <text x="158" y="276" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Notes</text>
+
+                <circle cx="492" cy="206" r="20" fill="#178d80"/>
+                <text x="492" y="210" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P12</text>
+
+                <circle cx="230" cy="154" r="18" fill="#3d68c7"/>
+                <text x="230" y="158" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P07</text>
+
+                <circle cx="520" cy="132" r="18" fill="#4f8f4d"/>
+                <text x="520" y="136" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P24</text>
+              </g>
+            </svg>
+          </div>
+
+          <div class="map-legend">
+            <article class="map-metric">
+              <strong>Node size</strong>
+              <span>Relevance</span>
+            </article>
+            <article class="map-metric">
+              <strong>Color</strong>
+              <span>Codebook category</span>
+            </article>
+            <article class="map-metric">
+              <strong>Dashed edge</strong>
+              <span>Disagreement</span>
+            </article>
+            <article class="map-metric">
+              <strong>Visible set</strong>
+              <span>Saved and important</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="component editor-component" aria-label="Component 7 text editor">
+        <div class="component-header">
+          <div class="component-title">
+            <div class="component-index">07</div>
+            <div>
+              <span class="component-kicker">Text editor</span>
+              <h3>Free notes and writing</h3>
+            </div>
+          </div>
+          <button class="tool-button">Insert citation</button>
+        </div>
+
+        <div class="component-body">
+          <div class="editor-layout">
+            <div class="editor-toolbar">
+              <div class="tool-row">
+                <button class="tool-button">B</button>
+                <button class="tool-button">I</button>
+                <button class="tool-button">H1</button>
+                <button class="tool-button">Quote</button>
+              </div>
+              <button class="tool-button">Save note</button>
+            </div>
+
+            <article class="editor-page" contenteditable="true">
+              <h3>Free notes - provenance visibility</h3>
+              <p>Compact chat answers are easier to read, but visible provenance improves trust when screening papers. Compare the saved chat with the three included papers tagged as provenance.</p>
+              <p>Annotation: mark P07 as method overlap and P24 as strong support. Add both to the neural-map disagreement edge.</p>
+            </article>
+
+            <div class="note-strip">
+              <article class="note-card">
+                <strong>Annotation</strong>
+                <p>P07: method overlap.</p>
+              </article>
+              <article class="note-card">
+                <strong>Draft link</strong>
+                <p>Conversation saved to editor.</p>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
