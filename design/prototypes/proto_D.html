@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -33,7 +34,9 @@
       --radius: 8px;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     html,
     body {
@@ -60,7 +63,7 @@
     }
 
     .app {
-      width: min(1740px, calc(100% - 28px));
+      width: min(1500px, calc(100% - 96px));
       height: 100vh;
       margin: 0 auto;
       padding: 12px 0;
@@ -174,8 +177,7 @@
     .button,
     .chip,
     .tag,
-    .tool-button,
-    .tab-button {
+    .tool-button {
       min-height: 32px;
       border-radius: 999px;
       border: 1px solid var(--line);
@@ -200,8 +202,7 @@
 
     .chip,
     .tag,
-    .tool-button,
-    .tab-button {
+    .tool-button {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -209,23 +210,46 @@
     }
 
     .chip.active,
-    .tag.active,
-    .tab-button.active {
+    .tag.active {
       color: var(--teal);
       background: var(--teal-soft);
       border-color: rgba(23, 141, 128, 0.22);
     }
 
     .chip.blue,
-    .tag.blue { color: var(--blue); background: var(--blue-soft); border-color: rgba(61, 104, 199, 0.20); }
+    .tag.blue {
+      color: var(--blue);
+      background: var(--blue-soft);
+      border-color: rgba(61, 104, 199, 0.20);
+    }
+
     .chip.violet,
-    .tag.violet { color: var(--violet); background: var(--violet-soft); border-color: rgba(117, 97, 200, 0.20); }
+    .tag.violet {
+      color: var(--violet);
+      background: var(--violet-soft);
+      border-color: rgba(117, 97, 200, 0.20);
+    }
+
     .chip.amber,
-    .tag.amber { color: var(--amber); background: var(--amber-soft); border-color: rgba(170, 116, 20, 0.22); }
+    .tag.amber {
+      color: var(--amber);
+      background: var(--amber-soft);
+      border-color: rgba(170, 116, 20, 0.22);
+    }
+
     .chip.rose,
-    .tag.rose { color: var(--rose); background: var(--rose-soft); border-color: rgba(189, 81, 100, 0.20); }
+    .tag.rose {
+      color: var(--rose);
+      background: var(--rose-soft);
+      border-color: rgba(189, 81, 100, 0.20);
+    }
+
     .chip.green,
-    .tag.green { color: var(--green); background: var(--green-soft); border-color: rgba(79, 143, 77, 0.20); }
+    .tag.green {
+      color: var(--green);
+      background: var(--green-soft);
+      border-color: rgba(79, 143, 77, 0.20);
+    }
 
     .component {
       min-height: 0;
@@ -263,11 +287,10 @@
     .search-component .component-body {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 10px;
+      gap: 10px 12px;
       align-items: center;
     }
 
-    .mode-tabs,
     .row,
     .tag-row,
     .tool-row {
@@ -287,13 +310,6 @@
       border-radius: var(--radius);
       background: var(--surface-soft);
       border: 1px solid var(--line);
-    }
-
-    .search-field span {
-      color: var(--teal);
-      font-size: 12px;
-      font-weight: 800;
-      white-space: nowrap;
     }
 
     .search-field input,
@@ -325,14 +341,142 @@
       outline: none;
     }
 
-    .search-context {
+    .search-filters {
       grid-column: 1 / -1;
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .search-filter {
+      min-width: 0;
+    }
+
+    .author-filter {
+      display: flex;
+      align-items: center;
+    }
+
+    .filter-toggle-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
       gap: 8px;
     }
 
-    .context-item,
+    .filter-toggle {
+      position: relative;
+      min-height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #ffffff;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .filter-toggle input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .filter-toggle:has(input:checked) {
+      color: var(--teal);
+      background: var(--teal-soft);
+      border-color: rgba(23, 141, 128, 0.24);
+    }
+
+    .filter-toggle.blue:has(input:checked) {
+      color: var(--blue);
+      background: var(--blue-soft);
+      border-color: rgba(61, 104, 199, 0.22);
+    }
+
+    .filter-toggle.amber:has(input:checked) {
+      color: var(--amber);
+      background: var(--amber-soft);
+      border-color: rgba(170, 116, 20, 0.24);
+    }
+
+    .filter-toggle.violet:has(input:checked) {
+      color: var(--violet);
+      background: var(--violet-soft);
+      border-color: rgba(117, 97, 200, 0.22);
+    }
+
+    .filter-toggle.rose:has(input:checked) {
+      color: var(--rose);
+      background: var(--rose-soft);
+      border-color: rgba(189, 81, 100, 0.22);
+    }
+
+    .filter-group.year-filter {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: fit-content;
+    }
+
+    .year-inputs {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .year-input {
+      width: 78px;
+      min-height: 32px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #ffffff;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+      outline: none;
+    }
+
+    .year-input:focus {
+      border-color: rgba(23, 141, 128, 0.38);
+      box-shadow: 0 0 0 3px rgba(23, 141, 128, 0.1);
+    }
+
+    .year-filter.is-off .year-inputs {
+      opacity: 0.46;
+    }
+
+    .year-filter.is-off .year-input {
+      background: #f3f7f6;
+      color: var(--muted);
+    }
+
+    .category-filter {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px 10px;
+    }
+
+    .filter-label {
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
     .filter-group,
     .paper-card,
     .workflow-step,
@@ -346,7 +490,6 @@
       background: #ffffff;
     }
 
-    .context-item,
     .filter-group,
     .conversation-card,
     .saved-card,
@@ -356,7 +499,6 @@
       padding: 10px;
     }
 
-    .context-item strong,
     .filter-group strong,
     .saved-card strong,
     .note-card strong,
@@ -368,7 +510,6 @@
       color: var(--text);
     }
 
-    .context-item span,
     .filter-group p,
     .saved-card p,
     .note-card p,
@@ -389,21 +530,36 @@
       grid-template-columns: 310px minmax(0, 1fr) 330px 360px;
       grid-template-rows: minmax(130px, 0.82fr) minmax(160px, 1fr) minmax(135px, 0.72fr);
       grid-template-areas:
-        "results results filters workflow"
+        "results results workflow workflow"
         "results results chat chat"
         "saved saved editor map";
       gap: 10px;
     }
 
-    .filters-component { grid-area: filters; }
-    .results-component { grid-area: results; }
-    .workflow-component { grid-area: workflow; }
-    .chat-component { grid-area: chat; }
-    .saved-component { grid-area: saved; }
-    .editor-component { grid-area: editor; }
-    .map-component { grid-area: map; }
+    .results-component {
+      grid-area: results;
+    }
 
-    .filter-list,
+    .workflow-component {
+      grid-area: workflow;
+    }
+
+    .chat-component {
+      grid-area: chat;
+    }
+
+    .saved-component {
+      grid-area: saved;
+    }
+
+    .editor-component {
+      grid-area: editor;
+    }
+
+    .map-component {
+      grid-area: map;
+    }
+
     .saved-list,
     .paper-list,
     .workflow-list,
@@ -412,7 +568,6 @@
       min-height: 0;
     }
 
-    .filter-list,
     .saved-list,
     .paper-list,
     .workflow-list {
@@ -424,32 +579,6 @@
     .filter-group {
       display: grid;
       gap: 8px;
-    }
-
-    .range-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 8px;
-    }
-
-    input[type="range"] {
-      width: 100%;
-      accent-color: var(--teal);
-    }
-
-    .check-row {
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.4;
-    }
-
-    .check-row input {
-      margin-top: 2px;
-      accent-color: var(--teal);
     }
 
     .results-summary {
@@ -531,9 +660,17 @@
       font-weight: 800;
     }
 
-    .workflow-step:nth-child(2) .step-number { background: var(--blue); }
-    .workflow-step:nth-child(3) .step-number { background: var(--amber); }
-    .workflow-step:nth-child(4) .step-number { background: var(--violet); }
+    .workflow-step:nth-child(2) .step-number {
+      background: var(--blue);
+    }
+
+    .workflow-step:nth-child(3) .step-number {
+      background: var(--amber);
+    }
+
+    .workflow-step:nth-child(4) .step-number {
+      background: var(--violet);
+    }
 
     .step-content strong {
       display: block;
@@ -748,7 +885,7 @@
         grid-template-rows: auto;
         grid-template-areas:
           "results results"
-          "filters workflow"
+          "workflow workflow"
           "chat chat"
           "saved editor"
           "map map";
@@ -764,6 +901,10 @@
     }
 
     @media (max-width: 860px) {
+      .app {
+        width: calc(100% - 24px);
+      }
+
       .topbar,
       .workspace,
       .search-component .component-body {
@@ -773,7 +914,6 @@
       .workspace {
         grid-template-areas:
           "results"
-          "filters"
           "workflow"
           "chat"
           "saved"
@@ -781,7 +921,7 @@
           "map";
       }
 
-      .search-context,
+      .search-filters,
       .results-summary,
       .map-legend,
       .note-strip,
@@ -791,6 +931,7 @@
       }
 
       .search-tools,
+      .year-filter,
       .top-actions {
         flex-wrap: wrap;
       }
@@ -806,6 +947,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="app">
     <header class="topbar">
@@ -817,9 +959,6 @@
       </section>
 
       <section class="status-strip" aria-label="Active review context">
-        <span>Goal: build a transparent literature-review workspace</span>
-        <span>Research question: how should search, chat, maps, and provenance cooperate?</span>
-        <span>Scope: HCI, IR, digital libraries, science mapping, 2018-2026</span>
       </section>
 
       <nav class="top-actions" aria-label="Workspace actions">
@@ -828,27 +967,55 @@
       </nav>
     </header>
 
-    <section class="component search-component" aria-label="Component 1 search box">
-      <div class="component-header">
-        <div class="component-title">
-          <div class="component-index">01</div>
-          <div>
-            <span class="component-kicker">Search box</span>
-            <h2>Unified keyword, vector, and agentic search</h2>
-            <p>Search context carries the review goal, research question, concept definition, and coverage.</p>
+    <section class="component search-component" aria-label="Search">
+      <div class="component-body">
+        <div class="search-filters" aria-label="Search filters">
+          <div class="author-filter" aria-label="Author search filter">
+            <label class="filter-toggle">
+              <input type="checkbox" aria-label="Include author names in search" />
+              <span>Authors</span>
+            </label>
+          </div>
+
+          <article class="filter-group search-filter year-filter">
+            <label class="filter-toggle">
+              <input type="checkbox" aria-label="Use year filter" data-year-toggle />
+              <span>Year</span>
+            </label>
+            <div class="year-inputs">
+              <input class="year-input" type="text" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" value="2019"
+                aria-label="Start year" data-year-mask />
+              <span>-</span>
+              <input class="year-input" type="text" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" value="2026"
+                aria-label="End year" data-year-mask />
+            </div>
+          </article>
+
+          <div class="category-filter search-filter">
+            <span class="filter-label">Categories / codebook</span>
+            <div class="filter-toggle-row">
+              <label class="filter-toggle blue">
+                <input type="checkbox" checked aria-label="Retrieval category" />
+                <span>Retrieval</span>
+              </label>
+              <label class="filter-toggle amber">
+                <input type="checkbox" checked aria-label="Trust category" />
+                <span>Trust</span>
+              </label>
+              <label class="filter-toggle rose">
+                <input type="checkbox" checked aria-label="Writing category" />
+                <span>Writing</span>
+              </label>
+              <label class="filter-toggle violet">
+                <input type="checkbox" aria-label="Visualization category" />
+                <span>Visualization</span>
+              </label>
+            </div>
           </div>
         </div>
-        <div class="mode-tabs">
-          <button class="tab-button active">Keyword</button>
-          <button class="tab-button">Vector</button>
-          <button class="tab-button">Agentic</button>
-        </div>
-      </div>
 
-      <div class="component-body">
         <label class="search-field">
-          <span>Query</span>
-          <input type="text" value="transparent agentic literature review interfaces" aria-label="Search query" />
+          <input type="search" placeholder="Search your paper here..." aria-label="Search" />
         </label>
 
         <div class="search-tools">
@@ -858,83 +1025,12 @@
             <option>Current project</option>
             <option>Search history</option>
           </select>
-          <button class="button primary">Run search</button>
-        </div>
-
-        <div class="search-context">
-          <div class="context-item">
-            <strong>Goal / purpose</strong>
-            <span>Find papers for a transparent search-to-writing research assistant.</span>
-          </div>
-          <div class="context-item">
-            <strong>Research question</strong>
-            <span>How do chat, maps, provenance, and filters support literature review?</span>
-          </div>
-          <div class="context-item">
-            <strong>Concept definition</strong>
-            <span>Agentic review means editable retrieval, screening, coding, and synthesis steps.</span>
-          </div>
-          <div class="context-item">
-            <strong>Scope / coverage</strong>
-            <span>HCI, IR, digital libraries, science mapping, 2018-2026.</span>
-          </div>
+          <button class="button primary">Search</button>
         </div>
       </div>
     </section>
 
     <main class="workspace">
-      <section class="component filters-component" aria-label="Component 3 filter functions">
-        <div class="component-header">
-          <div class="component-title">
-            <div class="component-index">03</div>
-            <div>
-              <span class="component-kicker">Filter functions</span>
-              <h3>Author, year, codebook, criteria</h3>
-            </div>
-          </div>
-          <button class="tool-button">Reset</button>
-        </div>
-
-        <div class="component-body scrollable">
-          <div class="filter-list">
-            <article class="filter-group">
-              <strong>Author</strong>
-              <div class="tag-row">
-                <span class="chip active">Zhang</span>
-                <span class="chip">Chen</span>
-                <span class="chip">Miller</span>
-                <span class="chip">Kapoor</span>
-              </div>
-            </article>
-
-            <article class="filter-group">
-              <strong>Year</strong>
-              <div class="range-row">
-                <input type="range" min="2018" max="2026" value="2024" aria-label="Year filter" />
-                <span class="chip amber">2019-2026</span>
-              </div>
-            </article>
-
-            <article class="filter-group">
-              <strong>Categories / codebook</strong>
-              <div class="tag-row">
-                <span class="chip blue">Retrieval</span>
-                <span class="chip active">Trust</span>
-                <span class="chip violet">Visualization</span>
-                <span class="chip rose">Writing</span>
-              </div>
-            </article>
-
-            <article class="filter-group">
-              <strong>Inclusion criteria</strong>
-              <label class="check-row"><input type="checkbox" checked> Peer-reviewed or archived scholarly source.</label>
-              <label class="check-row"><input type="checkbox" checked> Contains interface, workflow, or evaluation details.</label>
-              <label class="check-row"><input type="checkbox" checked> Relevant to search, chat, maps, provenance, or writing.</label>
-            </article>
-          </div>
-        </div>
-      </section>
-
       <section class="component results-component" aria-label="Component 2 search results">
         <div class="component-header">
           <div class="component-title">
@@ -976,7 +1072,8 @@
               <div>
                 <span class="meta">Li, Serrano, Kapoor - 2025 - ACM CHI</span>
                 <h3>Inspectable agents for conversational literature discovery</h3>
-                <p>Connects agent plans, citation provenance, and editable retrieval strategies inside a chat-led review workflow.</p>
+                <p>Connects agent plans, citation provenance, and editable retrieval strategies inside a chat-led review
+                  workflow.</p>
                 <div class="tag-row">
                   <span class="tag active">include</span>
                   <span class="tag blue">agent workflow</span>
@@ -995,7 +1092,8 @@
               <div>
                 <span class="meta">Ochoa, Yuan - 2024 - JCDL</span>
                 <h3>Semantic maps for corpus exploration and evidence triage</h3>
-                <p>Shows how projection views reduce result overload when saved and high-relevance papers are made prominent.</p>
+                <p>Shows how projection views reduce result overload when saved and high-relevance papers are made
+                  prominent.</p>
                 <div class="tag-row">
                   <span class="tag active">include</span>
                   <span class="tag violet">neural map</span>
@@ -1117,7 +1215,8 @@
               <div class="message-list">
                 <article class="message">
                   <div class="role">Research agent</div>
-                  <p>I found papers that disagree about showing provenance by default. Two favor compact answers; three argue visible provenance improves trust during screening.</p>
+                  <p>I found papers that disagree about showing provenance by default. Two favor compact answers; three
+                    argue visible provenance improves trust during screening.</p>
                 </article>
 
                 <article class="message user">
@@ -1132,7 +1231,8 @@
               </div>
 
               <label class="chat-input">
-                <input type="text" value="Ask saved papers why provenance visibility changes trust" aria-label="Chat message" />
+                <input type="text" value="Ask saved papers why provenance visibility changes trust"
+                  aria-label="Chat message" />
                 <button class="button primary">Send</button>
               </label>
             </div>
@@ -1206,48 +1306,55 @@
 
         <div class="component-body">
           <div class="map-shell">
-            <svg class="map-svg" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Neural paper map">
+            <svg class="map-svg" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img"
+              aria-label="Neural paper map">
               <g stroke-linecap="round" fill="none">
-                <path d="M348 150 C268 116 214 86 124 70" stroke="rgba(23,141,128,0.38)" stroke-width="5"/>
-                <path d="M348 150 C328 82 308 48 270 32" stroke="rgba(61,104,199,0.34)" stroke-width="5"/>
-                <path d="M348 150 C438 92 500 64 606 58" stroke="rgba(117,97,200,0.32)" stroke-width="5"/>
-                <path d="M348 150 C462 168 544 210 638 242" stroke="rgba(189,81,100,0.34)" stroke-width="4" stroke-dasharray="10 8"/>
-                <path d="M348 150 C300 214 244 250 158 264" stroke="rgba(170,116,20,0.34)" stroke-width="5"/>
-                <path d="M124 70 C234 38 462 36 606 58" stroke="rgba(24,35,33,0.10)" stroke-width="2"/>
-                <path d="M158 264 C320 286 492 276 638 242" stroke="rgba(24,35,33,0.10)" stroke-width="2"/>
-                <path d="M270 32 C348 122 510 196 638 242" stroke="rgba(189,81,100,0.20)" stroke-width="2" stroke-dasharray="7 7"/>
+                <path d="M348 150 C268 116 214 86 124 70" stroke="rgba(23,141,128,0.38)" stroke-width="5" />
+                <path d="M348 150 C328 82 308 48 270 32" stroke="rgba(61,104,199,0.34)" stroke-width="5" />
+                <path d="M348 150 C438 92 500 64 606 58" stroke="rgba(117,97,200,0.32)" stroke-width="5" />
+                <path d="M348 150 C462 168 544 210 638 242" stroke="rgba(189,81,100,0.34)" stroke-width="4"
+                  stroke-dasharray="10 8" />
+                <path d="M348 150 C300 214 244 250 158 264" stroke="rgba(170,116,20,0.34)" stroke-width="5" />
+                <path d="M124 70 C234 38 462 36 606 58" stroke="rgba(24,35,33,0.10)" stroke-width="2" />
+                <path d="M158 264 C320 286 492 276 638 242" stroke="rgba(24,35,33,0.10)" stroke-width="2" />
+                <path d="M270 32 C348 122 510 196 638 242" stroke="rgba(189,81,100,0.20)" stroke-width="2"
+                  stroke-dasharray="7 7" />
               </g>
 
               <g>
-                <circle cx="348" cy="150" r="54" fill="#178d80"/>
-                <text x="348" y="145" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="800">Agentic</text>
+                <circle cx="348" cy="150" r="54" fill="#178d80" />
+                <text x="348" y="145" text-anchor="middle" fill="#ffffff" font-size="14"
+                  font-weight="800">Agentic</text>
                 <text x="348" y="163" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="800">Review</text>
 
-                <circle cx="124" cy="70" r="36" fill="#3d68c7"/>
+                <circle cx="124" cy="70" r="36" fill="#3d68c7" />
                 <text x="124" y="75" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="800">Search</text>
 
-                <circle cx="270" cy="32" r="28" fill="#7561c8"/>
+                <circle cx="270" cy="32" r="28" fill="#7561c8" />
                 <text x="270" y="36" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Agents</text>
 
-                <circle cx="606" cy="58" r="38" fill="#4f8f4d"/>
-                <text x="606" y="55" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Citation</text>
+                <circle cx="606" cy="58" r="38" fill="#4f8f4d" />
+                <text x="606" y="55" text-anchor="middle" fill="#ffffff" font-size="10"
+                  font-weight="800">Citation</text>
                 <text x="606" y="70" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Trust</text>
 
-                <circle cx="638" cy="242" r="35" fill="#bd5164"/>
-                <text x="638" y="239" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Conflicts</text>
+                <circle cx="638" cy="242" r="35" fill="#bd5164" />
+                <text x="638" y="239" text-anchor="middle" fill="#ffffff" font-size="10"
+                  font-weight="800">Conflicts</text>
                 <text x="638" y="254" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Gaps</text>
 
-                <circle cx="158" cy="264" r="34" fill="#aa7414"/>
-                <text x="158" y="261" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Writing</text>
+                <circle cx="158" cy="264" r="34" fill="#aa7414" />
+                <text x="158" y="261" text-anchor="middle" fill="#ffffff" font-size="10"
+                  font-weight="800">Writing</text>
                 <text x="158" y="276" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Notes</text>
 
-                <circle cx="492" cy="206" r="20" fill="#178d80"/>
+                <circle cx="492" cy="206" r="20" fill="#178d80" />
                 <text x="492" y="210" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P12</text>
 
-                <circle cx="230" cy="154" r="18" fill="#3d68c7"/>
+                <circle cx="230" cy="154" r="18" fill="#3d68c7" />
                 <text x="230" y="158" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P07</text>
 
-                <circle cx="520" cy="132" r="18" fill="#4f8f4d"/>
+                <circle cx="520" cy="132" r="18" fill="#4f8f4d" />
                 <text x="520" y="136" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P24</text>
               </g>
             </svg>
@@ -1300,8 +1407,10 @@
 
             <article class="editor-page" contenteditable="true">
               <h3>Free notes - provenance visibility</h3>
-              <p>Compact chat answers are easier to read, but visible provenance improves trust when screening papers. Compare the saved chat with the three included papers tagged as provenance.</p>
-              <p>Annotation: mark P07 as method overlap and P24 as strong support. Add both to the neural-map disagreement edge.</p>
+              <p>Compact chat answers are easier to read, but visible provenance improves trust when screening papers.
+                Compare the saved chat with the three included papers tagged as provenance.</p>
+              <p>Annotation: mark P07 as method overlap and P24 as strong support. Add both to the neural-map
+                disagreement edge.</p>
             </article>
 
             <div class="note-strip">
@@ -1319,5 +1428,28 @@
       </section>
     </main>
   </div>
+  <script>
+    document.querySelectorAll("[data-year-mask]").forEach((input) => {
+      input.addEventListener("input", () => {
+        input.value = input.value.replace(/\D/g, "").slice(0, 4);
+      });
+    });
+
+    const yearToggle = document.querySelector("[data-year-toggle]");
+    const yearFilter = document.querySelector(".year-filter");
+    const yearInputs = document.querySelectorAll("[data-year-mask]");
+
+    function syncYearFilter() {
+      const isOn = yearToggle.checked;
+      yearFilter.classList.toggle("is-off", !isOn);
+      yearInputs.forEach((input) => {
+        input.disabled = !isOn;
+      });
+    }
+
+    yearToggle.addEventListener("change", syncYearFilter);
+    syncYearFilter();
+  </script>
 </body>
+
 </html>
