@@ -530,7 +530,7 @@
       grid-template-columns: 310px minmax(0, 1fr) 330px 360px;
       grid-template-rows: minmax(130px, 0.82fr) minmax(160px, 1fr) minmax(135px, 0.72fr);
       grid-template-areas:
-        "results results workflow workflow"
+        "results results chat chat"
         "results results chat chat"
         "saved saved editor map";
       gap: 10px;
@@ -546,6 +546,10 @@
 
     .chat-component {
       grid-area: chat;
+    }
+
+    .chat-component .component-header {
+      align-items: center;
     }
 
     .saved-component {
@@ -695,7 +699,7 @@
     .chat-layout {
       flex: 1;
       display: grid;
-      grid-template-columns: 112px minmax(0, 1fr);
+      grid-template-columns: 136px minmax(0, 1fr);
       gap: 10px;
     }
 
@@ -704,13 +708,17 @@
       display: grid;
       align-content: start;
       gap: 8px;
-      overflow: auto;
+      overflow-x: hidden;
+      overflow-y: auto;
       padding-right: 1px;
     }
 
     .conversation-card {
-      display: grid;
-      gap: 3px;
+      position: relative;
+      display: block;
+      min-height: 64px;
+      padding-right: 38px;
+      padding-bottom: 12px;
     }
 
     .conversation-card.active {
@@ -721,6 +729,61 @@
     .conversation-card strong {
       font-size: 11px;
       line-height: 1.25;
+    }
+
+    .conversation-meta {
+      display: block;
+      margin-top: 4px;
+    }
+
+    .unread-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 22px;
+      padding: 0 7px;
+      border-radius: 999px;
+      color: var(--blue);
+      background: var(--blue-soft);
+      border: 1px solid rgba(61, 104, 199, 0.2);
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .chat-delete-button {
+      position: absolute;
+      right: 9px;
+      bottom: 9px;
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      color: var(--muted);
+      background: transparent;
+    }
+
+    .chat-delete-button:hover,
+    .chat-delete-button:focus-visible {
+      color: var(--rose);
+      background: var(--rose-soft);
+      border-color: rgba(189, 81, 100, 0.2);
+      outline: none;
+    }
+
+    .chat-delete-button svg {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+    }
+
+    .new-chat-button {
+      min-height: 28px;
+      padding: 0 9px;
+      font-size: 11px;
     }
 
     .chat-main {
@@ -885,7 +948,6 @@
         grid-template-rows: auto;
         grid-template-areas:
           "results results"
-          "workflow workflow"
           "chat chat"
           "saved editor"
           "map map";
@@ -914,7 +976,6 @@
       .workspace {
         grid-template-areas:
           "results"
-          "workflow"
           "chat"
           "saved"
           "editor"
@@ -1031,19 +1092,10 @@
     </section>
 
     <main class="workspace">
-      <section class="component results-component" aria-label="Component 2 search results">
+      <section class="component results-component" aria-label="Search results">
         <div class="component-header">
           <div class="component-title">
-            <div class="component-index">02</div>
-            <div>
-              <span class="component-kicker">Search results</span>
-              <h3>Ranked papers with screening status</h3>
-            </div>
-          </div>
-          <div class="tag-row">
-            <span class="chip active">Ranked</span>
-            <span class="chip blue">Cited by saved</span>
-            <span class="chip violet">Needs notes</span>
+            <span class="component-kicker">Search results</span>
           </div>
         </div>
 
@@ -1070,15 +1122,16 @@
           <div class="paper-list scrollable">
             <article class="paper-card">
               <div>
-                <span class="meta">Li, Serrano, Kapoor - 2025 - ACM CHI</span>
+                <span class="meta">Li, Serrano, Kapoor - 2025</span>
                 <h3>Inspectable agents for conversational literature discovery</h3>
                 <p>Connects agent plans, citation provenance, and editable retrieval strategies inside a chat-led review
                   workflow.</p>
+                <br/>
                 <div class="tag-row">
-                  <span class="tag active">include</span>
-                  <span class="tag blue">agent workflow</span>
+                  <span class="tag blue">agents</span>
                   <span class="tag violet">provenance</span>
-                  <span class="tag amber">core note</span>
+                  <span class="tag amber">retrieval</span>
+                  <span class="tag active">workflow</span>
                 </div>
               </div>
               <div class="paper-actions">
@@ -1090,89 +1143,42 @@
 
             <article class="paper-card">
               <div>
-                <span class="meta">Ochoa, Yuan - 2024 - JCDL</span>
+                <span class="meta">Ochoa, Yuan - 2024</span>
                 <h3>Semantic maps for corpus exploration and evidence triage</h3>
                 <p>Shows how projection views reduce result overload when saved and high-relevance papers are made
                   prominent.</p>
+                <br/>
                 <div class="tag-row">
-                  <span class="tag active">include</span>
-                  <span class="tag violet">neural map</span>
-                  <span class="tag blue">vector search</span>
-                  <span class="tag rose">annotation needed</span>
+                  <span class="tag active">semantics</span>
+                  <span class="tag violet">maps</span>
+                  <span class="tag blue">corpus</span>
+                  <span class="tag rose">triage</span>
                 </div>
               </div>
               <div class="paper-actions">
                 <div class="score">88</div>
                 <button class="tool-button">Save</button>
-                <button class="tool-button">Cite</button>
+                <button class="tool-button">Chat</button>
               </div>
             </article>
 
             <article class="paper-card">
               <div>
-                <span class="meta">Banerjee, Malik - 2023 - TOIS</span>
+                <span class="meta">Banerjee, Malik - 2023</span>
                 <h3>Evidence-aware retrieval for scientific claim synthesis</h3>
                 <p>Separates support, disagreement, method overlap, and weak evidence for structured paper coding.</p>
+                <br/>
                 <div class="tag-row">
-                  <span class="tag amber">maybe</span>
-                  <span class="tag active">evidence coding</span>
+                  <span class="tag amber">claims</span>
+                  <span class="tag active">evidence</span>
                   <span class="tag rose">disagreement</span>
-                  <span class="tag green">formal review</span>
+                  <span class="tag green">synthesis</span>
                 </div>
               </div>
               <div class="paper-actions">
                 <div class="score">81</div>
                 <button class="tool-button">Save</button>
-                <button class="tool-button">Open</button>
-              </div>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="component workflow-component" aria-label="Component 4 agentic workflow">
-        <div class="component-header">
-          <div class="component-title">
-            <div class="component-index">04</div>
-            <div>
-              <span class="component-kicker">Agentic workflow</span>
-              <h3>Visible and editable plan</h3>
-            </div>
-          </div>
-          <button class="tool-button">Edit plan</button>
-        </div>
-
-        <div class="component-body scrollable">
-          <div class="workflow-list">
-            <article class="workflow-step">
-              <div class="step-number">1</div>
-              <div class="step-content">
-                <strong>Expand query</strong>
-                <textarea>Add synonyms for provenance, citation verification, paper maps, and review assistants.</textarea>
-              </div>
-            </article>
-
-            <article class="workflow-step">
-              <div class="step-number">2</div>
-              <div class="step-content">
-                <strong>Screen inclusion</strong>
-                <textarea>Keep papers that match the concept definition and include evaluation or interface details.</textarea>
-              </div>
-            </article>
-
-            <article class="workflow-step">
-              <div class="step-number">3</div>
-              <div class="step-content">
-                <strong>Code evidence</strong>
-                <textarea>Assign categories, stance, confidence, annotations, and notes before synthesis.</textarea>
-              </div>
-            </article>
-
-            <article class="workflow-step">
-              <div class="step-number">4</div>
-              <div class="step-content">
-                <strong>Generate brief</strong>
-                <textarea>Use saved chats, papers, and notes to suggest insights with citations.</textarea>
+                <button class="tool-button">Chat</button>
               </div>
             </article>
           </div>
@@ -1182,32 +1188,63 @@
       <section class="component chat-component" aria-label="Component 5 chat bot box">
         <div class="component-header">
           <div class="component-title">
-            <div class="component-index">05</div>
             <div>
-              <span class="component-kicker">Chat bot box</span>
-              <h3>Saved conversations with papers</h3>
+              <span class="component-kicker">Chat Bot</span>
             </div>
           </div>
           <div class="tag-row">
-            <span class="chip active">Saved</span>
-            <button class="tool-button">New chat</button>
+            <button class="tool-button new-chat-button">New chat</button>
           </div>
         </div>
 
         <div class="component-body">
           <div class="chat-layout">
-            <aside class="conversation-list" aria-label="Saved conversations">
+            <aside class="conversation-list" aria-label="Chat history">
               <article class="conversation-card active">
-                <strong>Provenance debate</strong>
-                <span>Saved 2 min ago</span>
+                <div>
+                  <strong>Provenance debate</strong>
+                </div>
+                <button class="chat-delete-button" type="button" aria-label="Remove Provenance debate chat" title="Remove chat">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4h8v2" />
+                    <path d="M19 6l-1 14H6L5 6" />
+                    <path d="M10 11v5" />
+                    <path d="M14 11v5" />
+                  </svg>
+                </button>
               </article>
               <article class="conversation-card">
-                <strong>Map pruning</strong>
-                <span>7 messages</span>
+                <div>
+                  <strong>Map pruning</strong>
+                </div>
+                <button class="chat-delete-button" type="button" aria-label="Remove Map pruning chat" title="Remove chat">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4h8v2" />
+                    <path d="M19 6l-1 14H6L5 6" />
+                    <path d="M10 11v5" />
+                    <path d="M14 11v5" />
+                  </svg>
+                </button>
               </article>
               <article class="conversation-card">
-                <strong>Trust surfaces</strong>
-                <span>12 messages</span>
+                <div>
+                  <strong>Trust surfaces</strong>
+                  <span class="conversation-meta unread-badge">1 unread</span>
+                </div>
+                <button class="chat-delete-button" type="button" aria-label="Remove Trust surfaces chat" title="Remove chat">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4h8v2" />
+                    <path d="M19 6l-1 14H6L5 6" />
+                    <path d="M10 11v5" />
+                    <path d="M14 11v5" />
+                  </svg>
+                </button>
               </article>
             </aside>
 
@@ -1221,12 +1258,7 @@
 
                 <article class="message user">
                   <div class="role">Researcher</div>
-                  <p>Save this conversation and link it to the editor notes.</p>
-                </article>
-
-                <article class="message">
-                  <div class="role">Research agent</div>
-                  <p>Saved to the Agentic review UI project. I also created an annotation in the free-notes editor.</p>
+                  <p>Which papers make the strongest case for visible provenance?</p>
                 </article>
               </div>
 
@@ -1243,13 +1275,8 @@
       <section class="component saved-component" aria-label="Component 6 saved papers and searches">
         <div class="component-header">
           <div class="component-title">
-            <div class="component-index">06</div>
-            <div>
-              <span class="component-kicker">Saved papers / searches</span>
-              <h3>Projects, searches, and paper sets</h3>
-            </div>
+            <span class="component-kicker">Saved papers</span>
           </div>
-          <button class="tool-button">New project</button>
         </div>
 
         <div class="component-body scrollable">
