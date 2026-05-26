@@ -528,11 +528,11 @@
       min-height: 0;
       display: grid;
       grid-template-columns: 310px minmax(0, 1fr) 330px 360px;
-      grid-template-rows: minmax(130px, 0.82fr) minmax(160px, 1fr) minmax(135px, 0.72fr);
+      grid-template-rows: minmax(140px, 0.95fr) minmax(160px, 1.15fr) 190px;
       grid-template-areas:
         "results results chat chat"
         "results results chat chat"
-        "saved saved editor map";
+        "editor map saved saved";
       gap: 10px;
     }
 
@@ -933,6 +933,154 @@
       display: block;
     }
 
+    .component.launch-component {
+      min-height: 0;
+    }
+
+    .launch-button {
+      width: 100%;
+      height: 100%;
+      min-height: 86px;
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr);
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 0;
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+    }
+
+    .launch-button:hover,
+    .launch-button:focus-visible {
+      background: var(--surface-soft);
+      outline: none;
+    }
+
+    .launch-icon {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--radius);
+      color: var(--teal);
+      background: var(--teal-soft);
+      border: 1px solid rgba(23, 141, 128, 0.22);
+    }
+
+    .map-component .launch-icon {
+      color: var(--violet);
+      background: var(--violet-soft);
+      border-color: rgba(117, 97, 200, 0.22);
+    }
+
+    .launch-icon svg {
+      width: 22px;
+      height: 22px;
+      stroke: currentColor;
+    }
+
+    .launch-copy {
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+    }
+
+    .launch-copy strong {
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .modal {
+      width: min(1040px, calc(100% - 40px));
+      max-height: calc(100vh - 40px);
+      margin: auto;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+    }
+
+    .modal::backdrop {
+      background: rgba(24, 35, 33, 0.42);
+    }
+
+    .modal-panel {
+      max-height: calc(100vh - 40px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+      box-shadow: 0 24px 70px rgba(24, 35, 33, 0.24);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-soft);
+    }
+
+    .modal-title h2 {
+      margin: 3px 0 0;
+      color: var(--text);
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .modal-close {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: #ffffff;
+    }
+
+    .modal-close:hover,
+    .modal-close:focus-visible {
+      color: var(--rose);
+      background: var(--rose-soft);
+      border-color: rgba(189, 81, 100, 0.2);
+      outline: none;
+    }
+
+    .modal-close svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+    }
+
+    .modal-body {
+      min-height: 0;
+      overflow: auto;
+      padding: 14px;
+    }
+
+    .notes-modal-body .editor-layout {
+      min-height: min(56vh, 540px);
+    }
+
+    .map-modal-body {
+      display: grid;
+      gap: 10px;
+    }
+
+    .modal-map-shell {
+      min-height: min(58vh, 520px);
+    }
+
     @media (max-width: 1320px) {
       body {
         overflow: auto;
@@ -949,12 +1097,16 @@
         grid-template-areas:
           "results results"
           "chat chat"
-          "saved editor"
-          "map map";
+          "editor saved"
+          "map saved";
       }
 
       .component {
         min-height: 300px;
+      }
+
+      .component.launch-component {
+        min-height: 96px;
       }
 
       .results-component {
@@ -977,9 +1129,9 @@
         grid-template-areas:
           "results"
           "chat"
-          "saved"
           "editor"
-          "map";
+          "map"
+          "saved";
       }
 
       .search-filters,
@@ -1011,7 +1163,7 @@
 
 <body>
   <div class="app">
-    <header class="topbar">
+    <!-- <header class="topbar">
       <section class="brand">
         <div>
           <small>Vitality 3</small>
@@ -1026,7 +1178,7 @@
         <button class="button">Export</button>
         <button class="button primary">Save workspace</button>
       </nav>
-    </header>
+    </header> -->
 
     <section class="component search-component" aria-label="Search">
       <div class="component-body">
@@ -1310,151 +1462,203 @@
                 <strong>Search recipe</strong>
                 <p>Keyword + vector + agentic expansion for paper discovery.</p>
               </div>
-              <div class="saved-count">S1</div>
+              <div class="saved-count">09</div>
             </article>
           </div>
         </div>
       </section>
 
-      <section class="component map-component" aria-label="Component 8 visualization neural map">
-        <div class="component-header">
-          <div class="component-title">
-            <div class="component-index">08</div>
-            <div>
-              <span class="component-kicker">Visualization, neural map</span>
-              <h3>Paper network and corpus projection</h3>
-            </div>
-          </div>
-          <div class="tag-row">
-            <span class="chip active">Saved only</span>
-            <span class="chip rose">Disagree edges</span>
-          </div>
-        </div>
-
-        <div class="component-body">
-          <div class="map-shell">
-            <svg class="map-svg" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img"
-              aria-label="Neural paper map">
-              <g stroke-linecap="round" fill="none">
-                <path d="M348 150 C268 116 214 86 124 70" stroke="rgba(23,141,128,0.38)" stroke-width="5" />
-                <path d="M348 150 C328 82 308 48 270 32" stroke="rgba(61,104,199,0.34)" stroke-width="5" />
-                <path d="M348 150 C438 92 500 64 606 58" stroke="rgba(117,97,200,0.32)" stroke-width="5" />
-                <path d="M348 150 C462 168 544 210 638 242" stroke="rgba(189,81,100,0.34)" stroke-width="4"
-                  stroke-dasharray="10 8" />
-                <path d="M348 150 C300 214 244 250 158 264" stroke="rgba(170,116,20,0.34)" stroke-width="5" />
-                <path d="M124 70 C234 38 462 36 606 58" stroke="rgba(24,35,33,0.10)" stroke-width="2" />
-                <path d="M158 264 C320 286 492 276 638 242" stroke="rgba(24,35,33,0.10)" stroke-width="2" />
-                <path d="M270 32 C348 122 510 196 638 242" stroke="rgba(189,81,100,0.20)" stroke-width="2"
-                  stroke-dasharray="7 7" />
-              </g>
-
-              <g>
-                <circle cx="348" cy="150" r="54" fill="#178d80" />
-                <text x="348" y="145" text-anchor="middle" fill="#ffffff" font-size="14"
-                  font-weight="800">Agentic</text>
-                <text x="348" y="163" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="800">Review</text>
-
-                <circle cx="124" cy="70" r="36" fill="#3d68c7" />
-                <text x="124" y="75" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="800">Search</text>
-
-                <circle cx="270" cy="32" r="28" fill="#7561c8" />
-                <text x="270" y="36" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Agents</text>
-
-                <circle cx="606" cy="58" r="38" fill="#4f8f4d" />
-                <text x="606" y="55" text-anchor="middle" fill="#ffffff" font-size="10"
-                  font-weight="800">Citation</text>
-                <text x="606" y="70" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Trust</text>
-
-                <circle cx="638" cy="242" r="35" fill="#bd5164" />
-                <text x="638" y="239" text-anchor="middle" fill="#ffffff" font-size="10"
-                  font-weight="800">Conflicts</text>
-                <text x="638" y="254" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Gaps</text>
-
-                <circle cx="158" cy="264" r="34" fill="#aa7414" />
-                <text x="158" y="261" text-anchor="middle" fill="#ffffff" font-size="10"
-                  font-weight="800">Writing</text>
-                <text x="158" y="276" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Notes</text>
-
-                <circle cx="492" cy="206" r="20" fill="#178d80" />
-                <text x="492" y="210" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P12</text>
-
-                <circle cx="230" cy="154" r="18" fill="#3d68c7" />
-                <text x="230" y="158" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P07</text>
-
-                <circle cx="520" cy="132" r="18" fill="#4f8f4d" />
-                <text x="520" y="136" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P24</text>
-              </g>
+      <section class="component launch-component editor-component" aria-label="Workbench notes">
+        <button class="launch-button" type="button" data-modal-open="notes-modal" aria-haspopup="dialog"
+          aria-controls="notes-modal" aria-label="Open workbench notes">
+          <span class="launch-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 3h8l4 4v14H7z" />
+              <path d="M15 3v5h4" />
+              <path d="M10 13h6" />
+              <path d="M10 17h4" />
             </svg>
-          </div>
-
-          <div class="map-legend">
-            <article class="map-metric">
-              <strong>Node size</strong>
-              <span>Relevance</span>
-            </article>
-            <article class="map-metric">
-              <strong>Color</strong>
-              <span>Codebook category</span>
-            </article>
-            <article class="map-metric">
-              <strong>Dashed edge</strong>
-              <span>Disagreement</span>
-            </article>
-            <article class="map-metric">
-              <strong>Visible set</strong>
-              <span>Saved and important</span>
-            </article>
-          </div>
-        </div>
+          </span>
+          <span class="launch-copy">
+            <span class="component-kicker">Text editor</span>
+            <strong>Workbench notes</strong>
+          </span>
+        </button>
       </section>
 
-      <section class="component editor-component" aria-label="Component 7 text editor">
-        <div class="component-header">
-          <div class="component-title">
-            <div class="component-index">07</div>
-            <div>
-              <span class="component-kicker">Text editor</span>
-              <h3>Free notes and writing</h3>
-            </div>
-          </div>
-          <button class="tool-button">Insert citation</button>
-        </div>
-
-        <div class="component-body">
-          <div class="editor-layout">
-            <div class="editor-toolbar">
-              <div class="tool-row">
-                <button class="tool-button">B</button>
-                <button class="tool-button">I</button>
-                <button class="tool-button">H1</button>
-                <button class="tool-button">Quote</button>
-              </div>
-              <button class="tool-button">Save note</button>
-            </div>
-
-            <article class="editor-page" contenteditable="true">
-              <h3>Free notes - provenance visibility</h3>
-              <p>Compact chat answers are easier to read, but visible provenance improves trust when screening papers.
-                Compare the saved chat with the three included papers tagged as provenance.</p>
-              <p>Annotation: mark P07 as method overlap and P24 as strong support. Add both to the neural-map
-                disagreement edge.</p>
-            </article>
-
-            <div class="note-strip">
-              <article class="note-card">
-                <strong>Annotation</strong>
-                <p>P07: method overlap.</p>
-              </article>
-              <article class="note-card">
-                <strong>Draft link</strong>
-                <p>Conversation saved to editor.</p>
-              </article>
-            </div>
-          </div>
-        </div>
+      <section class="component launch-component map-component" aria-label="Neural map">
+        <button class="launch-button" type="button" data-modal-open="map-modal" aria-haspopup="dialog"
+          aria-controls="map-modal" aria-label="Open neural map">
+          <span class="launch-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <circle cx="5" cy="6" r="2.5" />
+              <circle cx="19" cy="7" r="2.5" />
+              <circle cx="18" cy="18" r="2.5" />
+              <path d="M7 7l3 3" />
+              <path d="M14 10l3-2" />
+              <path d="M14 14l2.5 2.5" />
+            </svg>
+          </span>
+          <span class="launch-copy">
+            <span class="component-kicker">Visualization</span>
+            <strong>Neural map</strong>
+          </span>
+        </button>
       </section>
+
     </main>
   </div>
+
+  <dialog class="modal" id="notes-modal" aria-labelledby="notes-modal-title">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="component-kicker">Text editor</span>
+          <h2 id="notes-modal-title">Workbench notes</h2>
+        </div>
+        <button class="modal-close" type="button" data-modal-close aria-label="Close workbench notes">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body notes-modal-body">
+        <div class="editor-layout">
+          <div class="editor-toolbar">
+            <div class="tool-row">
+              <button class="tool-button">B</button>
+              <button class="tool-button">I</button>
+              <button class="tool-button">H1</button>
+              <button class="tool-button">Quote</button>
+            </div>
+            <button class="tool-button">Save note</button>
+          </div>
+
+          <article class="editor-page" contenteditable="true">
+            <h3>Free notes - provenance visibility</h3>
+            <p>Compact chat answers are easier to read, but visible provenance improves trust when screening papers.
+              Compare the saved chat with the three included papers tagged as provenance.</p>
+            <p>Annotation: mark P07 as method overlap and P24 as strong support. Add both to the neural-map
+              disagreement edge.</p>
+          </article>
+
+          <div class="note-strip">
+            <article class="note-card">
+              <strong>Annotation</strong>
+              <p>P07: method overlap.</p>
+            </article>
+            <article class="note-card">
+              <strong>Draft link</strong>
+              <p>Conversation saved to editor.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="modal" id="map-modal" aria-labelledby="map-modal-title">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="component-kicker">Visualization</span>
+          <h2 id="map-modal-title">Neural map</h2>
+        </div>
+        <div class="tag-row">
+          <span class="chip active">Saved only</span>
+          <span class="chip rose">Disagree edges</span>
+          <button class="modal-close" type="button" data-modal-close aria-label="Close neural map">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-body map-modal-body">
+        <div class="map-shell modal-map-shell">
+          <svg class="map-svg" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img"
+            aria-label="Neural paper map">
+            <g stroke-linecap="round" fill="none">
+              <path d="M348 150 C268 116 214 86 124 70" stroke="rgba(23,141,128,0.38)" stroke-width="5" />
+              <path d="M348 150 C328 82 308 48 270 32" stroke="rgba(61,104,199,0.34)" stroke-width="5" />
+              <path d="M348 150 C438 92 500 64 606 58" stroke="rgba(117,97,200,0.32)" stroke-width="5" />
+              <path d="M348 150 C462 168 544 210 638 242" stroke="rgba(189,81,100,0.34)" stroke-width="4"
+                stroke-dasharray="10 8" />
+              <path d="M348 150 C300 214 244 250 158 264" stroke="rgba(170,116,20,0.34)" stroke-width="5" />
+              <path d="M124 70 C234 38 462 36 606 58" stroke="rgba(24,35,33,0.10)" stroke-width="2" />
+              <path d="M158 264 C320 286 492 276 638 242" stroke="rgba(24,35,33,0.10)" stroke-width="2" />
+              <path d="M270 32 C348 122 510 196 638 242" stroke="rgba(189,81,100,0.20)" stroke-width="2"
+                stroke-dasharray="7 7" />
+            </g>
+
+            <g>
+              <circle cx="348" cy="150" r="54" fill="#178d80" />
+              <text x="348" y="145" text-anchor="middle" fill="#ffffff" font-size="14"
+                font-weight="800">Agentic</text>
+              <text x="348" y="163" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="800">Review</text>
+
+              <circle cx="124" cy="70" r="36" fill="#3d68c7" />
+              <text x="124" y="75" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="800">Search</text>
+
+              <circle cx="270" cy="32" r="28" fill="#7561c8" />
+              <text x="270" y="36" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Agents</text>
+
+              <circle cx="606" cy="58" r="38" fill="#4f8f4d" />
+              <text x="606" y="55" text-anchor="middle" fill="#ffffff" font-size="10"
+                font-weight="800">Citation</text>
+              <text x="606" y="70" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Trust</text>
+
+              <circle cx="638" cy="242" r="35" fill="#bd5164" />
+              <text x="638" y="239" text-anchor="middle" fill="#ffffff" font-size="10"
+                font-weight="800">Conflicts</text>
+              <text x="638" y="254" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Gaps</text>
+
+              <circle cx="158" cy="264" r="34" fill="#aa7414" />
+              <text x="158" y="261" text-anchor="middle" fill="#ffffff" font-size="10"
+                font-weight="800">Writing</text>
+              <text x="158" y="276" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Notes</text>
+
+              <circle cx="492" cy="206" r="20" fill="#178d80" />
+              <text x="492" y="210" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P12</text>
+
+              <circle cx="230" cy="154" r="18" fill="#3d68c7" />
+              <text x="230" y="158" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P07</text>
+
+              <circle cx="520" cy="132" r="18" fill="#4f8f4d" />
+              <text x="520" y="136" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P24</text>
+            </g>
+          </svg>
+        </div>
+
+        <div class="map-legend">
+          <article class="map-metric">
+            <strong>Node size</strong>
+            <span>Relevance</span>
+          </article>
+          <article class="map-metric">
+            <strong>Color</strong>
+            <span>Codebook category</span>
+          </article>
+          <article class="map-metric">
+            <strong>Dashed edge</strong>
+            <span>Disagreement</span>
+          </article>
+          <article class="map-metric">
+            <strong>Visible set</strong>
+            <span>Saved and important</span>
+          </article>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
   <script>
     document.querySelectorAll("[data-year-mask]").forEach((input) => {
       input.addEventListener("input", () => {
@@ -1476,6 +1680,33 @@
 
     yearToggle.addEventListener("change", syncYearFilter);
     syncYearFilter();
+
+    document.querySelectorAll("[data-modal-open]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const modal = document.getElementById(button.dataset.modalOpen);
+        if (!modal) return;
+
+        if (typeof modal.showModal === "function") {
+          modal.showModal();
+        } else {
+          modal.setAttribute("open", "");
+        }
+      });
+    });
+
+    document.querySelectorAll("[data-modal-close]").forEach((button) => {
+      button.addEventListener("click", () => {
+        button.closest("dialog")?.close();
+      });
+    });
+
+    document.querySelectorAll(".modal").forEach((modal) => {
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal) {
+          modal.close();
+        }
+      });
+    });
   </script>
 </body>
 
