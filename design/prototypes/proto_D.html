@@ -527,11 +527,12 @@
     .workspace {
       min-height: 0;
       display: grid;
-      grid-template-columns: 310px minmax(0, 1fr) 330px 360px;
-      grid-template-rows: minmax(140px, 0.95fr) minmax(160px, 1.15fr) 190px;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 330px 360px;
+      grid-template-rows: minmax(140px, 0.95fr) minmax(160px, 1.15fr) 104px 86px;
       grid-template-areas:
         "results results chat chat"
         "results results chat chat"
+        "results results saved saved"
         "editor map saved saved";
       gap: 10px;
     }
