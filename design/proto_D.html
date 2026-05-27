@@ -1,0 +1,1714 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vitality 3 - Prototype D</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #eef2f1;
+      --surface: #ffffff;
+      --surface-soft: #f7faf9;
+      --line: #d9e2df;
+      --line-strong: #c2cfca;
+      --text: #182321;
+      --muted: #65736f;
+      --soft-text: #8a9793;
+      --teal: #178d80;
+      --teal-soft: #e2f3f0;
+      --blue: #3d68c7;
+      --blue-soft: #e8efff;
+      --violet: #7561c8;
+      --violet-soft: #eeeafd;
+      --amber: #aa7414;
+      --amber-soft: #fff2d4;
+      --rose: #bd5164;
+      --rose-soft: #fae8ec;
+      --green: #4f8f4d;
+      --green-soft: #e7f2e3;
+      --shadow: 0 14px 34px rgba(33, 48, 45, 0.08);
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #f8fbfa 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    body {
+      overflow: hidden;
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app {
+      width: min(1500px, calc(100% - 96px));
+      height: 100vh;
+      margin: 0 auto;
+      padding: 12px 0;
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .component {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .brand small,
+    .component-kicker,
+    .meta {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .brand strong {
+      display: block;
+      margin-top: 3px;
+      font-size: 18px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .component-index {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      color: #ffffff;
+      background: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .component-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .component-title h2,
+    .component-title h3,
+    .component-title p {
+      margin: 0;
+    }
+
+    .component-title h2,
+    .component-title h3 {
+      color: var(--text);
+      font-size: 17px;
+      line-height: 1.15;
+    }
+
+    .component-title p {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .status-strip {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+    }
+
+    .status-strip span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .button,
+    .chip,
+    .tag,
+    .tool-button {
+      min-height: 32px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .button {
+      min-height: 38px;
+      padding: 0 14px;
+      color: var(--text);
+    }
+
+    .button.primary {
+      color: #ffffff;
+      background: linear-gradient(135deg, var(--teal), var(--blue));
+      border-color: transparent;
+    }
+
+    .chip,
+    .tag,
+    .tool-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 10px;
+    }
+
+    .chip.active,
+    .tag.active {
+      color: var(--teal);
+      background: var(--teal-soft);
+      border-color: rgba(23, 141, 128, 0.22);
+    }
+
+    .chip.blue,
+    .tag.blue {
+      color: var(--blue);
+      background: var(--blue-soft);
+      border-color: rgba(61, 104, 199, 0.20);
+    }
+
+    .chip.violet,
+    .tag.violet {
+      color: var(--violet);
+      background: var(--violet-soft);
+      border-color: rgba(117, 97, 200, 0.20);
+    }
+
+    .chip.amber,
+    .tag.amber {
+      color: var(--amber);
+      background: var(--amber-soft);
+      border-color: rgba(170, 116, 20, 0.22);
+    }
+
+    .chip.rose,
+    .tag.rose {
+      color: var(--rose);
+      background: var(--rose-soft);
+      border-color: rgba(189, 81, 100, 0.20);
+    }
+
+    .chip.green,
+    .tag.green {
+      color: var(--green);
+      background: var(--green-soft);
+      border-color: rgba(79, 143, 77, 0.20);
+    }
+
+    .component {
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .component-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(247, 250, 249, 0.78);
+    }
+
+    .component-body {
+      min-height: 0;
+      flex: 1;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .scrollable {
+      min-height: 0;
+      overflow: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(24, 35, 33, 0.25) transparent;
+    }
+
+    .search-component .component-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px 12px;
+      align-items: center;
+    }
+
+    .row,
+    .tag-row,
+    .tool-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .search-field {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      padding: 0 12px;
+      border-radius: var(--radius);
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+    }
+
+    .search-field input,
+    .chat-input input {
+      width: 100%;
+      min-width: 0;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .search-tools {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .select {
+      min-height: 38px;
+      max-width: 168px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #ffffff;
+      color: var(--text);
+      font-weight: 700;
+      outline: none;
+    }
+
+    .search-filters {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .search-filter {
+      min-width: 0;
+    }
+
+    .author-filter {
+      display: flex;
+      align-items: center;
+    }
+
+    .filter-toggle-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .filter-toggle {
+      position: relative;
+      min-height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #ffffff;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .filter-toggle input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .filter-toggle:has(input:checked) {
+      color: var(--teal);
+      background: var(--teal-soft);
+      border-color: rgba(23, 141, 128, 0.24);
+    }
+
+    .filter-toggle.blue:has(input:checked) {
+      color: var(--blue);
+      background: var(--blue-soft);
+      border-color: rgba(61, 104, 199, 0.22);
+    }
+
+    .filter-toggle.amber:has(input:checked) {
+      color: var(--amber);
+      background: var(--amber-soft);
+      border-color: rgba(170, 116, 20, 0.24);
+    }
+
+    .filter-toggle.violet:has(input:checked) {
+      color: var(--violet);
+      background: var(--violet-soft);
+      border-color: rgba(117, 97, 200, 0.22);
+    }
+
+    .filter-toggle.rose:has(input:checked) {
+      color: var(--rose);
+      background: var(--rose-soft);
+      border-color: rgba(189, 81, 100, 0.22);
+    }
+
+    .filter-group.year-filter {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: fit-content;
+    }
+
+    .year-inputs {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .year-input {
+      width: 78px;
+      min-height: 32px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #ffffff;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+      outline: none;
+    }
+
+    .year-input:focus {
+      border-color: rgba(23, 141, 128, 0.38);
+      box-shadow: 0 0 0 3px rgba(23, 141, 128, 0.1);
+    }
+
+    .year-filter.is-off .year-inputs {
+      opacity: 0.46;
+    }
+
+    .year-filter.is-off .year-input {
+      background: #f3f7f6;
+      color: var(--muted);
+    }
+
+    .category-filter {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px 10px;
+    }
+
+    .filter-label {
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .filter-group,
+    .paper-card,
+    .workflow-step,
+    .conversation-card,
+    .saved-card,
+    .note-card,
+    .map-metric,
+    .mini-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+    }
+
+    .filter-group,
+    .conversation-card,
+    .saved-card,
+    .note-card,
+    .map-metric,
+    .mini-card {
+      padding: 10px;
+    }
+
+    .filter-group strong,
+    .saved-card strong,
+    .note-card strong,
+    .map-metric strong,
+    .mini-card strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .filter-group p,
+    .saved-card p,
+    .note-card p,
+    .map-metric span,
+    .mini-card p,
+    .paper-card p,
+    .conversation-card span,
+    .message p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .workspace {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 330px 360px;
+      grid-template-rows: minmax(140px, 0.95fr) minmax(160px, 1.15fr) 104px 86px;
+      grid-template-areas:
+        "results results chat chat"
+        "results results chat chat"
+        "results results saved saved"
+        "editor map saved saved";
+      gap: 10px;
+    }
+
+    .results-component {
+      grid-area: results;
+    }
+
+    .workflow-component {
+      grid-area: workflow;
+    }
+
+    .chat-component {
+      grid-area: chat;
+    }
+
+    .chat-component .component-header {
+      align-items: center;
+    }
+
+    .saved-component {
+      grid-area: saved;
+    }
+
+    .editor-component {
+      grid-area: editor;
+    }
+
+    .map-component {
+      grid-area: map;
+    }
+
+    .saved-list,
+    .paper-list,
+    .workflow-list,
+    .chat-layout,
+    .editor-layout {
+      min-height: 0;
+    }
+
+    .saved-list,
+    .paper-list,
+    .workflow-list {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .filter-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    .results-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .mini-card {
+      min-width: 0;
+    }
+
+    .mini-card .number {
+      display: block;
+      margin-bottom: 2px;
+      color: var(--text);
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .paper-list {
+      flex: 1;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .paper-card {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 74px;
+      gap: 10px;
+    }
+
+    .paper-card h3 {
+      margin: 4px 0 6px;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.28;
+    }
+
+    .score {
+      width: 60px;
+      height: 60px;
+      margin-left: auto;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: var(--teal);
+      font-size: 15px;
+      font-weight: 800;
+      background:
+        radial-gradient(circle at center, #ffffff 0 54%, transparent 55%),
+        conic-gradient(var(--teal) 0 84%, #edf2f0 84% 100%);
+      border: 1px solid rgba(23, 141, 128, 0.18);
+    }
+
+    .paper-actions {
+      display: grid;
+      gap: 7px;
+      align-content: start;
+    }
+
+    .workflow-step {
+      display: grid;
+      grid-template-columns: 32px minmax(0, 1fr);
+      gap: 10px;
+      padding: 10px;
+    }
+
+    .step-number {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius);
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      background: var(--teal);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .workflow-step:nth-child(2) .step-number {
+      background: var(--blue);
+    }
+
+    .workflow-step:nth-child(3) .step-number {
+      background: var(--amber);
+    }
+
+    .workflow-step:nth-child(4) .step-number {
+      background: var(--violet);
+    }
+
+    .step-content strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 12px;
+    }
+
+    .step-content textarea {
+      width: 100%;
+      min-height: 42px;
+      resize: none;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 8px;
+      outline: none;
+      color: var(--muted);
+      background: var(--surface-soft);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .chat-layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 136px minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .conversation-list {
+      min-height: 0;
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding-right: 1px;
+    }
+
+    .conversation-card {
+      position: relative;
+      display: block;
+      min-height: 64px;
+      padding-right: 38px;
+      padding-bottom: 12px;
+    }
+
+    .conversation-card.active {
+      background: var(--teal-soft);
+      border-color: rgba(23, 141, 128, 0.24);
+    }
+
+    .conversation-card strong {
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .conversation-meta {
+      display: block;
+      margin-top: 4px;
+    }
+
+    .unread-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 22px;
+      padding: 0 7px;
+      border-radius: 999px;
+      color: var(--blue);
+      background: var(--blue-soft);
+      border: 1px solid rgba(61, 104, 199, 0.2);
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .chat-delete-button {
+      position: absolute;
+      right: 9px;
+      bottom: 9px;
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      color: var(--muted);
+      background: transparent;
+    }
+
+    .chat-delete-button:hover,
+    .chat-delete-button:focus-visible {
+      color: var(--rose);
+      background: var(--rose-soft);
+      border-color: rgba(189, 81, 100, 0.2);
+      outline: none;
+    }
+
+    .chat-delete-button svg {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+    }
+
+    .new-chat-button {
+      min-height: 28px;
+      padding: 0 9px;
+      font-size: 11px;
+    }
+
+    .chat-main {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .message-list {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      padding-right: 2px;
+    }
+
+    .message {
+      max-width: 92%;
+      padding: 10px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .message.user {
+      margin-left: auto;
+      background: var(--text);
+      border-color: var(--text);
+    }
+
+    .message.user p,
+    .message.user .role {
+      color: rgba(255, 255, 255, 0.84);
+    }
+
+    .role {
+      margin-bottom: 5px;
+      color: var(--teal);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .chat-input {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-soft);
+    }
+
+    .saved-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .saved-count {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius);
+      display: grid;
+      place-items: center;
+      color: var(--blue);
+      background: var(--blue-soft);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .editor-layout {
+      flex: 1;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 9px;
+    }
+
+    .editor-toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .editor-page {
+      min-height: 0;
+      overflow: auto;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fffdfa;
+      outline: none;
+    }
+
+    .editor-page h3 {
+      margin: 0 0 9px;
+      font-size: 15px;
+    }
+
+    .editor-page p {
+      margin: 0 0 8px;
+      color: #35413e;
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+
+    .note-strip {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .map-shell {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(#eef4f2 1px, transparent 1px),
+        linear-gradient(90deg, #eef4f2 1px, transparent 1px),
+        #fbfdfc;
+      background-size: 26px 26px;
+    }
+
+    .map-svg {
+      width: 100%;
+      height: 100%;
+      min-height: 210px;
+      display: block;
+    }
+
+    .map-legend {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .map-metric span {
+      display: block;
+    }
+
+    .component.launch-component {
+      min-height: 0;
+    }
+
+    .launch-button {
+      width: 100%;
+      height: 100%;
+      min-height: 86px;
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr);
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 0;
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+    }
+
+    .launch-button:hover,
+    .launch-button:focus-visible {
+      background: var(--surface-soft);
+      outline: none;
+    }
+
+    .launch-icon {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--radius);
+      color: var(--teal);
+      background: var(--teal-soft);
+      border: 1px solid rgba(23, 141, 128, 0.22);
+    }
+
+    .map-component .launch-icon {
+      color: var(--violet);
+      background: var(--violet-soft);
+      border-color: rgba(117, 97, 200, 0.22);
+    }
+
+    .launch-icon svg {
+      width: 22px;
+      height: 22px;
+      stroke: currentColor;
+    }
+
+    .launch-copy {
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+    }
+
+    .launch-copy strong {
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .modal {
+      width: min(1040px, calc(100% - 40px));
+      max-height: calc(100vh - 40px);
+      margin: auto;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+    }
+
+    .modal::backdrop {
+      background: rgba(24, 35, 33, 0.42);
+    }
+
+    .modal-panel {
+      max-height: calc(100vh - 40px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+      box-shadow: 0 24px 70px rgba(24, 35, 33, 0.24);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-soft);
+    }
+
+    .modal-title h2 {
+      margin: 3px 0 0;
+      color: var(--text);
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .modal-close {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: #ffffff;
+    }
+
+    .modal-close:hover,
+    .modal-close:focus-visible {
+      color: var(--rose);
+      background: var(--rose-soft);
+      border-color: rgba(189, 81, 100, 0.2);
+      outline: none;
+    }
+
+    .modal-close svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+    }
+
+    .modal-body {
+      min-height: 0;
+      overflow: auto;
+      padding: 14px;
+    }
+
+    .notes-modal-body .editor-layout {
+      min-height: min(56vh, 540px);
+    }
+
+    .map-modal-body {
+      display: grid;
+      gap: 10px;
+    }
+
+    .modal-map-shell {
+      min-height: min(58vh, 520px);
+    }
+
+    @media (max-width: 1320px) {
+      body {
+        overflow: auto;
+      }
+
+      .app {
+        height: auto;
+        min-height: 100vh;
+      }
+
+      .workspace {
+        grid-template-columns: 300px minmax(0, 1fr);
+        grid-template-rows: auto;
+        grid-template-areas:
+          "results results"
+          "chat chat"
+          "editor saved"
+          "map saved";
+      }
+
+      .component {
+        min-height: 300px;
+      }
+
+      .component.launch-component {
+        min-height: 96px;
+      }
+
+      .results-component {
+        min-height: 620px;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .app {
+        width: calc(100% - 24px);
+      }
+
+      .topbar,
+      .workspace,
+      .search-component .component-body {
+        grid-template-columns: 1fr;
+      }
+
+      .workspace {
+        grid-template-areas:
+          "results"
+          "chat"
+          "editor"
+          "map"
+          "saved";
+      }
+
+      .search-filters,
+      .results-summary,
+      .map-legend,
+      .note-strip,
+      .chat-layout,
+      .paper-card {
+        grid-template-columns: 1fr;
+      }
+
+      .search-tools,
+      .year-filter,
+      .top-actions {
+        flex-wrap: wrap;
+      }
+
+      .button,
+      .select {
+        width: 100%;
+      }
+
+      .score {
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <!-- <header class="topbar">
+      <section class="brand">
+        <div>
+          <small>Vitality 3</small>
+          <strong>Research Workbench</strong>
+        </div>
+      </section>
+
+      <section class="status-strip" aria-label="Active review context">
+      </section>
+
+      <nav class="top-actions" aria-label="Workspace actions">
+        <button class="button">Export</button>
+        <button class="button primary">Save workspace</button>
+      </nav>
+    </header> -->
+
+    <section class="component search-component" aria-label="Search">
+      <div class="component-body">
+        <div class="search-filters" aria-label="Search filters">
+          <div class="author-filter" aria-label="Author search filter">
+            <label class="filter-toggle">
+              <input type="checkbox" aria-label="Include author names in search" />
+              <span>Authors</span>
+            </label>
+          </div>
+
+          <article class="filter-group search-filter year-filter">
+            <label class="filter-toggle">
+              <input type="checkbox" aria-label="Use year filter" data-year-toggle />
+              <span>Year</span>
+            </label>
+            <div class="year-inputs">
+              <input class="year-input" type="text" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" value="2019"
+                aria-label="Start year" data-year-mask />
+              <span>-</span>
+              <input class="year-input" type="text" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" value="2026"
+                aria-label="End year" data-year-mask />
+            </div>
+          </article>
+
+          <div class="category-filter search-filter">
+            <span class="filter-label">Categories / codebook</span>
+            <div class="filter-toggle-row">
+              <label class="filter-toggle blue">
+                <input type="checkbox" checked aria-label="Retrieval category" />
+                <span>Retrieval</span>
+              </label>
+              <label class="filter-toggle amber">
+                <input type="checkbox" checked aria-label="Trust category" />
+                <span>Trust</span>
+              </label>
+              <label class="filter-toggle rose">
+                <input type="checkbox" checked aria-label="Writing category" />
+                <span>Writing</span>
+              </label>
+              <label class="filter-toggle violet">
+                <input type="checkbox" aria-label="Visualization category" />
+                <span>Visualization</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <label class="search-field">
+          <input type="search" placeholder="Search your paper here..." aria-label="Search" />
+        </label>
+
+        <div class="search-tools">
+          <select class="select" aria-label="Search scope">
+            <option>All papers</option>
+            <option>Saved papers</option>
+            <option>Current project</option>
+            <option>Search history</option>
+          </select>
+          <button class="button primary">Search</button>
+        </div>
+      </div>
+    </section>
+
+    <main class="workspace">
+      <section class="component results-component" aria-label="Search results">
+        <div class="component-header">
+          <div class="component-title">
+            <span class="component-kicker">Search results</span>
+          </div>
+        </div>
+
+        <div class="component-body">
+          <div class="results-summary">
+            <article class="mini-card">
+              <span class="number">186</span>
+              <p>Papers found</p>
+            </article>
+            <article class="mini-card">
+              <span class="number">32</span>
+              <p>Included</p>
+            </article>
+            <article class="mini-card">
+              <span class="number">74%</span>
+              <p>Mapped to codebook</p>
+            </article>
+            <article class="mini-card">
+              <span class="number">9</span>
+              <p>Recurring authors</p>
+            </article>
+          </div>
+
+          <div class="paper-list scrollable">
+            <article class="paper-card">
+              <div>
+                <span class="meta">Li, Serrano, Kapoor - 2025</span>
+                <h3>Inspectable agents for conversational literature discovery</h3>
+                <p>Connects agent plans, citation provenance, and editable retrieval strategies inside a chat-led review
+                  workflow.</p>
+                <br/>
+                <div class="tag-row">
+                  <span class="tag blue">agents</span>
+                  <span class="tag violet">provenance</span>
+                  <span class="tag amber">retrieval</span>
+                  <span class="tag active">workflow</span>
+                </div>
+              </div>
+              <div class="paper-actions">
+                <div class="score">92</div>
+                <button class="tool-button">Save</button>
+                <button class="tool-button">Chat</button>
+              </div>
+            </article>
+
+            <article class="paper-card">
+              <div>
+                <span class="meta">Ochoa, Yuan - 2024</span>
+                <h3>Semantic maps for corpus exploration and evidence triage</h3>
+                <p>Shows how projection views reduce result overload when saved and high-relevance papers are made
+                  prominent.</p>
+                <br/>
+                <div class="tag-row">
+                  <span class="tag active">semantics</span>
+                  <span class="tag violet">maps</span>
+                  <span class="tag blue">corpus</span>
+                  <span class="tag rose">triage</span>
+                </div>
+              </div>
+              <div class="paper-actions">
+                <div class="score">88</div>
+                <button class="tool-button">Save</button>
+                <button class="tool-button">Chat</button>
+              </div>
+            </article>
+
+            <article class="paper-card">
+              <div>
+                <span class="meta">Banerjee, Malik - 2023</span>
+                <h3>Evidence-aware retrieval for scientific claim synthesis</h3>
+                <p>Separates support, disagreement, method overlap, and weak evidence for structured paper coding.</p>
+                <br/>
+                <div class="tag-row">
+                  <span class="tag amber">claims</span>
+                  <span class="tag active">evidence</span>
+                  <span class="tag rose">disagreement</span>
+                  <span class="tag green">synthesis</span>
+                </div>
+              </div>
+              <div class="paper-actions">
+                <div class="score">81</div>
+                <button class="tool-button">Save</button>
+                <button class="tool-button">Chat</button>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="component chat-component" aria-label="Component 5 chat bot box">
+        <div class="component-header">
+          <div class="component-title">
+            <div>
+              <span class="component-kicker">Chat Bot</span>
+            </div>
+          </div>
+          <div class="tag-row">
+            <button class="tool-button new-chat-button">New chat</button>
+          </div>
+        </div>
+
+        <div class="component-body">
+          <div class="chat-layout">
+            <aside class="conversation-list" aria-label="Chat history">
+              <article class="conversation-card active">
+                <div>
+                  <strong>Provenance debate</strong>
+                </div>
+                <button class="chat-delete-button" type="button" aria-label="Remove Provenance debate chat" title="Remove chat">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4h8v2" />
+                    <path d="M19 6l-1 14H6L5 6" />
+                    <path d="M10 11v5" />
+                    <path d="M14 11v5" />
+                  </svg>
+                </button>
+              </article>
+              <article class="conversation-card">
+                <div>
+                  <strong>Map pruning</strong>
+                </div>
+                <button class="chat-delete-button" type="button" aria-label="Remove Map pruning chat" title="Remove chat">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4h8v2" />
+                    <path d="M19 6l-1 14H6L5 6" />
+                    <path d="M10 11v5" />
+                    <path d="M14 11v5" />
+                  </svg>
+                </button>
+              </article>
+              <article class="conversation-card">
+                <div>
+                  <strong>Trust surfaces</strong>
+                  <span class="conversation-meta unread-badge">1 unread</span>
+                </div>
+                <button class="chat-delete-button" type="button" aria-label="Remove Trust surfaces chat" title="Remove chat">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4h8v2" />
+                    <path d="M19 6l-1 14H6L5 6" />
+                    <path d="M10 11v5" />
+                    <path d="M14 11v5" />
+                  </svg>
+                </button>
+              </article>
+            </aside>
+
+            <div class="chat-main">
+              <div class="message-list">
+                <article class="message">
+                  <div class="role">Research agent</div>
+                  <p>I found papers that disagree about showing provenance by default. Two favor compact answers; three
+                    argue visible provenance improves trust during screening.</p>
+                </article>
+
+                <article class="message user">
+                  <div class="role">Researcher</div>
+                  <p>Which papers make the strongest case for visible provenance?</p>
+                </article>
+              </div>
+
+              <label class="chat-input">
+                <input type="text" value="Ask saved papers why provenance visibility changes trust"
+                  aria-label="Chat message" />
+                <button class="button primary">Send</button>
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="component saved-component" aria-label="Component 6 saved papers and searches">
+        <div class="component-header">
+          <div class="component-title">
+            <span class="component-kicker">Saved papers</span>
+          </div>
+        </div>
+
+        <div class="component-body scrollable">
+          <div class="saved-list">
+            <article class="saved-card">
+              <div>
+                <strong>Agentic review UI</strong>
+                <p>18 papers, 3 saved chats, 6 notes, 2 search recipes.</p>
+              </div>
+              <div class="saved-count">18</div>
+            </article>
+
+            <article class="saved-card">
+              <div>
+                <strong>Citation trust</strong>
+                <p>Saved search: provenance AND citation verification.</p>
+              </div>
+              <div class="saved-count">14</div>
+            </article>
+
+            <article class="saved-card">
+              <div>
+                <strong>Visual exploration</strong>
+                <p>Saved map snapshots, encodings, and neural-map clusters.</p>
+              </div>
+              <div class="saved-count">10</div>
+            </article>
+
+            <article class="saved-card">
+              <div>
+                <strong>Search recipe</strong>
+                <p>Keyword + vector + agentic expansion for paper discovery.</p>
+              </div>
+              <div class="saved-count">09</div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="component launch-component editor-component" aria-label="Workbench notes">
+        <button class="launch-button" type="button" data-modal-open="notes-modal" aria-haspopup="dialog"
+          aria-controls="notes-modal" aria-label="Open workbench notes">
+          <span class="launch-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 3h8l4 4v14H7z" />
+              <path d="M15 3v5h4" />
+              <path d="M10 13h6" />
+              <path d="M10 17h4" />
+            </svg>
+          </span>
+          <span class="launch-copy">
+            <span class="component-kicker">Text editor</span>
+            <strong>Workbench notes</strong>
+          </span>
+        </button>
+      </section>
+
+      <section class="component launch-component map-component" aria-label="Neural map">
+        <button class="launch-button" type="button" data-modal-open="map-modal" aria-haspopup="dialog"
+          aria-controls="map-modal" aria-label="Open neural map">
+          <span class="launch-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <circle cx="5" cy="6" r="2.5" />
+              <circle cx="19" cy="7" r="2.5" />
+              <circle cx="18" cy="18" r="2.5" />
+              <path d="M7 7l3 3" />
+              <path d="M14 10l3-2" />
+              <path d="M14 14l2.5 2.5" />
+            </svg>
+          </span>
+          <span class="launch-copy">
+            <span class="component-kicker">Visualization</span>
+            <strong>Neural map</strong>
+          </span>
+        </button>
+      </section>
+
+    </main>
+  </div>
+
+  <dialog class="modal" id="notes-modal" aria-labelledby="notes-modal-title">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="component-kicker">Text editor</span>
+          <h2 id="notes-modal-title">Workbench notes</h2>
+        </div>
+        <button class="modal-close" type="button" data-modal-close aria-label="Close workbench notes">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body notes-modal-body">
+        <div class="editor-layout">
+          <div class="editor-toolbar">
+            <div class="tool-row">
+              <button class="tool-button">B</button>
+              <button class="tool-button">I</button>
+              <button class="tool-button">H1</button>
+              <button class="tool-button">Quote</button>
+            </div>
+            <button class="tool-button">Save note</button>
+          </div>
+
+          <article class="editor-page" contenteditable="true">
+            <h3>Free notes - provenance visibility</h3>
+            <p>Compact chat answers are easier to read, but visible provenance improves trust when screening papers.
+              Compare the saved chat with the three included papers tagged as provenance.</p>
+            <p>Annotation: mark P07 as method overlap and P24 as strong support. Add both to the neural-map
+              disagreement edge.</p>
+          </article>
+
+          <div class="note-strip">
+            <article class="note-card">
+              <strong>Annotation</strong>
+              <p>P07: method overlap.</p>
+            </article>
+            <article class="note-card">
+              <strong>Draft link</strong>
+              <p>Conversation saved to editor.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="modal" id="map-modal" aria-labelledby="map-modal-title">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="component-kicker">Visualization</span>
+          <h2 id="map-modal-title">Neural map</h2>
+        </div>
+        <div class="tag-row">
+          <span class="chip active">Saved only</span>
+          <span class="chip rose">Disagree edges</span>
+          <button class="modal-close" type="button" data-modal-close aria-label="Close neural map">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-body map-modal-body">
+        <div class="map-shell modal-map-shell">
+          <svg class="map-svg" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img"
+            aria-label="Neural paper map">
+            <g stroke-linecap="round" fill="none">
+              <path d="M348 150 C268 116 214 86 124 70" stroke="rgba(23,141,128,0.38)" stroke-width="5" />
+              <path d="M348 150 C328 82 308 48 270 32" stroke="rgba(61,104,199,0.34)" stroke-width="5" />
+              <path d="M348 150 C438 92 500 64 606 58" stroke="rgba(117,97,200,0.32)" stroke-width="5" />
+              <path d="M348 150 C462 168 544 210 638 242" stroke="rgba(189,81,100,0.34)" stroke-width="4"
+                stroke-dasharray="10 8" />
+              <path d="M348 150 C300 214 244 250 158 264" stroke="rgba(170,116,20,0.34)" stroke-width="5" />
+              <path d="M124 70 C234 38 462 36 606 58" stroke="rgba(24,35,33,0.10)" stroke-width="2" />
+              <path d="M158 264 C320 286 492 276 638 242" stroke="rgba(24,35,33,0.10)" stroke-width="2" />
+              <path d="M270 32 C348 122 510 196 638 242" stroke="rgba(189,81,100,0.20)" stroke-width="2"
+                stroke-dasharray="7 7" />
+            </g>
+
+            <g>
+              <circle cx="348" cy="150" r="54" fill="#178d80" />
+              <text x="348" y="145" text-anchor="middle" fill="#ffffff" font-size="14"
+                font-weight="800">Agentic</text>
+              <text x="348" y="163" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="800">Review</text>
+
+              <circle cx="124" cy="70" r="36" fill="#3d68c7" />
+              <text x="124" y="75" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="800">Search</text>
+
+              <circle cx="270" cy="32" r="28" fill="#7561c8" />
+              <text x="270" y="36" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Agents</text>
+
+              <circle cx="606" cy="58" r="38" fill="#4f8f4d" />
+              <text x="606" y="55" text-anchor="middle" fill="#ffffff" font-size="10"
+                font-weight="800">Citation</text>
+              <text x="606" y="70" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Trust</text>
+
+              <circle cx="638" cy="242" r="35" fill="#bd5164" />
+              <text x="638" y="239" text-anchor="middle" fill="#ffffff" font-size="10"
+                font-weight="800">Conflicts</text>
+              <text x="638" y="254" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Gaps</text>
+
+              <circle cx="158" cy="264" r="34" fill="#aa7414" />
+              <text x="158" y="261" text-anchor="middle" fill="#ffffff" font-size="10"
+                font-weight="800">Writing</text>
+              <text x="158" y="276" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Notes</text>
+
+              <circle cx="492" cy="206" r="20" fill="#178d80" />
+              <text x="492" y="210" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P12</text>
+
+              <circle cx="230" cy="154" r="18" fill="#3d68c7" />
+              <text x="230" y="158" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P07</text>
+
+              <circle cx="520" cy="132" r="18" fill="#4f8f4d" />
+              <text x="520" y="136" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P24</text>
+            </g>
+          </svg>
+        </div>
+
+        <div class="map-legend">
+          <article class="map-metric">
+            <strong>Node size</strong>
+            <span>Relevance</span>
+          </article>
+          <article class="map-metric">
+            <strong>Color</strong>
+            <span>Codebook category</span>
+          </article>
+          <article class="map-metric">
+            <strong>Dashed edge</strong>
+            <span>Disagreement</span>
+          </article>
+          <article class="map-metric">
+            <strong>Visible set</strong>
+            <span>Saved and important</span>
+          </article>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    document.querySelectorAll("[data-year-mask]").forEach((input) => {
+      input.addEventListener("input", () => {
+        input.value = input.value.replace(/\D/g, "").slice(0, 4);
+      });
+    });
+
+    const yearToggle = document.querySelector("[data-year-toggle]");
+    const yearFilter = document.querySelector(".year-filter");
+    const yearInputs = document.querySelectorAll("[data-year-mask]");
+
+    function syncYearFilter() {
+      const isOn = yearToggle.checked;
+      yearFilter.classList.toggle("is-off", !isOn);
+      yearInputs.forEach((input) => {
+        input.disabled = !isOn;
+      });
+    }
+
+    yearToggle.addEventListener("change", syncYearFilter);
+    syncYearFilter();
+
+    document.querySelectorAll("[data-modal-open]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const modal = document.getElementById(button.dataset.modalOpen);
+        if (!modal) return;
+
+        if (typeof modal.showModal === "function") {
+          modal.showModal();
+        } else {
+          modal.setAttribute("open", "");
+        }
+      });
+    });
+
+    document.querySelectorAll("[data-modal-close]").forEach((button) => {
+      button.addEventListener("click", () => {
+        button.closest("dialog")?.close();
+      });
+    });
+
+    document.querySelectorAll(".modal").forEach((modal) => {
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal) {
+          modal.close();
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>
