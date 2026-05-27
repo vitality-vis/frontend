@@ -568,8 +568,7 @@
     .saved-list,
     .paper-list,
     .workflow-list,
-    .chat-layout,
-    .editor-layout {
+    .chat-layout {
       min-height: 0;
     }
 
@@ -861,48 +860,6 @@
       font-weight: 800;
     }
 
-    .editor-layout {
-      flex: 1;
-      display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto;
-      gap: 9px;
-    }
-
-    .editor-toolbar {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .editor-page {
-      min-height: 0;
-      overflow: auto;
-      padding: 12px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: #fffdfa;
-      outline: none;
-    }
-
-    .editor-page h3 {
-      margin: 0 0 9px;
-      font-size: 15px;
-    }
-
-    .editor-page p {
-      margin: 0 0 8px;
-      color: #35413e;
-      font-size: 12.5px;
-      line-height: 1.5;
-    }
-
-    .note-strip {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-
     .map-shell {
       flex: 1;
       min-height: 0;
@@ -1069,8 +1026,59 @@
       padding: 14px;
     }
 
-    .notes-modal-body .editor-layout {
+    .notes-modal-body {
+      overflow: hidden;
+    }
+
+    .notes-modal-layout {
       min-height: min(56vh, 540px);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 12px;
+    }
+
+    .saved-notes-title,
+    .note-compose span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .saved-notes-title {
+      margin: 0 0 8px;
+    }
+
+    .saved-notes-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .note-compose {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 7px;
+    }
+
+    .note-input {
+      width: 100%;
+      min-height: 180px;
+      resize: vertical;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fffdfa;
+      color: var(--text);
+      outline: none;
+      line-height: 1.5;
+    }
+
+    .notes-actions {
+      display: flex;
+      justify-content: flex-end;
     }
 
     .map-modal-body {
@@ -1138,7 +1146,7 @@
       .search-filters,
       .results-summary,
       .map-legend,
-      .note-strip,
+      .saved-notes-list,
       .chat-layout,
       .paper-card {
         grid-template-columns: 1fr;
@@ -1164,22 +1172,6 @@
 
 <body>
   <div class="app">
-    <!-- <header class="topbar">
-      <section class="brand">
-        <div>
-          <small>Vitality 3</small>
-          <strong>Research Workbench</strong>
-        </div>
-      </section>
-
-      <section class="status-strip" aria-label="Active review context">
-      </section>
-
-      <nav class="top-actions" aria-label="Workspace actions">
-        <button class="button">Export</button>
-        <button class="button primary">Save workspace</button>
-      </nav>
-    </header> -->
 
     <section class="component search-component" aria-label="Search">
       <div class="component-body">
@@ -1469,7 +1461,7 @@
         </div>
       </section>
 
-      <section class="component launch-component editor-component" aria-label="Workbench notes">
+      <section class="component launch-component editor-component" aria-label="Note pad">
         <button class="launch-button" type="button" data-modal-open="notes-modal" aria-haspopup="dialog"
           aria-controls="notes-modal" aria-label="Open workbench notes">
           <span class="launch-icon" aria-hidden="true">
@@ -1482,7 +1474,7 @@
           </span>
           <span class="launch-copy">
             <span class="component-kicker">Text editor</span>
-            <strong>Workbench notes</strong>
+            <strong>Note pad</strong>
           </span>
         </button>
       </section>
@@ -1516,7 +1508,7 @@
       <div class="modal-header">
         <div class="modal-title">
           <span class="component-kicker">Text editor</span>
-          <h2 id="notes-modal-title">Workbench notes</h2>
+          <h2 id="notes-modal-title">Note pad</h2>
         </div>
         <button class="modal-close" type="button" data-modal-close aria-label="Close workbench notes">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2" stroke-linecap="round"
@@ -1528,34 +1520,29 @@
       </div>
 
       <div class="modal-body notes-modal-body">
-        <div class="editor-layout">
-          <div class="editor-toolbar">
-            <div class="tool-row">
-              <button class="tool-button">B</button>
-              <button class="tool-button">I</button>
-              <button class="tool-button">H1</button>
-              <button class="tool-button">Quote</button>
+        <div class="notes-modal-layout">
+          <section class="saved-notes" aria-label="Saved notes">
+            <h3 class="saved-notes-title">Saved notes</h3>
+            <div class="saved-notes-list">
+              <article class="note-card">
+                <strong>Provenance visibility</strong>
+                <p>Visible provenance improves trust during screening when answers cite paper evidence.</p>
+              </article>
+              <article class="note-card">
+                <strong>Evidence coding</strong>
+                <p>P07 has method overlap. P24 is strong support for citation trust.</p>
+              </article>
             </div>
-            <button class="tool-button">Save note</button>
-          </div>
+          </section>
 
-          <article class="editor-page" contenteditable="true">
-            <h3>Free notes - provenance visibility</h3>
-            <p>Compact chat answers are easier to read, but visible provenance improves trust when screening papers.
-              Compare the saved chat with the three included papers tagged as provenance.</p>
-            <p>Annotation: mark P07 as method overlap and P24 as strong support. Add both to the neural-map
-              disagreement edge.</p>
-          </article>
+          <label class="note-compose">
+            <span>Annotation</span>
+            <textarea class="note-input"
+              aria-label="Annotation note">Track how provenance visibility changes trust during screening. Connect P07 method overlap with P24 support before drafting.</textarea>
+          </label>
 
-          <div class="note-strip">
-            <article class="note-card">
-              <strong>Annotation</strong>
-              <p>P07: method overlap.</p>
-            </article>
-            <article class="note-card">
-              <strong>Draft link</strong>
-              <p>Conversation saved to editor.</p>
-            </article>
+          <div class="notes-actions">
+            <button class="button primary" type="button">Save note</button>
           </div>
         </div>
       </div>
