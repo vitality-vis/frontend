@@ -483,7 +483,6 @@
     .conversation-card,
     .saved-card,
     .note-card,
-    .map-metric,
     .mini-card {
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -494,7 +493,6 @@
     .conversation-card,
     .saved-card,
     .note-card,
-    .map-metric,
     .mini-card {
       padding: 10px;
     }
@@ -502,7 +500,6 @@
     .filter-group strong,
     .saved-card strong,
     .note-card strong,
-    .map-metric strong,
     .mini-card strong {
       display: block;
       margin-bottom: 4px;
@@ -513,7 +510,6 @@
     .filter-group p,
     .saved-card p,
     .note-card p,
-    .map-metric span,
     .mini-card p,
     .paper-card p,
     .conversation-card span,
@@ -881,16 +877,6 @@
       display: block;
     }
 
-    .map-legend {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .map-metric span {
-      display: block;
-    }
-
     .component.launch-component {
       min-height: 0;
     }
@@ -1081,10 +1067,9 @@
       justify-content: flex-end;
     }
 
-    .map-modal-body {
-      display: grid;
-      gap: 10px;
-    }
+	    .map-modal-body {
+	      display: grid;
+	    }
 
     .modal-map-shell {
       min-height: min(58vh, 520px);
@@ -1145,7 +1130,6 @@
 
       .search-filters,
       .results-summary,
-      .map-legend,
       .saved-notes-list,
       .chat-layout,
       .paper-card {
@@ -1556,92 +1540,72 @@
           <span class="component-kicker">Visualization</span>
           <h2 id="map-modal-title">Neural map</h2>
         </div>
-        <div class="tag-row">
-          <span class="chip active">Saved only</span>
-          <span class="chip rose">Disagree edges</span>
-          <button class="modal-close" type="button" data-modal-close aria-label="Close neural map">
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2" stroke-linecap="round"
-              stroke-linejoin="round">
-              <path d="M18 6 6 18" />
-              <path d="m6 6 12 12" />
-            </svg>
-          </button>
-        </div>
+        <button class="modal-close" type="button" data-modal-close aria-label="Close neural map">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
       </div>
 
       <div class="modal-body map-modal-body">
         <div class="map-shell modal-map-shell">
-          <svg class="map-svg" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img"
-            aria-label="Neural paper map">
+          <svg class="map-svg" viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" role="img"
+            aria-label="Topic connection map from search results">
             <g stroke-linecap="round" fill="none">
-              <path d="M348 150 C268 116 214 86 124 70" stroke="rgba(23,141,128,0.38)" stroke-width="5" />
-              <path d="M348 150 C328 82 308 48 270 32" stroke="rgba(61,104,199,0.34)" stroke-width="5" />
-              <path d="M348 150 C438 92 500 64 606 58" stroke="rgba(117,97,200,0.32)" stroke-width="5" />
-              <path d="M348 150 C462 168 544 210 638 242" stroke="rgba(189,81,100,0.34)" stroke-width="4"
-                stroke-dasharray="10 8" />
-              <path d="M348 150 C300 214 244 250 158 264" stroke="rgba(170,116,20,0.34)" stroke-width="5" />
-              <path d="M124 70 C234 38 462 36 606 58" stroke="rgba(24,35,33,0.10)" stroke-width="2" />
-              <path d="M158 264 C320 286 492 276 638 242" stroke="rgba(24,35,33,0.10)" stroke-width="2" />
-              <path d="M270 32 C348 122 510 196 638 242" stroke="rgba(189,81,100,0.20)" stroke-width="2"
-                stroke-dasharray="7 7" />
+              <path d="M398 190 C348 176 316 168 272 166" stroke="rgba(23,141,128,0.42)" stroke-width="8" />
+              <path d="M398 190 C338 132 286 98 214 86" stroke="rgba(61,104,199,0.34)" stroke-width="5" />
+              <path d="M398 190 C466 184 520 186 584 198" stroke="rgba(79,143,77,0.36)" stroke-width="6" />
+              <path d="M584 198 C548 250 518 286 478 316" stroke="rgba(79,143,77,0.32)" stroke-width="5" />
+              <path d="M584 198 C640 234 688 270 736 304" stroke="rgba(189,81,100,0.30)" stroke-width="4" />
+              <path d="M690 110 C724 116 748 128 772 148" stroke="rgba(117,97,200,0.38)" stroke-width="5" />
+              <path d="M690 110 C674 146 660 174 646 208" stroke="rgba(117,97,200,0.28)" stroke-width="4" />
+              <path d="M646 208 C684 190 728 172 772 148" stroke="rgba(61,104,199,0.22)" stroke-width="3" />
+              <path d="M272 166 C238 134 220 112 214 86" stroke="rgba(170,116,20,0.32)" stroke-width="4" />
+              <path d="M478 316 C426 320 382 326 336 344" stroke="rgba(170,116,20,0.24)" stroke-width="3" />
             </g>
 
             <g>
-              <circle cx="348" cy="150" r="54" fill="#178d80" />
-              <text x="348" y="145" text-anchor="middle" fill="#ffffff" font-size="14"
-                font-weight="800">Agentic</text>
-              <text x="348" y="163" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="800">Review</text>
+              <circle cx="398" cy="190" r="58" fill="#178d80" />
+              <text x="398" y="196" text-anchor="middle" fill="#ffffff" font-size="16"
+                font-weight="800">Provenance</text>
 
-              <circle cx="124" cy="70" r="36" fill="#3d68c7" />
-              <text x="124" y="75" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="800">Search</text>
+              <circle cx="272" cy="166" r="43" fill="#aa7414" />
+              <text x="272" y="171" text-anchor="middle" fill="#ffffff" font-size="13" font-weight="800">Retrieval</text>
 
-              <circle cx="270" cy="32" r="28" fill="#7561c8" />
-              <text x="270" y="36" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Agents</text>
+              <circle cx="584" cy="198" r="45" fill="#4f8f4d" />
+              <text x="584" y="203" text-anchor="middle" fill="#ffffff" font-size="13" font-weight="800">Evidence</text>
 
-              <circle cx="606" cy="58" r="38" fill="#4f8f4d" />
-              <text x="606" y="55" text-anchor="middle" fill="#ffffff" font-size="10"
-                font-weight="800">Citation</text>
-              <text x="606" y="70" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Trust</text>
+              <circle cx="214" cy="86" r="36" fill="#3d68c7" />
+              <text x="214" y="91" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="800">Agents</text>
 
-              <circle cx="638" cy="242" r="35" fill="#bd5164" />
-              <text x="638" y="239" text-anchor="middle" fill="#ffffff" font-size="10"
-                font-weight="800">Conflicts</text>
-              <text x="638" y="254" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Gaps</text>
+              <circle cx="690" cy="110" r="34" fill="#7561c8" />
+              <text x="690" y="115" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="800">Semantics</text>
 
-              <circle cx="158" cy="264" r="34" fill="#aa7414" />
-              <text x="158" y="261" text-anchor="middle" fill="#ffffff" font-size="10"
-                font-weight="800">Writing</text>
-              <text x="158" y="276" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Notes</text>
+              <circle cx="772" cy="148" r="30" fill="#3d68c7" />
+              <text x="772" y="153" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="800">Maps</text>
 
-              <circle cx="492" cy="206" r="20" fill="#178d80" />
-              <text x="492" y="210" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P12</text>
+              <circle cx="646" cy="208" r="28" fill="#178d80" />
+              <text x="646" y="212" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">Corpus</text>
 
-              <circle cx="230" cy="154" r="18" fill="#3d68c7" />
-              <text x="230" y="158" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P07</text>
+              <circle cx="736" cy="304" r="29" fill="#bd5164" />
+              <text x="736" y="308" text-anchor="middle" fill="#ffffff" font-size="8"
+                font-weight="800">Disagreement</text>
 
-              <circle cx="520" cy="132" r="18" fill="#4f8f4d" />
-              <text x="520" y="136" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">P24</text>
+              <circle cx="478" cy="316" r="30" fill="#aa7414" />
+              <text x="478" y="321" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="800">Claims</text>
+
+              <circle cx="336" cy="344" r="24" fill="#4f8f4d" />
+              <text x="336" y="348" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">Synthesis</text>
+
+              <circle cx="804" cy="264" r="22" fill="#bd5164" />
+              <text x="804" y="268" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">Triage</text>
+
+              <circle cx="122" cy="304" r="20" fill="#178d80" />
+              <text x="122" y="308" text-anchor="middle" fill="#ffffff" font-size="8" font-weight="800">Workflow</text>
             </g>
           </svg>
-        </div>
-
-        <div class="map-legend">
-          <article class="map-metric">
-            <strong>Node size</strong>
-            <span>Relevance</span>
-          </article>
-          <article class="map-metric">
-            <strong>Color</strong>
-            <span>Codebook category</span>
-          </article>
-          <article class="map-metric">
-            <strong>Dashed edge</strong>
-            <span>Disagreement</span>
-          </article>
-          <article class="map-metric">
-            <strong>Visible set</strong>
-            <span>Saved and important</span>
-          </article>
         </div>
       </div>
     </div>
