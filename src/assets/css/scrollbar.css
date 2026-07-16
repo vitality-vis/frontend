@@ -1,0 +1,84 @@
+/* ============================================
+   MODERN SCROLLBAR STYLES
+   ============================================ */
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Thin scrollbars for small containers */
+.chat-messages::-webkit-scrollbar,
+.dialog-container::-webkit-scrollbar,
+#similaritySearchPanel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb,
+.dialog-container::-webkit-scrollbar-thumb,
+#similaritySearchPanel::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover,
+.dialog-container::-webkit-scrollbar-thumb:hover,
+#similaritySearchPanel::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+/* Hide scrollbar when not hovering (optional - uncomment if desired) */
+/*
+.chat-messages,
+.dialog-container {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.chat-messages::-webkit-scrollbar,
+.dialog-container::-webkit-scrollbar {
+  display: none;
+}
+
+.chat-messages:hover,
+.dialog-container:hover {
+  scrollbar-width: thin;
+}
+
+.chat-messages:hover::-webkit-scrollbar,
+.dialog-container:hover::-webkit-scrollbar {
+  display: block;
+}
+*/

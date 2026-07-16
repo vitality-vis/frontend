@@ -1,0 +1,2672 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+// ============================================
+// MODERN DESIGN SYSTEM - CSS Variables
+// ============================================
+:root {
+  // Colors - Modern palette
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-primary-light: #eff6ff;
+  --color-secondary: #64748b;
+  --color-success: #10b981;
+  --color-success-light: #d1fae5;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  
+  // Neutrals
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-border: #e2e8f0;
+  --color-border-light: #f1f5f9;
+  --color-text: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #94a3b8;
+  
+  // Shadows - Subtle and layered
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  
+  // Spacing
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  
+  // Border radius - Modern rounded
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+  
+  // Transitions
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
+
+  // Top banner only (below: search strip keeps --color-bg)
+  --app-header-bg: #0f172a;
+  --app-header-text: #f1f5f9;
+  --app-header-muted: rgba(241, 245, 249, 0.60);
+  --app-header-tool-surface: rgba(255, 255, 255, 0.10);
+  --app-header-border: rgba(255, 255, 255, 0.10);
+}
+
+// --- App shell: top bar + main (search + master / detail) ---
+// Lock the shell to the viewport so inner columns (e.g. Results) scroll instead of stretching the page.
+html {
+  height: 100%;
+  width: 100%;
+  max-width: 100vw;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  max-width: 100vw;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.app-top-bar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-md) var(--spacing-lg);
+  row-gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--app-header-bg);
+  border-bottom: 1px solid var(--app-header-border);
+  box-shadow: 0 1px 12px rgba(0, 0, 0, 0.22);
+}
+
+.app-top-bar__brand-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.app-top-bar__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-top-bar__title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--app-header-text);
+  letter-spacing: -0.02em;
+}
+
+.app-top-bar__tagline {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--app-header-muted);
+  max-width: 22rem;
+}
+
+.app-top-bar__nav {
+  display: flex;
+  align-items: center;
+}
+
+.app-top-bar__right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-left: auto;
+}
+
+.app-top-bar__nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--app-header-muted);
+  border: 1px solid transparent;
+
+  &.is-active {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--app-header-text);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  &:hover:not(.is-active) {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--app-header-text);
+  }
+}
+
+.app-top-bar__embedding {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.app-top-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Embedding dropdown + Metadata / Saved — light panels on dark header (search strip below unchanged) */
+.app-top-bar .ms-Dropdown .ms-Dropdown-title {
+  background: var(--app-header-tool-surface) !important;
+  border: 1px solid var(--app-header-border) !important;
+  border-radius: var(--radius-md) !important;
+  color: var(--color-text) !important;
+  min-height: 32px;
+  line-height: 30px;
+}
+
+.app-top-bar .ms-Dropdown .ms-Dropdown-caretDownButton {
+  color: var(--color-text-secondary) !important;
+}
+
+.app-top-bar .ms-Button.ms-Button--default {
+  background: var(--app-header-tool-surface) !important;
+  border: 1px solid var(--app-header-border) !important;
+  border-radius: var(--radius-md) !important;
+  color: var(--app-header-text) !important;
+}
+
+.app-top-bar .ms-Button.ms-Button--default:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.20) !important;
+}
+
+.app-top-bar .ms-Button.ms-Button--default .ms-Button-icon {
+  color: var(--color-text-secondary) !important;
+}
+
+.app-main-column {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-search-section {
+  flex-shrink: 0;
+  padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-md);
+  background: linear-gradient(to bottom, #ffffff 0%, var(--color-bg) 100%);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.app-master-detail {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border-top: 1px solid var(--color-border);
+}
+
+.app-master-detail > .app-results-detail-split {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.app-master-detail--no-results > * {
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  align-self: stretch;
+}
+
+/* Direct child when Results is hidden: must fill row (split.js + flex basis quirks) */
+.app-master-detail--no-results > .app-detail-chat-split,
+.app-master-detail--no-results > main.app-detail {
+  flex: 1 1 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  align-self: stretch;
+}
+
+.app-results-detail-split {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  justify-content: flex-start;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* Draggable divider — same idea as chat split; must not flex-grow (split.js sets width) */
+.app-results-detail-split > .app-master,
+.app-results-detail-split > .app-master-detail__rest {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.app-results-detail-split > .app-master {
+  min-width: 0;
+  border-right: none;
+}
+
+.app-results-detail-split .gutter.gutter-horizontal {
+  flex-shrink: 0;
+  align-self: stretch;
+  min-height: 100%;
+  box-sizing: border-box;
+  margin: 0 1px;
+  border-radius: 6px;
+  cursor: col-resize;
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.35),
+    rgba(100, 116, 139, 0.55),
+    rgba(148, 163, 184, 0.35)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.04),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.app-results-detail-split .gutter.gutter-horizontal:hover {
+  background: linear-gradient(90deg, #bfdbfe, #3b82f6, #bfdbfe);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35),
+    0 0 0 1px rgba(59, 130, 246, 0.35);
+}
+
+.app-master-detail__rest {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.app-master {
+  background: #f1f5f9;
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.app-master-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(241, 245, 249, 0.72);
+  backdrop-filter: blur(1px);
+}
+
+.app-master-loading__spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid rgba(15, 23, 42, 0.15);
+  border-top-color: var(--color-primary, #2563eb);
+  animation: app-master-loading-spin 0.8s linear infinite;
+}
+
+.app-master-loading__text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+@keyframes app-master-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.app-master-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  position: relative;
+  z-index: 2;
+}
+
+.app-master-header__actions {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.app-master-header__filter-btn {
+  flex: 0 1 auto;
+  max-width: 100%;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 12px 6px 10px;
+  border: 1px solid #d0dae6;
+  border-radius: 999px;
+  background: #eef3f9;
+  color: #0078d4;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    background: #e4ecf6;
+    border-color: #b8c9dc;
+    color: #106ebe;
+  }
+
+  &.is-active {
+    border-color: #0078d4;
+    background: #deecf9;
+    box-shadow: 0 0 0 1px rgba(0, 120, 212, 0.25);
+  }
+
+  &.is-open {
+    border-color: #0078d4;
+    background: #deecf9;
+  }
+}
+
+.app-master-header__filter-btn-icon {
+  flex-shrink: 0;
+  font-size: 14px;
+  margin-top: 2px;
+}
+
+.app-master-header__filter-btn-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+}
+
+.app-master-header__filter-btn-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #201f1e;
+  line-height: 1.2;
+}
+
+.app-master-header__filter-btn-hint {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--color-text-muted);
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-master-header__close-btn,
+.workspace-panel-header__close-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: var(--color-text);
+  }
+}
+
+.app-results-filter-callout {
+  .ms-Callout-beak {
+    background: #fff;
+  }
+}
+
+.app-results-filter-popover {
+  padding: 4px 4px 2px;
+  min-width: 260px;
+  box-sizing: border-box;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 2px;
+  }
+
+  &__title {
+    font-weight: 700;
+    color: #201f1e;
+  }
+
+  &__clear-link {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 4px 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    color: #0078d4;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  &__field {
+    .ms-Label {
+      font-weight: 600;
+      color: #323130;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+  }
+
+  &__dash {
+    padding: 0 2px 8px;
+    color: var(--color-text-muted);
+    font-size: 14px;
+  }
+
+  &__apply.ms-Button {
+    border-radius: 8px;
+  }
+}
+
+// Explore view embedded in the Results column (title click) — Litmaps-style left pane
+.app-master--explore-open {
+  .app-master-scroll {
+    display: flex;
+    flex-direction: column;
+    padding-top: 0;
+  }
+}
+
+.app-master-header__titles--explore {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-master-back-to-list {
+  margin: 0;
+  padding: 4px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0078d4;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.app-master-explore {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.result-paper-modal__nav--inline {
+  flex-shrink: 0;
+}
+
+.result-paper-modal__body--inline {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 12px 16px;
+}
+
+.app-master--explore-open .result-paper-explore {
+  max-height: none;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.result-paper-explore__detail-meta {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #444;
+
+  p {
+    margin: 0 0 8px;
+  }
+
+  b {
+    color: #201f1e;
+  }
+}
+
+.result-paper-explore__abstract-block,
+.result-paper-explore__keywords-block {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #333;
+  margin-bottom: 14px;
+
+  b {
+    color: #201f1e;
+  }
+}
+
+.result-paper-explore__abstract-content {
+  display: inline;
+}
+
+.result-paper-highlight {
+  background: #fff59d;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.result-paper-explore__highlight-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 14px;
+}
+
+.result-paper-explore__highlight-tools--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  margin: 0 0 14px;
+  padding: 0;
+}
+
+.result-paper-explore__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+
+  .ms-Button {
+    min-height: 32px;
+  }
+}
+
+// Corpus result paper modal: compact “summary” (ⓘ icon) only
+.result-paper-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: min(88vh, 900px);
+}
+
+.result-paper-modal__nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: #f8fafc;
+}
+
+.result-paper-modal__nav-close {
+  margin-right: 4px;
+}
+
+.result-paper-modal__nav-spacer {
+  flex: 1;
+  min-width: 8px;
+}
+
+.result-paper-modal__body {
+  padding: 20px 24px 24px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.result-paper-modal__loading,
+.result-paper-modal__empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.result-paper-explore {
+  max-height: calc(88vh - 120px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.result-paper-explore__eyebrow {
+  font-size: 15px;
+  color: #323130;
+  margin-bottom: 8px;
+}
+
+.result-paper-explore__year {
+  font-weight: 400;
+  color: #605e5c;
+}
+
+.result-paper-explore__headline {
+  margin: 0 0 12px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1.35;
+  color: #201f1e;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.result-paper-explore__venue {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-style: italic;
+  color: #605e5c;
+  line-height: 1.45;
+}
+
+.result-paper-explore__metrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #323130;
+  margin-bottom: 20px;
+}
+
+.result-paper-explore__metrics-sep {
+  color: #c8c6c4;
+  font-weight: 400;
+}
+
+.result-paper-explore__abstract {
+  font-size: 15px;
+  line-height: 1.65;
+  color: #323130;
+  white-space: pre-wrap;
+}
+
+.result-paper-summary__title {
+  margin: 0 0 12px;
+  font-size: 24px;
+  line-height: 1.3;
+  font-weight: 600;
+  color: #201f1e;
+}
+
+.result-paper-summary__meta {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #444;
+  margin-bottom: 12px;
+}
+
+.result-paper-summary__block {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.result-paper-summary__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.workspace-panel .ms-Stack-horizontal .workspace-panel-header__close-btn {
+  position: relative;
+  z-index: 3;
+}
+
+// ============================================
+// WORKSPACE PANEL HEADERS — section label row
+// ============================================
+// Both visualization and similarity panels share this pattern:
+//   <Stack horizontal>  <Label>Title</Label>  <close-btn>
+// Style it as a compact section header.
+.workspace-panel.p-md > .ms-Stack:first-child {
+  padding-bottom: 10px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.workspace-panel.p-md > .ms-Stack:first-child .ms-Label {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary) !important;
+}
+
+// Visualization panel: card treatment to match similarity panel
+.workspace-panel.workspace-panel--visualization {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  margin: 0 var(--spacing-lg);
+}
+
+// Similarity panel: override its own margin to align with visualization
+.app-working-panels #similaritySearchPanel {
+  margin: 0 var(--spacing-lg) var(--spacing-md);
+}
+
+// Empty workspace hint
+.app-working-panels-empty {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.app-master-header__titles {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.app-master-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+// Results: inner list scrolls; pagination bar stays visible (CorpusResultsList layout)
+.app-master-scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0 var(--spacing-md) var(--spacing-md);
+}
+
+.app-master-scroll > .corpus-results-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-master .corpus-results {
+  padding: 0;
+  min-height: 0;
+}
+
+.app-detail {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+/* Middle column: selection stays put; Visualization + Similarity scroll together */
+.app-detail-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-detail-body > .app-detail-selection {
+  flex-shrink: 0;
+}
+
+.app-workspace-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+.app-master-detail__rest > main.app-detail,
+.app-master-detail__rest > .app-detail-chat-split {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  align-self: stretch;
+  box-sizing: border-box;
+}
+
+.app-detail-selection {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.app-detail-selection__title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.35;
+}
+
+.app-detail-selection__meta {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+// Working area (tools): natural height; vertical scroll is on .app-workspace-scroll
+.app-working-panels {
+  flex: 0 1 auto;
+  overflow: visible;
+  padding-bottom: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+}
+
+/* Stack panels in document order; avoid flex: 50% on both (causes overlap with regl canvas). */
+.workspace-panel.workspace-panel--similarity,
+.workspace-panel.workspace-panel--visualization {
+  position: relative;
+  width: 100%;
+  flex: 0 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-panel--stack-only {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.workspace-panel--stack-first {
+  flex: 0 1 auto;
+  overflow: visible;
+}
+
+.workspace-panel--stack-second {
+  flex: 0 1 auto;
+  overflow: visible;
+}
+
+/* When two tools are stacked, do not let the plot flex-grow (it overlaps Similarity below). */
+.workspace-panel__viz-body {
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 280px;
+  min-width: 0;
+  margin-top: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.workspace-panel--stack-only.workspace-panel--visualization .workspace-panel__viz-body {
+  flex: 1 1 auto;
+  min-height: 320px;
+}
+
+.workspace-panel__viz-body > #visualizationPanel {
+  flex: 0 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.workspace-panel--stack-only.workspace-panel--visualization
+  .workspace-panel__viz-body
+  > #visualizationPanel {
+  flex: 1;
+  min-height: 0;
+}
+
+.workspace-panel__viz-body #parent-wrapper {
+  flex: 0 1 auto;
+  min-height: 260px;
+  overflow: hidden;
+}
+
+.workspace-panel--stack-only.workspace-panel--visualization
+  .workspace-panel__viz-body
+  #parent-wrapper {
+  flex: 1;
+  min-height: 280px;
+}
+
+/* Global #canvas rules elsewhere use max-height; inside the stacked workspace let the plot fill its box only */
+.workspace-panel__viz-body #canvas {
+  max-height: none;
+  flex: 1 1 auto;
+  min-height: 260px;
+}
+
+/* Tighter margins when Similarity lives in the scroll stack (avoids double spacing vs section padding) */
+.app-working-panels #similaritySearchPanel {
+  margin: 0 0 var(--spacing-md);
+}
+
+.app-working-panels-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.workspace-panel[hidden] {
+  display: none !important;
+}
+
+.workspace-panel:not([hidden]) {
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+// ============================================
+// BASE STYLES
+// ============================================
+body {
+  margin: 0;
+  width: 100%;
+  max-width: 100vw;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body, .ms-Label, .ms-Pivot, .ms-Dropdown, .ms-Button, .ms-SearchBox, text {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+// ============================================
+// UTILITY CLASSES
+// ============================================
+.text-center { text-align: center; }
+
+.Select-placeholder { text-align: left; }
+.Select-multi-value-wrapper { text-align: left; }
+.Select-control {
+  text-align: left;
+  white-space: normal;
+  overflow: none;
+}
+.Select-menu-outer div {
+  text-align: left;
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
+// ============================================
+// SPLIT PANES - Modern gutters
+// ============================================
+.gutter {
+  background-color: var(--color-border-light);
+  background-repeat: no-repeat;
+  background-position: 50%;
+  transition: background-color var(--transition-normal);
+  
+  &:hover {
+    background-color: var(--color-border);
+  }
+}
+
+.gutter.gutter-vertical {
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAFAQMAAABo7865AAAABlBMVEVHcEzMzMzyAv2sAAAAAXRSTlMAQObYZgAAABBJREFUeF5jOAMEEAIEEFwAn3kMwcB6I2AAAAAASUVORK5CYII=');
+  cursor: row-resize;
+}
+
+.gutter.gutter-horizontal {
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
+  cursor: col-resize;
+  height: 100%;
+  min-height: 120px;
+}
+
+// react-split: fill grid cell when chat is open
+.app-detail-chat-split {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  justify-content: flex-start;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* Let split.js control width; override .app-detail { flex: 1 } which breaks horizontal drag */
+.app-detail-chat-split > main.app-detail.app-detail--with-chat-split {
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.app-detail-chat-split > aside.app-chat-sidebar {
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.app-detail-chat-split .gutter.gutter-horizontal {
+  flex-shrink: 0;
+  align-self: stretch;
+  min-height: 100%;
+  box-sizing: border-box;
+  margin: 0 1px;
+  border-radius: 6px;
+  cursor: col-resize;
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.35),
+    rgba(100, 116, 139, 0.55),
+    rgba(148, 163, 184, 0.35)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.04),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.app-detail-chat-split .gutter.gutter-horizontal:hover {
+  background: linear-gradient(90deg, #bfdbfe, #3b82f6, #bfdbfe);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35),
+    0 0 0 1px rgba(59, 130, 246, 0.35);
+}
+
+.app-master-detail > .app-detail-chat-split {
+  min-height: 0;
+}
+
+.app-detail--with-chat-split {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-chat-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  background: var(--color-surface);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.app-chat-sidebar__header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  position: relative;
+  z-index: 2;
+}
+
+.app-chat-sidebar__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-chat-sidebar__body .dialog-container {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Only the active tab’s pane has .dialog-content; hide empty Tab.Content siblings */
+.app-chat-sidebar__body .dialog-container > .tab-content:not(:has(.dialog-content)) {
+  display: none !important;
+}
+
+.app-chat-sidebar__body .dialog-container > .tab-content:has(.dialog-content) {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex !important;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-chat-sidebar__body .dialog-content {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-chat-sidebar__body .dialog-content .app-container {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.split {
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+.split,
+.gutter.gutter-horizontal {
+  float: left;
+}
+
+// Spacing utilities
+.p-lg { padding: var(--spacing-lg); }
+.p-md { padding: var(--spacing-md); }
+.p-sm { padding: var(--spacing-sm); }
+.p-b-0 { padding-bottom: 0; }
+.p-t-0 { padding-top: 0; }
+.p-0 { padding: 0; }
+.m-0 { margin: 0; }
+.m-t-sm { margin-top: var(--spacing-sm); }
+.m-t-md { margin-top: var(--spacing-md); }
+.m-t-lg { margin-top: var(--spacing-lg); }
+.float-right { float: right; }
+.float-left { float: left; }
+
+// ============================================
+// SIMILARITY PANEL PIVOT - Modern tabs
+// ============================================
+.similarityPanelPivot .ms-Pivot-link:last-child {
+  float: right !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-right: 0 !important;
+}
+
+.similarityPanelPivot .ms-Pivot-link:last-child:hover::before {
+  left: 0px !important;
+  right: 0px !important;
+  background-color: var(--color-success);
+}
+
+.similarityPanelPivot .is-selected:last-child::before {
+  left: 0px !important;
+  right: 0px !important;
+  background-color: var(--color-success);
+}
+
+#similaritySearchPanel {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-width: 100%;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  padding: var(--spacing-md);
+  padding-bottom: var(--spacing-lg);
+  margin: var(--spacing-md) var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+#similaritySearchPanel .ms-Stack {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+#similaritySearchPanel .ms-Label {
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+#similaritySearchPanel .ms-Dropdown {
+  flex-shrink: 1;
+}
+
+.w-100 { width: 100%; }
+
+// ============================================
+// BUTTONS - Modern styling
+// ============================================
+.iconButton {
+  color: var(--color-primary) !important;
+  border-radius: var(--radius-md) !important;
+  transition: all var(--transition-fast) !important;
+  
+  &:hover {
+    background-color: var(--color-primary-light) !important;
+    transform: translateY(-1px);
+  }
+}
+
+// ============================================
+// CHAT TABS - Modern tab interface
+// ============================================
+// Plus button - Simple, aligned with tab height
+.add-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  border: 1px solid var(--color-border);
+  transition: all var(--transition-normal);
+  margin-left: -5px;
+  margin-top: -4px;
+  padding: 0;
+  color: var(--color-text-secondary);
+
+  &:hover {
+    background-color: var(--color-primary-light);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+}
+
+.add-icon {
+  width: 16px;
+  height: 16px;
+  
+
+  line {
+    stroke: currentColor;
+    stroke-width: 2.5;
+    transition: stroke var(--transition-fast);
+  }
+}
+
+// ============================================
+// DIALOG CONTAINER - legacy sizing (chat sidebar overrides below)
+// ============================================
+.dialog-container {
+  min-height: 500px;
+  max-height: 500px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.dialog-content {
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+// ============================================
+// BOTTOM PANEL ALIGNMENT - Make all panels same height
+// ============================================
+// The second Split row with Similarity Search, Visualization, Chat Windows
+// needs consistent bottom alignment - use auto height with max-height
+
+#chatWindowsPanel {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+#chatWindowsPanel > .nav-tabs {
+  flex-shrink: 0;
+}
+
+// Visualization panel should match
+.split.p-md:has(#parent-wrapper) {
+  min-height: 480px;
+  max-height: 560px;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff !important;
+}
+
+.split.p-md:has(#visualizationPanel) {
+  background: #ffffff !important;
+}
+
+#parent-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+#canvas {
+  flex: 1;
+  min-height: 400px;
+  max-height: 520px;
+}
+
+// ============================================
+// CHAT WINDOW PANEL - Complete Modern Redesign
+// ============================================
+
+// Chat window panel styles continue below
+
+// Modern Tab Navigation with Chrome-like dynamic shrinking
+#chatWindowsPanel .nav-tabs {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+  padding: var(--spacing-sm) var(--spacing-sm) 0;
+  gap: 2px;
+  flex-wrap: nowrap;
+  overflow-x: hidden; // Hide overflow, tabs will shrink instead
+  display: flex;
+  
+  .nav-item {
+    margin-bottom: 0;
+    flex: 0 1 auto; // Allow shrinking
+    min-width: 60px; // Minimum tab width
+    max-width: 150px; // Maximum tab width
+    
+    &:last-child {
+      // The add button container
+      flex: 0 0 auto;
+      min-width: auto;
+      max-width: none;
+    }
+  }
+  
+  .nav-link {
+    border: none;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    font-size: 0.8125rem;
+    transition: all var(--transition-fast);
+    background: transparent;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    &:hover {
+      color: var(--color-primary);
+      background: var(--color-primary-light);
+    }
+    
+    &.active {
+      color: var(--color-primary);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-bottom-color: var(--color-surface);
+      margin-bottom: -1px;
+      font-weight: 600;
+    }
+    
+    // Close button on tab
+    .btn-link {
+      opacity: 0.5;
+      transition: opacity var(--transition-fast);
+      padding: 2px !important;
+      line-height: 1;
+      flex-shrink: 0;
+      
+      &:hover {
+        opacity: 1;
+        color: var(--color-danger) !important;
+      }
+    }
+  }
+}
+
+.dialog-tab-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Chat sidebar: fill column; pin input to bottom via flex (overrides generic .dialog-container) */
+.app-chat-sidebar .dialog-container {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0 !important;
+  max-height: none !important;
+  border: none;
+  border-radius: 0;
+  background: var(--color-surface);
+  overflow: hidden;
+  box-shadow: none;
+}
+
+
+////////////////////////////////////////////////////////
+// ============================================
+// CHAT MESSAGES - Modern bubble design
+// ============================================
+// Row fills space above the input bar; inner list scrolls
+.chat-content-row {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+.chat-empty-state,
+.chat-messages {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chat-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  overflow: hidden;
+  background: var(--color-surface);
+
+  &::before {
+    content: "💬";
+    font-size: 2rem;
+    opacity: 0.35;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  p {
+    margin: 0;
+    max-width: 22rem;
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+  }
+}
+
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: linear-gradient(to bottom, var(--color-bg), var(--color-surface));
+}
+
+////////////////////////////////////////////////////////
+
+.chat-bubble {
+  max-width: 86%;
+  padding: 10px var(--spacing-lg);
+  border-radius: var(--radius-xl);
+  word-break: break-word;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  animation: fadeInUp 0.18s ease-out;
+
+  &.user {
+    align-self: flex-end;
+    background: linear-gradient(135deg, var(--color-primary) 0%, #2563eb 100%);
+    color: white;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.30);
+  }
+
+  &.ai {
+    align-self: flex-start;
+    background: var(--color-surface);
+    border: 1px solid #e8ecf1;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+
+    // Better paragraph spacing
+    p {
+      margin: 0.75em 0;
+      line-height: 1.6;
+
+      &:first-child {
+        margin-top: 0;
+      }
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    // Better list formatting
+    ul, ol {
+      margin: 0.5em 0;
+      padding-left: 1.5em;
+
+      li {
+        margin: 0.25em 0;
+      }
+    }
+
+    // Paper title links in AI responses
+    span[style*="color: blue"] {
+      color: var(--color-primary) !important;
+      font-weight: 600;
+      padding: 2px 6px;
+      background: var(--color-primary-light);
+      border-radius: var(--radius-sm);
+      transition: all var(--transition-fast);
+      display: inline-block;
+      margin: 2px 0;
+
+      &:hover {
+        background: var(--color-primary);
+        color: white !important;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+    }
+
+    // Better formatting for strong/bold text
+    strong {
+      font-weight: 600;
+      color: var(--color-text);
+    }
+
+    // Code blocks
+    code {
+      background: rgba(0,0,0,0.05);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ============================================
+// CHAT INPUT AREA - Modern input design
+// ============================================
+.chat-input-area {
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-border);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-surface);
+}
+
+.chat-input-row {
+  display: flex;
+  align-items: center; // Changed from flex-end to center for equal height alignment
+  gap: var(--spacing-md);
+}
+
+.chat-input {
+  flex: 1;
+  resize: none;
+  font-size: 0.875rem;
+  font-family: inherit;
+  padding: 9px 14px;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-bg);
+  overflow-y: auto;
+  line-height: 1.45;
+  min-height: 38px;
+  max-height: calc(1.45em * 3 + 18px);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    background: var(--color-surface);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  }
+
+  &::placeholder {
+    color: var(--color-text-muted);
+    font-size: 0.8125rem;
+  }
+}
+
+// Ask button - Modern primary action (same height as input)
+.chat-input-row .iconButton {
+  background: linear-gradient(135deg, var(--color-primary), #2563eb) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: var(--radius-lg) !important;
+  padding: 9px 16px !important;
+  min-height: 38px !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  box-shadow: 0 1px 6px rgba(59, 130, 246, 0.28) !important;
+  transition: all var(--transition-fast) !important;
+  display: flex !important;
+  align-items: center !important;
+  
+  &:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: var(--shadow-md) !important;
+  }
+  
+  &:active {
+    transform: translateY(0) !important;
+  }
+  
+  i, svg {
+    color: white !important;
+  }
+}
+
+// ============================================
+// CHAT ACTION ROW - Modern button group
+// ============================================
+.chat-action-row {
+  margin-top: var(--spacing-md);
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.chat-action-row .ms-Dropdown {
+  min-width: 140px;
+  
+  .ms-Dropdown-title {
+    border-radius: var(--radius-md);
+    border-color: var(--color-border);
+    background: var(--color-bg);
+    font-size: 0.8125rem;
+  }
+}
+
+.chat-action-row .ms-Button {
+  border-radius: var(--radius-sm) !important;
+  font-size: 0.75rem !important;
+  padding: 4px 8px !important;
+  background: var(--color-bg) !important;
+  border: 1px solid var(--color-border) !important;
+  color: var(--color-text-muted) !important;
+  transition: all var(--transition-fast) !important;
+  min-height: 28px !important;
+
+  &:hover {
+    background: var(--color-primary-light) !important;
+    border-color: var(--color-primary) !important;
+    color: var(--color-primary) !important;
+  }
+}
+
+// ============================================
+// LOADING SPINNER - Modern animation
+// ============================================
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: var(--radius-full);
+  animation: spin 0.8s linear infinite;
+  margin-right: var(--spacing-sm);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// ============================================
+// SECTION HEADERS - Modern labels
+// ============================================
+#chatWindowsPanel > div > label {
+  font-size: 1rem !important;
+  font-weight: 600;
+  color: var(--color-text);
+  padding: var(--spacing-md) var(--spacing-lg);
+  margin: 0;
+  display: block;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+// ============================================
+// FLUENT UI GLOBAL OVERRIDES - Modern styling
+// ============================================
+
+// Modern Pivot/Tab styling
+.ms-Pivot {
+  border-bottom: 1px solid var(--color-border);
+  
+  .ms-Pivot-link {
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin-right: 0;
+    transition: color var(--transition-fast);
+    
+    &:hover {
+      color: var(--color-primary);
+      background: transparent;
+    }
+    
+    &::before {
+      display: none;
+    }
+    
+    &.is-selected {
+      color: var(--color-primary);
+      font-weight: 600;
+      
+      &::before {
+        display: block;
+        background-color: var(--color-primary) !important;
+        height: 3px !important;
+        border-radius: 3px 3px 0 0;
+        left: var(--spacing-lg);
+        right: var(--spacing-lg);
+      }
+    }
+  }
+}
+
+// Modern Button styling
+.ms-Button {
+  border-radius: var(--radius-md) !important;
+  font-weight: 500 !important;
+  transition: all var(--transition-fast) !important;
+  
+  &.ms-Button--primary {
+    background: var(--color-primary) !important;
+    border-color: var(--color-primary) !important;
+    
+    &:hover {
+      background: var(--color-primary-hover) !important;
+      border-color: var(--color-primary-hover) !important;
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    &:active {
+      transform: translateY(0);
+    }
+  }
+  
+  &.ms-Button--default {
+    border-color: var(--color-border) !important;
+    
+    &:hover {
+      background: var(--color-primary-light) !important;
+      border-color: var(--color-primary) !important;
+      color: var(--color-primary) !important;
+    }
+  }
+  
+  &.ms-Button--icon {
+    border-radius: var(--radius-md) !important;
+    
+    &:hover {
+      background: var(--color-primary-light) !important;
+      color: var(--color-primary) !important;
+    }
+  }
+}
+
+// Modern Dropdown styling
+.ms-Dropdown {
+  .ms-Dropdown-title {
+    border-radius: var(--radius-md) !important;
+    border-color: var(--color-border) !important;
+    font-size: 0.875rem;
+    transition: all var(--transition-fast);
+    
+    &:hover {
+      border-color: var(--color-primary) !important;
+    }
+  }
+  
+  &.is-open .ms-Dropdown-title {
+    border-color: var(--color-primary) !important;
+  }
+}
+
+.ms-Dropdown-callout {
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-lg) !important;
+  border: 1px solid var(--color-border) !important;
+  
+  .ms-Dropdown-item {
+    font-size: 0.875rem;
+    padding: var(--spacing-sm) var(--spacing-md);
+    color: var(--color-text) !important;
+
+    &:hover {
+      background: var(--color-primary-light) !important;
+      color: var(--color-primary) !important;
+    }
+
+    &.is-selected {
+      background: var(--color-primary) !important;
+      color: white !important;
+    }
+
+    &.is-disabled {
+      color: var(--color-text-muted) !important;
+      background: var(--color-bg) !important;
+      opacity: 0.6;
+      cursor: not-allowed !important;
+
+      &:hover {
+        background: var(--color-bg) !important;
+        color: var(--color-text-muted) !important;
+      }
+    }
+  }
+}
+
+// Modern SearchBox styling
+.ms-SearchBox {
+  border-radius: var(--radius-md) !important;
+  border-color: var(--color-border) !important;
+  transition: all var(--transition-fast);
+  
+  &:hover {
+    border-color: var(--color-primary) !important;
+  }
+  
+  &.is-active {
+    border-color: var(--color-primary) !important;
+    box-shadow: 0 0 0 3px var(--color-primary-light);
+  }
+  
+  .ms-SearchBox-field {
+    font-size: 0.875rem;
+  }
+}
+
+// Modern TextField styling
+.ms-TextField {
+  .ms-TextField-fieldGroup {
+    border-radius: var(--radius-md) !important;
+    border-color: var(--color-border) !important;
+    transition: all var(--transition-fast);
+    
+    &:hover {
+      border-color: var(--color-primary) !important;
+    }
+    
+    &:focus-within {
+      border-color: var(--color-primary) !important;
+      box-shadow: 0 0 0 3px var(--color-primary-light);
+    }
+  }
+}
+
+// Modern Label styling
+.ms-Label {
+  font-weight: 500;
+  color: var(--color-text);
+  font-size: 0.875rem;
+}
+
+// Modern Stack styling for panels
+.ms-Stack {
+  .panel-header {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--spacing-md);
+  }
+}
+
+// Modern Modal/Panel styling
+.ms-Panel {
+  .ms-Panel-main {
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .ms-Panel-header {
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border);
+  }
+  
+  .ms-Panel-headerText {
+    font-weight: 600;
+    font-size: 1.125rem;
+  }
+  
+  .ms-Panel-content {
+    padding: var(--spacing-lg);
+  }
+}
+
+// ============================================
+// PANEL SECTIONS - Consistent styling
+// ============================================
+.split.p-md {
+  background: var(--color-bg);
+  
+  > label:first-child,
+  > div:first-child > label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: var(--spacing-md);
+    display: block;
+  }
+}
+
+// Card-like panel containers
+.panel-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+}
+
+// ============================================
+// HEADER/TOOLBAR - Keep original dark styling
+// ============================================
+// Note: The CommandBar has inline styles setting background to rgba(0, 0, 0, 0.39)
+// We should NOT override it with white - keep the grey header
+.ms-CommandBar {
+  // Do not set background - let inline styles handle it
+  
+  .ms-Button--commandBar {
+    border-radius: var(--radius-md) !important;
+    margin: var(--spacing-xs);
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.1) !important;
+    }
+  }
+}
+
+// ============================================
+// TOOLTIP STYLING
+// ============================================
+.ms-Tooltip {
+  .ms-Tooltip-content {
+    background: var(--color-text) !important;
+    color: white !important;
+    border-radius: var(--radius-md) !important;
+    font-size: 0.8125rem;
+    padding: var(--spacing-sm) var(--spacing-md);
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+// ============================================
+// LITERATURE REVIEW PANEL (3-column layout)
+// ============================================
+.lit-review {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  background: #eef2f7;
+  box-sizing: border-box;
+}
+
+// Custom draggable divider between columns.
+.lit-review__gutter {
+  flex: 0 0 8px;
+  align-self: stretch;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  background-color: #e2e8f0;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(50% - 14px),
+    #94a3b8 calc(50% - 14px),
+    #94a3b8 calc(50% + 14px),
+    transparent calc(50% + 14px),
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 2px 28px;
+  transition: background-color 0.15s ease;
+  z-index: 1;
+
+  &:hover {
+    background-color: #c3ccd9;
+  }
+}
+
+.lit-review__col {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  background: #ffffff;
+  position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+// Inline explore reading view rendered inside the saved-papers column.
+.lit-review__explore-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+
+  .app-master-explore {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+}
+
+.lit-review__sources {
+  background: #f8fafc;
+}
+
+.lit-review__studio {
+  background: #f8fafc;
+}
+
+.lit-review__col-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border, #e1e5eb);
+  background: #ffffff;
+}
+
+.lit-review__col-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lit-review__count {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.lit-review__col-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.lit-review__chat-body {
+  overflow: hidden;
+
+  // The Dialog fills the column.
+  > * {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+}
+
+.lit-review__studio-body {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px;
+  gap: 14px;
+}
+
+// ============================================
+// Zotero studio (Literature Review column 3)
+// ============================================
+.zotero-studio {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 12px;
+}
+
+.lit-review__zotero-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #cc2936;
+  background-color: #cc2936;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    background-color: #b3232f;
+    border-color: #b3232f;
+  }
+
+  &.is-connected {
+    background-color: #fff;
+    color: #1f2937;
+    border-color: #cfd8e3;
+
+    &:hover {
+      background-color: #f3f5f8;
+    }
+  }
+}
+
+.lit-review__zotero-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #3f6f3f;
+}
+
+.lit-review__zotero-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #2e9e4f;
+  flex-shrink: 0;
+}
+
+.zotero-studio__library {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 10px;
+}
+
+.zotero-studio__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zotero-studio__error {
+  color: #a4262c;
+  font-size: 12.5px;
+}
+
+.zotero-studio__empty,
+.zotero-studio__loading {
+  font-size: 13px;
+  color: #6b7280;
+  padding: 8px 0;
+}
+
+.zotero-studio__items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.zotero-studio__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #fff;
+}
+
+.zotero-studio__item-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.zotero-studio__item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.zotero-studio__item-meta {
+  font-size: 11.5px;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zotero-studio__import-btn {
+  flex: 0 0 auto;
+}
+
+.zotero-studio__no-pdf {
+  flex: 0 0 auto;
+  font-size: 11.5px;
+  color: #9aa4b2;
+  font-style: italic;
+}
+
+.lit-review__studio-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.lit-review__studio-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 14px;
+  background: #ffffffcc;
+  border: 1px solid #d8dde6;
+  border-radius: 8px;
+}
+
+.lit-review__studio-card-title {
+  flex: 0 0 auto;
+  margin: 0 0 10px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2933;
+}
+
+.lit-review__studio-scroll {
+  flex: 1 1 auto;
+  overflow: auto;
+  border: 1px solid #d1d1d1;
+  border-radius: 4px;
+  padding: 12px;
+  background: #ffffff;
+  min-height: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.lit-review__studio-quill {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  border: 1px solid #d1d1d1;
+  border-radius: 4px;
+  background: #ffffff;
+  min-height: 0;
+  overflow: hidden;
+
+  .quill {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .ql-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+}
+
+// ============================================
+// CALLOUT STYLING
+// ============================================
+.ms-Callout {
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-lg) !important;
+  border: 1px solid var(--color-border) !important;
+  
+  .ms-Callout-main {
+    padding: var(--spacing-lg);
+  }
+}
+
+// ============================================
+// Literature Review — saved papers header actions (Undo + Filter)
+// ============================================
+.lit-review__col-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+// Small "Undo delete" button beside the Filter button.
+// Lit (blue) when a deletion can be restored, grey/disabled otherwise.
+.lit-review__undo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #cfd8e3;
+  background-color: #f3f5f8;
+  color: #9aa4b2;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: not-allowed;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+
+  svg {
+    font-size: 12px;
+  }
+
+  &:not(:disabled) {
+    cursor: pointer;
+    color: #0b5cd5;
+    border-color: #9fc2f5;
+    background-color: #e8f1ff;
+
+    &:hover {
+      background-color: #d8e8ff;
+      border-color: #6aa3f0;
+    }
+
+    &:active {
+      background-color: #c7dcff;
+    }
+  }
+
+  &:disabled {
+    opacity: 0.7;
+  }
+}
+
+// Typing indicator (three bouncing dots) for the Literature Review chat.
+.lit-review-chat__typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #9aa4b2;
+    animation: lit-review-chat-typing 1.2s infinite ease-in-out;
+
+    &:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+    &:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+  }
+}
+
+@keyframes lit-review-chat-typing {
+  0%,
+  80%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.75);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+/* ===== LR human-in-the-loop checkpoint card ===== */
+.lr-checkpoint {
+  align-self: stretch;
+  margin: 8px 0;
+  border: 1px solid #c7d2fe;
+  border-left: 4px solid #4f46e5;
+  border-radius: 10px;
+  background: #f8faff;
+  padding: 12px 14px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+
+  &.is-resolved {
+    opacity: 0.7;
+    border-left-color: #94a3b8;
+    background: #f4f5f7;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  &__badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #4f46e5;
+    background: #e0e7ff;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+
+  &__title {
+    font-weight: 600;
+    color: #1e293b;
+  }
+
+  &__body {
+    font-size: 0.9rem;
+    color: #334155;
+
+    p {
+      margin: 0 0 6px;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  &__btn--danger .ms-Button-label {
+    color: #b91c1c;
+  }
+
+  &__feedback {
+    margin-top: 10px;
+
+    textarea {
+      width: 100%;
+      resize: vertical;
+    }
+  }
+
+  &__feedback-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  &__resolved {
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: #15803d;
+    font-weight: 600;
+  }
+
+  &__hint {
+    font-size: 0.78rem;
+    color: #b45309;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+    padding: 4px 8px;
+    margin-bottom: 8px;
+  }
+}
+
+.lit-review__undo-btn-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background-color: #0b5cd5;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}

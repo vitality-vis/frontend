@@ -1,0 +1,252 @@
+// ============================================
+// PAPER SCATTER - Modern Visualization Panel
+// ============================================
+
+#parent-wrapper {
+  position: relative;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  background: #f9fafc;
+  overflow: hidden;
+  border: 1px solid var(--color-border-light);
+  border-top: none;
+}
+
+#canvas {
+  height: 100%;
+  width: 100%;
+  background: #ffffff;
+}
+
+// ============================================
+// TOOLTIP - Modern detail tooltip (FIXED - no cutoff)
+// ============================================
+#detailTooltip {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  color: var(--color-text);
+  max-width: 100%;
+  border-top: 1px solid var(--color-border-light);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
+}
+
+#detailTooltip table {
+  width: 100%;
+  max-width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+#detailTooltip table td {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.8125rem;
+  vertical-align: middle;
+}
+
+// First column (Hover:/Click: labels) - fixed width
+#detailTooltip table td:first-child {
+  width: 50px;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+// Second column (paper titles) - flexible, allow text overflow with ellipsis
+#detailTooltip table td:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Third column (action buttons) - fixed width, no cutoff
+#detailTooltip table td:last-child {
+  width: 100px;
+  white-space: nowrap;
+  text-align: right;
+}
+
+#detailTooltip > table tr,
+#detailTooltip > table tr td {
+  border-top: 1px solid var(--color-border-light) !important;
+}
+
+// Ensure action buttons are visible
+#detailTooltip .ms-Stack {
+  flex-wrap: nowrap !important;
+}
+
+#detailTooltip .ms-Button--icon {
+  min-width: 28px !important;
+  width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+}
+
+// ============================================
+// AXIS & TICKS - Subtle chart elements
+// ============================================
+.axis path,
+.tick line {
+  stroke: var(--color-border);
+  visibility: hidden;
+}
+
+.tick line {
+  stroke-width: 0.5px;
+}
+
+.tick text {
+  font-size: 0.75rem;
+  fill: var(--color-text-muted);
+}
+
+// ============================================
+// DETAILS TABLE - Modern info display
+// ============================================
+.detailsTable {
+  width: 100%;
+  border-collapse: collapse;
+  
+  td, th {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--color-border-light);
+    font-size: 0.8125rem;
+  }
+  
+  th {
+    background: var(--color-bg);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-align: left;
+  }
+  
+  td {
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+}
+
+// ============================================
+// HORIZONTAL LIST - Tag/chip display
+// ============================================
+.horizontalList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  white-space: nowrap;
+  overflow-x: auto;
+  display: flex;
+  gap: var(--spacing-sm);
+  
+  li {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--color-bg);
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    
+    &:hover {
+      background: var(--color-primary-light);
+      color: var(--color-primary);
+    }
+  }
+}
+
+.showOnlyThreeLi li:not(:nth-child(-n+3)) {
+  display: none;
+}
+
+// ============================================
+// VISUALIZATION PANEL HEADER
+// ============================================
+#visualizationPanel {
+  background: transparent;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  
+  .ms-Label {
+    font-weight: 600;
+    color: var(--color-text);
+    font-size: 1rem;
+  }
+}
+
+// Legend styling
+.scatter-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) 0;
+  
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: var(--radius-full);
+    }
+  }
+}
+
+// Controls row
+.scatter-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 6px 0;
+  flex-wrap: wrap;
+
+  .ms-Dropdown {
+    min-width: 160px;
+
+    .ms-Dropdown-title {
+      border-radius: var(--radius-md);
+      border-color: var(--color-border);
+      font-size: 0.8125rem;
+      background: var(--color-surface);
+    }
+  }
+
+  .ms-Button {
+    border-radius: var(--radius-md) !important;
+    font-size: 0.8125rem !important;
+    background: var(--color-surface) !important;
+  }
+}
+
+// Clear/Recenter buttons
+.scatter-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  
+  &:hover {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+  }
+  
+  &.danger:hover {
+    background: #fef2f2;
+    color: var(--color-danger);
+  }
+}
