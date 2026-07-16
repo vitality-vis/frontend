@@ -10,6 +10,10 @@
     "target": "es2015",
     "jsx": "react",
     "skipLibCheck": true,
+    "typeRoots": [
+      "../frontend_clean/node_modules/@types",
+      "./node_modules/@types"
+    ],
     "types": ["jest", "node"],
     "lib": [
       "es5",

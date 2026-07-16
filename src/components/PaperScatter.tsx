@@ -6,7 +6,6 @@ import createScatterplot from 'regl-scatterplot';
 import { axisBottom, axisLeft } from 'd3-axis';
 import { scaleLinear } from 'd3-scale';
 import { select } from 'd3-selection';
-import { observer } from "mobx-react";
 import { ActionButton, DefaultButton, Dropdown, Icon, IconButton, IDropdownOption, Label, Modal, Panel, PanelType, Stack } from "@fluentui/react";
 import {useEffect, useState} from "react";
 import { Logger } from "../socket/logger";
@@ -77,7 +76,7 @@ let xScale:any, yScale: any;
 let selectNodes = [];
 
 
-export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
+export const PaperScatter: React.FC<{props: AppProps}> = ({props}) => {
     const {data, dataFiltered, dataSimilarPayload, dataSaved, dataSimilar, isInSimilarInputPapers, isInSimilarPapers, isInSavedPapers, addToSavedPapers, addToSimilarInputPapers, selectNodeIDs, addToSelectNodeIDs, isInFilteredPapers, setScrollToPaperID, embeddingType, openGScholar, eventOrigin} = props;
     const [hoverNode, setHoverNode] = React.useState(null);
     const [categoryColorMap, setCategoryColorMap] = React.useState(null);
@@ -91,21 +90,32 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
     const hoverTimerRef = React.useRef<number | null>(null);
     const hoverLoggedRef = React.useRef<boolean>(false);
     const hoverIdxRef = React.useRef<number | null>(null);
-    console.log("✅ PaperScatter :", props.data.length);
-    console.log("✅ PaperScatter :", props.data[0]);
+    /** Avoid calling App.setState on every regl pointover for the same paper (was causing full-tree re-renders + jank) */
+    const lastScrollSyncIdRef = React.useRef<number | null>(null);
     // const [selectedPaper, setSelectedPaper] = useState(null);
     // console.log('dataFiltered in paper Scatter',dataFiltered);
     // console.log('data in paper Scatter',data);
 
+    // Dataset / coloring inputs only — full redraw (expensive). Do NOT include selectNodeIDs here:
+    // selection changes should only run updateSelections() (cheap overlay).
     React.useEffect(() => {
         papersToShow = [...data];
-        if(!isFirstTime){
-            load();
-            setFirstTime(true);
+        if (!isFirstTime) {
+            if (load()) {
+                setFirstTime(true);
+            }
         }
-        update();
-        updateSelections();
-    }, [data, dataFiltered, dataSaved, dataSimilarPayload, dataSimilar, selectNodeIDs]);
+        if (scatterplot) {
+            update();
+            updateSelections();
+        }
+    }, [data, dataFiltered, dataSaved, dataSimilarPayload, dataSimilar]);
+
+    React.useEffect(() => {
+        if (scatterplot) {
+            updateSelections();
+        }
+    }, [selectNodeIDs]);
 
     const reset = () => {
         Logger.logVisualizationInteraction({
@@ -114,10 +124,15 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
             embeddingType: embeddingType,
             previousSelectionCount: selectNodeIDs?.length || 0
         });
-        scatterplot.reset();
+        if (scatterplot) {
+            scatterplot.reset();
+        }
     }
 
     const updateSelections = () => {
+        if (!scatterplot) {
+            return;
+        }
         let _selectNodes = [];
         let _selectNodeIdx = [];
         let _embeddingX = 0;
@@ -145,8 +160,7 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
         selectNodes = [..._selectNodes];
         scatterplot.deselect({preventEvent: true});
         scatterplot.select(_selectNodeIdx, {preventEvent: true});
-        
-        console.log(eventOrigin);
+
         if(selectNodes.length > 0 && eventOrigin != "scatterplot"){
             scatterplot.set({
                 cameraDistance: 10,
@@ -170,7 +184,11 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
         //     } : undefined
         // });
         setHoverNode(hoveredPaper);
-        setScrollToPaperID(hoveredPaper?.["ID"]);
+        const hid = hoveredPaper?.["ID"] as number | undefined;
+        if (hid !== undefined && hid !== lastScrollSyncIdRef.current) {
+            lastScrollSyncIdRef.current = hid;
+            setScrollToPaperID(hid);
+        }
         // Start (or restart) the 500ms timer to log a hover event only if the pointer remains on
         // the same point continuously for >500ms. We log immediately when the threshold is reached.
         // Clear any existing timer first
@@ -218,7 +236,10 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
         //     embeddingType: embeddingType
         // });
         setHoverNode(null);
-        setScrollToPaperID(null);
+        if (lastScrollSyncIdRef.current !== null) {
+            lastScrollSyncIdRef.current = null;
+            setScrollToPaperID(null);
+        }
         // Clear any pending hover timer and reset hover tracking so we only log on continuous hover
         try{
             if(hoverTimerRef.current){
@@ -257,10 +278,18 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
         addToSelectNodeIDs([], "scatterplot");
     };
 
-    const load = () => {
+    const load = (): boolean => {
         const parentWrapper = document.querySelector('#parent-wrapper');
-        const canvas = document.querySelector('#canvas');
-        
+        const canvas = document.querySelector('#canvas') as HTMLCanvasElement | null;
+        if (!parentWrapper || !canvas) {
+            return false;
+        }
+        const { width, height } = canvas.getBoundingClientRect();
+        // Hidden tabs/panels yield 0×0 canvas; regl-scatterplot crashes in transformMat4
+        if (width < 4 || height < 4) {
+            return false;
+        }
+
         axisContainer = select(parentWrapper).insert('svg', '#canvas');
         xAxisContainer = axisContainer.append('g').attr("class", "axis xAxis");
         yAxisContainer = axisContainer.append('g').attr("class", "axis yAxis");
@@ -295,9 +324,6 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                 }
             }
         }
-
-        // Find width / height
-        const { width, height } = canvas.getBoundingClientRect();        
 
         // Update the scale domain and range
         xScale = scaleLinear().domain([xMin[embeddingKey], xMax[embeddingKey]]);
@@ -369,12 +395,13 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
         // Update the xAxis, yAxis with initial scale
         xAxisContainer.call(xAxis.scale(xScale));
         yAxisContainer.call(yAxis.scale(yScale));
+        return true;
     }
 
     const update = () => {
-        console.log("✅ 调用了 update()");
-        console.log("✅ 当前 papersToShow 数量为：", papersToShow.length);
-        console.log("✅ embeddingKey 为：", embeddingKey);
+        if (!scatterplot) {
+            return;
+        }
         // Re-FILL the datapoints
         datapoints = [];
 
@@ -529,8 +556,9 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
         xAxisContainer.call(scatterplot.get('xScale'));
         yAxisContainer.call(scatterplot.get('yScale'));
 
-        // Draw the datapoints
-        scatterplot.draw(datapoints, {transition: true});
+        // Large draws: skip transition (much snappier). Small sets: keep transition for polish.
+        const drawTransition = papersToShow.length <= 2500;
+        scatterplot.draw(datapoints, {transition: drawTransition});
 
         // Reapply selections after draw transition completes to ensure crosshairs persist
         setTimeout(() => {
@@ -552,8 +580,10 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
 
     // Update layout when any Direct Manipulation control changes.
     React.useEffect(() => {
-        update();
-        updateSelections();  // Reapply selections after redraw so crosshair/outline persists
+        if (scatterplot) {
+            update();
+            updateSelections(); // Reapply selections after redraw so crosshair/outline persists
+        }
     }, [colorByAttribute, embeddingKey]);
 
     const onChangeColorByAttribute = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption): void => {
@@ -998,6 +1028,6 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                     </div>
                 </Modal>
             </div>
-});
+};
 
 export default PaperScatter;

@@ -1,3 +1,3888 @@
+// import * as React from "react";
+// import "./../assets/scss/App.scss";
+// import { ActionButton, DefaultButton, IconButton, Modal, Stack } from "@fluentui/react";
+// import { observer } from "mobx-react";
+// import { getPaperByTitle } from "./../request";
+// import Markdown from "react-markdown";
+// import { Logger } from "../socket/logger";
+// import { API_BASE_URL } from '../config';
+
+// const baseUrl = `${API_BASE_URL}/`;
+
+// // Ensure we only reset chat state and backend memory once per page load,
+// // not every time a new chat tab (Dialog instance) mounts.
+// let hasInitializedChatMemory = false;
+
+// // Define getPaperById at the top level
+// export async function getPaperById(id: string) {
+//   const res = await fetch(`${baseUrl}getPaperById?id=${id}`);
+//   return res.json();
+// }
+
+// const parseTitleAndId = (raw: string) => {
+//   // 1) Extract ID (various formats supported)
+//   const idMatch = raw.match(/(?:<!--ID:([\w-]+)-->|\[\[ID:([^\]]+)\]\])/i);
+//   const extractedId = idMatch ? (idMatch[1] || idMatch[2]) : null;
+
+//   // 2) Extract title
+//   const titleMatch = raw.match(/Title:\s*([^\n\.<]+)/i);
+//   const title = titleMatch ? titleMatch[1].trim() : null;
+
+//   // 3) Build fallback key (only for UI, never used in backend queries)
+//   const fallbackKey = extractedId || (title
+//     ? `temp_${title.replace(/\s+/g, "_").toLowerCase()}`
+//     : `temp_raw_${raw.slice(0, 20).replace(/\s+/g, "_")}`);
+
+//   return { id: extractedId, title, key: fallbackKey };
+// };
+
+// // Add this helper function inside the Dialog component
+// async function fetchPaper(id: string | null, title: string | null) {
+//   try {
+//     if (id && !id.startsWith("temp_")) {
+//       const res = await getPaperById(id);
+//       const paper = Array.isArray(res) ? res[0] : (res?.data || res);
+//       if (paper && paper.ID) return paper;
+//     }
+
+//     // Fallback to title
+//     if (title) {
+//       const papers = await getPaperByTitle(title);
+//       if (papers && papers.length > 0) return papers[0];
+//     }
+
+//     return null;
+//   } catch (err) {
+//     console.error("fetchPaper error:", err);
+//     return null;
+//   }
+// }
+// ////////////////////////////////////////////////////////
+
+
+
+// export const Dialog = observer(({ props }) => {
+//   const {
+//     chatText,
+//     chatHistory,
+//     chatSelectedPaper,
+//     displayMessages: savedDisplayMessages,
+//     updateDialogState,
+//     addToSelectNodeIDs,
+//     addToSimilarInputPapers,
+//     addToSavedPapers,
+//     isInSimilarInputPapers,
+//     isInSavedPapers,
+//     isInSelectedNodeIDs,
+//     tabId, // <-- NEW: needed for DATA_SIGNAL sidebar feature
+//     /** From corpus Results list: add paper to "Ask" selection for next message */
+//     queuedCorpusQuestionPaper,
+//     onConsumeQueuedCorpusQuestionPaper,
+//   } = props;
+
+//   // --- SIDEBAR STATE (NEW) ---
+//   const [sidebarPapers, setSidebarPapers] = React.useState<any[]>([]);
+//   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+//   const [papersToShow, setPapersToShow] = React.useState(20);
+
+//   const [displayMessages, setDisplayMessages] = React.useState<
+//     { role: "user" | "ai"; text: string; referencedPapers?: { id: string | null; title: string }[]; hasMorePapers?: boolean }[]
+//   >(
+//     chatHistory || []
+//   );
+
+//   const [retrievedPapers, setRetrievedPapers] = React.useState<{ title: string, id: string | null, key: string }[]>([]);
+
+//   const [isWaiting, setIsWaiting] = React.useState(false);
+
+//   // On first mount (including browser refresh / first visit), clear all chat
+//   // state on the frontend *and* reset backend memory so every load starts clean.
+//   // IMPORTANT: Guard with a module-level flag so opening additional chat tabs
+//   // does NOT wipe existing chats.
+//   React.useEffect(() => {
+//     if (hasInitializedChatMemory) {
+//       return;
+//     }
+//     hasInitializedChatMemory = true;
+
+//     // Clear local UI state
+//     setDisplayMessages([]);
+//     setRetrievedPapers([]);
+//     setIsWaiting(false);
+
+//     // Clear dialog store state
+//     updateDialogState({
+//       chatHistory: [],
+//       chatText: "",
+//     });
+
+//     // Clear server-side chat memory for this app instance
+//     fetch(`${baseUrl}resetMemory`, {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//     }).catch((err) => {
+//       console.error("Failed to reset memory on mount:", err);
+//     });
+//   }, []);
+
+//   // Paper info modal state
+//   const [isModalOpen, setModalState] = React.useState(false);
+//   const [paperInfo, setPaperInfo] = React.useState<any>(null);
+//   const [loadingPaperInfo, setLoadingPaperInfo] = React.useState(false);
+
+//   // Function to open paper info modal
+//   const openPaperInfoModal = async (title: string, id: string | null) => {
+//     setLoadingPaperInfo(true);
+//     setModalState(true);
+
+//     try {
+//       let paper = null;
+//       if (id) {
+//         paper = await getPaperById(id);
+//       } else {
+//         const papers = await getPaperByTitle(title);
+//         paper = papers.length > 0 ? papers[0] : null;
+//       }
+
+//       if (paper) {
+//         setPaperInfo(paper);
+//         Logger.logUIInteraction({
+//           component: "Dialog",
+//           action: "paperInfoModalOpen",
+//           paperTitle: title,
+//           paperId: paper.ID || id,
+//         });
+//       } else {
+//         setPaperInfo(null);
+//       }
+//     } catch (error) {
+//       console.error("Error fetching paper info:", error);
+//       setPaperInfo(null);
+//     }
+//     setLoadingPaperInfo(false);
+//   };
+
+//   React.useEffect(() => {
+//     setDisplayMessages(chatHistory || []);
+//   }, [chatHistory]);
+
+//   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+//   /** Local draft so typing does not call updateDialogState → App re-render on every key */
+//   const [draftChatText, setDraftChatText] = React.useState(() => chatText ?? "");
+//   React.useEffect(() => {
+//     setDraftChatText(chatText ?? "");
+//   }, [chatText]);
+
+//   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+//   const prevMessageCountRef = React.useRef(0);
+
+//   // When switching chat window, scroll to latest content
+//   React.useEffect(() => {
+//     if (messagesEndRef.current) {
+//       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+//     }
+//   }, [tabId]);
+
+//   // Scroll to bottom only when the user sends a new message (not while model is generating)
+//   React.useEffect(() => {
+//     const prevLen = prevMessageCountRef.current;
+//     prevMessageCountRef.current = displayMessages.length;
+//     const addedMessage = displayMessages.length > prevLen;
+//     const lastIsUser = displayMessages.length > 0 && displayMessages[displayMessages.length - 1].role === "user";
+//     if (addedMessage && lastIsUser && messagesEndRef.current) {
+//       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+//     }
+
+//     // Reset button states when a new AI message is added
+//     if (displayMessages.length > 0 && displayMessages[displayMessages.length - 1].role === "ai") {
+//       setButtonsClicked({ locateAll: false, addAll: false, saveAll: false });
+//     }
+//   }, [displayMessages]);
+
+//   // Handle Enter key to send message
+//   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+//     if (e.key === "Enter" && !e.shiftKey) {
+//       e.preventDefault();
+//       if (draftChatText.trim()) {
+//         Logger.logUIInteraction({
+//           component: "Dialog",
+//           action: "askButtonClick",
+//           value: draftChatText,
+//           chatHistoryLength: chatHistory.length,
+//           trigger: "enter_key",
+//         });
+//         chatRequest();
+//       }
+//     }
+//   };
+
+//   const onChangeChatText = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+//     const newText = e.target.value;
+//     setDraftChatText(newText);
+
+//     // Auto-grow the textarea up to ~3 lines, then scroll
+//     if (textareaRef.current) {
+//       const el = textareaRef.current;
+//       el.style.height = "auto";
+//       const lineHeight = 24; // keep in sync with CSS line-height
+//       const maxHeight = lineHeight * 3;
+//       const newHeight = Math.min(el.scrollHeight, maxHeight);
+//       el.style.height = `${newHeight}px`;
+//       el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+//     }
+//   };
+
+//   const currentAIResponseText = React.useCallback(() => {
+//     for (let i = displayMessages.length - 1; i >= 0; i--) {
+//       if (displayMessages[i].role === "ai") return displayMessages[i].text || "";
+//     }
+//     return "";
+//   }, [displayMessages]);
+
+//   // Extract all papers from the current AI response
+//   const extractAllPapers = React.useCallback(() => {
+//     const text = currentAIResponseText();
+//     const papers: { title: string; id: string | null }[] = [];
+
+//     const titlePattern = /\*\*Title:\*\*\s*([^\[]+)\s*\[\[ID:([^\]]+)\]\]/gi;
+//     let match;
+
+//     while ((match = titlePattern.exec(text)) !== null) {
+//       const title = match[1].trim();
+//       const id = match[2].trim();
+//       papers.push({ title, id });
+//     }
+
+//     const listPattern = /Title:\s*([^\[]+)\s*\[\[ID:([^\]]+)\]\]/gi;
+//     while ((match = listPattern.exec(text)) !== null) {
+//       const title = match[1].trim();
+//       const id = match[2].trim();
+//       if (!papers.some(p => p.id === id)) {
+//         papers.push({ title, id });
+//       }
+//     }
+
+//     return papers;
+//   }, [currentAIResponseText]);
+
+//   // State to track which buttons have been clicked
+//   const [buttonsClicked, setButtonsClicked] = React.useState({
+//     locateAll: false,
+//     addAll: false,
+//     saveAll: false
+//   });
+
+//   // Papers the user wants to reference explicitly in their next question
+//   const [selectedQuestionPapers, setSelectedQuestionPapers] = React.useState<
+//     { id: string | null; title: string }[]
+//   >([]);
+
+//   const toggleQuestionPaper = React.useCallback(
+//     (paper: { id: string | null; title: string }) => {
+//       setSelectedQuestionPapers((prev) => {
+//         const exists = prev.some(
+//           (p) => (p.id && p.id === paper.id) || (!p.id && p.title === paper.title)
+//         );
+//         if (exists) {
+//           return prev.filter(
+//             (p) => !((p.id && p.id === paper.id) || (!p.id && p.title === paper.title))
+//           );
+//         }
+//         return [...prev, paper];
+//       });
+//     },
+//     []
+//   );
+
+//   // Results list "Ask" queues a paper; ref avoids duplicate toggles under React Strict Mode
+//   const consumedCorpusAskTokenRef = React.useRef<number | null>(null);
+//   React.useEffect(() => {
+//     const q = queuedCorpusQuestionPaper;
+//     if (!q) {
+//       return;
+//     }
+//     if (consumedCorpusAskTokenRef.current === q.token) {
+//       return;
+//     }
+//     consumedCorpusAskTokenRef.current = q.token;
+//     toggleQuestionPaper({
+//       id: String(q.id),
+//       title: q.title,
+//     });
+//     onConsumeQueuedCorpusQuestionPaper?.();
+//     // Only re-run when a new queue token is set
+//     // eslint-disable-next-line react-hooks/exhaustive-deps
+//   }, [queuedCorpusQuestionPaper?.token, toggleQuestionPaper]);
+
+//   const clearSelectedQuestionPapers = React.useCallback(() => {
+//     setSelectedQuestionPapers([]);
+//   }, []);
+
+//   const buildQuestionPrompt = React.useCallback(
+//     (questionText: string) => {
+//       if (!selectedQuestionPapers.length) {
+//         return questionText;
+//       }
+//       const headerLines = selectedQuestionPapers.map((p, idx) =>
+//         `${idx + 1}. ${p.title}${p.id ? ` (ID: ${p.id})` : ""}`
+//       );
+//       const header = `Selected papers:\n${headerLines.join("\n")}`;
+//       return `${header}\n\nQuestion: ${questionText}`;
+//     },
+//     [selectedQuestionPapers]
+//   );
+
+
+//   // Core chat sender used by both the text box and inline "Load more" link.
+//   const sendChat = (text: string) => {
+//     if (!text.trim()) return;
+
+//     // Combine any selected papers with the user's question so the model
+//     // sees both the paper titles and the free-form question.
+//     const finalText = buildQuestionPrompt(text);
+
+//     // Draft is local-only while typing; parent chatText often stays "" so the
+//     // sync effect does not run — clear the textarea immediately on send.
+//     setDraftChatText("");
+
+//     // 1. Clear previous retrieval state
+//     setRetrievedPapers([]);
+//     setIsWaiting(true);
+
+//     // 2. Optimistically add the USER message to the UI immediately (displaying only the question text)
+//     const userMessage = {
+//       role: "user" as const,
+//       text,
+//       referencedPapers: selectedQuestionPapers.length ? [...selectedQuestionPapers] : undefined,
+//     };
+
+//     updateDialogState((prev: any) => ({
+//       chatHistory: [...prev.chatHistory, userMessage],
+//       chatText: "", // clear the input box
+//     }));
+
+//     // Reset input height back to one row and clear selected papers after sending
+//     if (textareaRef.current) {
+//       textareaRef.current.style.height = "";
+//       textareaRef.current.style.overflowY = "hidden";
+//     }
+//     clearSelectedQuestionPapers();
+
+//     const baseHistory = [...chatHistory, userMessage];
+
+//     // 3. Start the Fetch Request
+//     fetch(`${baseUrl}chat`, {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({
+//         chat_id: tabId,
+//         text: finalText,
+//         chat_history_raw: baseHistory,
+//       }),
+//     }).then((response) => {
+//       if (!response.body) return;
+//       const reader = response.body.getReader();
+//       const decoder = new TextDecoder("utf-8");
+
+//       let partialResponse = "";
+//       let isFirstChunk = true;
+
+//       const readChunk = ({ done, value }: ReadableStreamReadResult<Uint8Array>) => {
+//         const SIGNAL_SHOW_LOAD_MORE = "[SIGNAL:SHOW_LOAD_MORE]";
+//         const signalRegex = new RegExp(
+//           "\\s*" + SIGNAL_SHOW_LOAD_MORE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*",
+//           "g"
+//         );
+
+//         // --- CASE A: Stream is Finished ---
+//         if (done) {
+//           // Append any final chunk (signal or text often arrives with done=true)
+//           if (value && value.length > 0) {
+//             partialResponse += decoder.decode(value);
+//           }
+//           setIsWaiting(false);
+
+//           // Persist "load more" when backend sent signal OR when response looks like a paper list (fallback)
+//           const HAS_MORE_MARKER = "[[HAS_MORE_PAPERS]]";
+//           const hadSignal = partialResponse.includes(SIGNAL_SHOW_LOAD_MORE);
+//           const looksLikePaperList = /Title:\s*/i.test(partialResponse) && /\[\[ID:[^\]]+\]\]/.test(partialResponse);
+//           if (hadSignal || looksLikePaperList) {
+//             const cleaned = hadSignal ? partialResponse.replace(signalRegex, "").trim() : partialResponse.trim();
+//             const textWithMarker = cleaned + "\n" + HAS_MORE_MARKER;
+//             if (hadSignal) partialResponse = cleaned;
+//             updateDialogState((prev: any) => {
+//               const history = [...(prev.chatHistory || [])];
+//               const lastIdx = history.length - 1;
+//               if (lastIdx >= 0 && history[lastIdx].role === "ai") {
+//                 history[lastIdx] = { ...history[lastIdx], text: textWithMarker, hasMorePapers: true };
+//               }
+//               return { chatHistory: history };
+//             });
+//           }
+
+//           const papers: { title: string; id: string | null; key: string }[] = [];
+//           const lines = partialResponse.split("\n");
+
+//           for (const line of lines) {
+//             const { id, title, key } = parseTitleAndId(line);
+//             if (key && !papers.some((p) => p.key === key)) {
+//               if (title) papers.push({ id, title, key });
+//             }
+//           }
+//           console.log("Stream complete. Papers found:", papers);
+//           setRetrievedPapers(papers);
+//           return;
+//         }
+
+//         // --- CASE B: Process New Chunk ---
+//         let newTextChunk = decoder.decode(value);
+
+//         // --- INTERCEPT SIGNAL TAGS (e.g. [SIGNAL:SHOW_LOAD_MORE]) ---
+//         if (newTextChunk.includes(SIGNAL_SHOW_LOAD_MORE)) {
+//           newTextChunk = newTextChunk.replace(signalRegex, "");
+//         }
+
+//         // --- REGULAR TEXT STREAM (after signal stripped) ---
+//         partialResponse += newTextChunk;
+
+//         if (isFirstChunk) {
+//           isFirstChunk = false;
+//           setIsWaiting(false);
+
+//           updateDialogState((prev: any) => ({
+//             chatHistory: [...prev.chatHistory, { role: "ai", text: "" }],
+//           }));
+//         }
+
+//         updateDialogState((prev: any) => {
+//           const historyCopy = [...prev.chatHistory];
+//           const lastMsgIndex = historyCopy.length - 1;
+//           const lastMsg = historyCopy[lastMsgIndex];
+
+//           if (lastMsg && lastMsg.role === "ai") {
+//             let newText = lastMsg.text + newTextChunk;
+//             newText = newText.replace(signalRegex, ""); // strip signal (handles split across chunks)
+//             historyCopy[lastMsgIndex] = {
+//               ...lastMsg,
+//               text: newText,
+//             };
+//           }
+//           return { chatHistory: historyCopy };
+//         });
+
+//         reader.read().then(readChunk);
+//       };
+
+//       reader.read().then(readChunk);
+//     }).catch(err => {
+//       console.error("Stream error:", err);
+//       setIsWaiting(false);
+//     });
+//   };
+
+//   // --- Public handler for the text box / Ask button ---
+//   const chatRequest = () => {
+//     if (!draftChatText.trim()) return;
+//     sendChat(draftChatText);
+//   };
+
+
+
+//   const extractText = (children: React.ReactNode): string => {
+//     if (typeof children === "string") return children;
+//     if (Array.isArray(children)) {
+//       return children.map((child) => extractText(child)).join(" ");
+//     }
+//     if (React.isValidElement(children)) {
+//       return extractText(children.props.children);
+//     }
+//     return "";
+//   };
+
+//   // Helper function to check if text is part of a summary (not an individual paper)
+//   const isSummaryText = (text: string): boolean => {
+//     if (!text || text.trim().startsWith("Title:")) {
+//       return false;
+//     }
+
+//     if (/^\s*\(/i.test(text) || /\)\s*$/i.test(text)) {
+//       return true;
+//     }
+
+//     const hasSummaryKeywords = /short summary|results include|highlights?|guidance|survey|taxonomy|special issues|applied collections/i.test(text);
+//     const hasNarrativeStructure = /[,()]/g.test(text) && text.length > 50;
+
+//     const idMatches = text.match(/\[\[ID:[^\]]+\]\]/g);
+//     const hasMultipleIDs = idMatches && idMatches.length > 1;
+
+//     return hasSummaryKeywords || hasNarrativeStructure || hasMultipleIDs;
+//   };
+
+//   // Helper function to strip [[ID:xxx]] tags from text
+//   const stripIDTags = (text: string): string => {
+//     return text.replace(/\[\[ID:[^\]]+\]\]/g, '').trim();
+//   };
+
+
+//   const renderPaperBlock = (title: string, id: string | null, raw: string) => {
+//     // 1. If it's not a valid paper title line, just render cleaned text
+//     if (!title || title === raw || !/Title:\s*[^\n]+/i.test(raw)) {
+//       const cleaned = raw.replace(/\[\[ID:[^\]]+\]\]/g, "");
+//       return <span>{cleaned}</span>;
+//     }
+
+//     // 2. Clean the title (remove ID tags)
+//     const cleanTitle = title.replace(/\[\[ID:[^\]]+\]\]/g, "").trim();
+
+//     // 3. Extract the Summary
+//     const summary = raw
+//       .replace(/\*\*Title:[\s\S]*?\[\[ID:[^\]]+\]\]\*\*/gi, "")
+//       .replace(/Title:\s*[^\n]+/gi, "")
+//       .replace(/<!--ID:[^>]+-->/g, "")
+//       .replace(/\[\[ID:[^\]]+\]\]/g, "")
+//       .trim();
+
+//     const paperObj = { ID: id };
+//     const isAlreadySelected = id && isInSelectedNodeIDs && isInSelectedNodeIDs(id);
+//     const isAlreadyInSimilar = id && isInSimilarInputPapers && isInSimilarInputPapers(paperObj);
+//     const isAlreadySaved = id && isInSavedPapers && isInSavedPapers(paperObj);
+//     const isInQuestionList = selectedQuestionPapers.some(
+//       (p) => (p.id && p.id === id) || (!p.id && p.title === cleanTitle)
+//     );
+
+//     return (
+//       <div style={{ marginBottom: "0.5em" }}>
+//         <span
+//           style={{ color: "blue", fontWeight: "bold", cursor: "pointer" }}
+//           onClick={() => {
+//             Logger.logUIInteraction({
+//               component: "Dialog",
+//               action: "selectPaperFromResponse",
+//               paperTitle: title,
+//               previousSelectedPaper: chatSelectedPaper,
+//               paperId: id || undefined,
+//             });
+//             updateDialogState({ chatSelectedPaper: title });
+//             openPaperInfoModal(title, id);
+//           }}
+//         >
+//           {cleanTitle}
+//         </span>
+
+//         <div style={{ marginTop: "0.2em" }}>
+//           <DefaultButton
+//             iconProps={{ iconName: isInQuestionList ? "Cancel" : "Chat" }}
+//             text={isInQuestionList ? "" : "Ask"}
+//             styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
+//             onClick={() => toggleQuestionPaper({ id, title: cleanTitle })}
+//           />
+
+//           <DefaultButton
+//             iconProps={{ iconName: "Locate" }}
+//             styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
+//             disabled={isAlreadySelected}
+//             onClick={() => {
+//               if (id) {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "locateSelectedPaper",
+//                   paperTitle: title,
+//                   paperId: id,
+//                 });
+//                 getPaperById(id).then((paper) => {
+//                   if (paper && paper["ID"] != null) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "locateSelectedPaperSuccess",
+//                       paperTitle: title,
+//                       paperId: paper["ID"],
+//                       via: "id",
+//                     });
+//                     addToSelectNodeIDs([paper["ID"]], "scatterplot");
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "locateSelectedPaperNotFound",
+//                       paperTitle: title,
+//                       paperId: id,
+//                       via: "id",
+//                     });
+//                   }
+//                 });
+//               } else {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "locateSelectedPaper",
+//                   paperTitle: title,
+//                 });
+//                 getPaperByTitle(title).then((papers) => {
+//                   if (papers.length > 0) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "locateSelectedPaperSuccess",
+//                       paperTitle: title,
+//                       paperId: papers[0].ID,
+//                       papersFound: papers.length,
+//                       via: "title",
+//                     });
+//                     addToSelectNodeIDs(papers.map((d) => d["ID"]), "scatterplot");
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "locateSelectedPaperNotFound",
+//                       paperTitle: title,
+//                       via: "title",
+//                     });
+//                   }
+//                 });
+//               }
+//             }}
+//           />
+
+//           <DefaultButton
+//             iconProps={{ iconName: "PlusCircle" }}
+//             styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
+//             disabled={isAlreadyInSimilar}
+//             onClick={() => {
+//               if (id) {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "addSelectedPaperToSimilarInput",
+//                   paperTitle: title,
+//                   paperId: id,
+//                 });
+//                 getPaperById(id).then((paper) => {
+//                   if (paper) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "addSelectedPaperToSimilarInputSuccess",
+//                       paperTitle: title,
+//                       paperId: paper["ID"],
+//                     });
+//                     addToSimilarInputPapers(paper);
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "addSelectedPaperToSimilarInputNotFound",
+//                       paperTitle: title,
+//                       paperId: id,
+//                     });
+//                   }
+//                 });
+//               } else {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "addSelectedPaperToSimilarInput",
+//                   paperTitle: title,
+//                 });
+//                 getPaperByTitle(title).then((papers) => {
+//                   if (papers.length > 0) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "addSelectedPaperToSimilarInputSuccess",
+//                       paperTitle: title,
+//                       paperId: papers[0].ID,
+//                       papersFound: papers.length,
+//                       via: "title",
+//                     });
+//                     addToSimilarInputPapers(papers[0]);
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "addSelectedPaperToSimilarInputNotFound",
+//                       paperTitle: title,
+//                     });
+//                   }
+//                 });
+//               }
+//             }}
+//           />
+
+//           <DefaultButton
+//             iconProps={{ iconName: "Save" }}
+//             styles={{ root: { minWidth: 0 } }}
+//             disabled={isAlreadySaved}
+//             onClick={() => {
+//               if (id) {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "saveSelectedPaper",
+//                   paperTitle: title,
+//                   paperId: id,
+//                 });
+//                 getPaperById(id).then((paper) => {
+//                   if (paper) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "saveSelectedPaperSuccess",
+//                       paperTitle: title,
+//                       paperId: paper["ID"],
+//                     });
+//                     addToSavedPapers(paper);
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "saveSelectedPaperNotFound",
+//                       paperTitle: title,
+//                       paperId: id,
+//                     });
+//                   }
+//                 });
+//               } else {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "saveSelectedPaper",
+//                   paperTitle: title,
+//                 });
+//                 getPaperByTitle(title).then((papers) => {
+//                   if (papers.length > 0) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "saveSelectedPaperSuccess",
+//                       paperTitle: title,
+//                       paperId: papers[0].ID,
+//                       papersFound: papers.length,
+//                       via: "title",
+//                     });
+//                     addToSavedPapers(papers[0]);
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "saveSelectedPaperNotFound",
+//                       paperTitle: title,
+//                     });
+//                   }
+//                 });
+//               }
+//             }}
+//           />
+//         </div>
+//         {/* Render the extracted summary text */}
+//         {summary && (
+//           <div
+//             style={{
+//               color: "#333",
+//               fontSize: "0.95rem",
+//               lineHeight: "1.5em",
+//               whiteSpace: "pre-wrap",
+//               marginLeft: "0.2em",
+//               marginTop: "0.5em"
+//             }}
+//           >
+//             {summary}
+//           </div>
+//         )}
+//       </div>
+//     );
+//   };
+
+
+//   return (
+//     <div className="app-container" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, width: "100%", overflow: "hidden" }}>
+
+//       {/* 1. SCROLLABLE AREA: Conversation (sidebar disabled) */}
+//       <div className="chat-content-row">
+//         {displayMessages.length === 0 && !isWaiting ? (
+//           <div className="chat-empty-state" role="status" aria-live="polite">
+//             <p>Type below to start the conversation.</p>
+//           </div>
+//         ) : (
+//         <div className="chat-messages">
+//           {displayMessages.map((msg, idx) => {
+//             const isLastAiMessage = msg.role === "ai" && idx === displayMessages.length - 1;
+//             return (
+//             <div key={idx} className={`chat-bubble ${msg.role}`}>
+//               {msg.role === "user" ? (
+//                 <div>
+//                   {msg.referencedPapers && msg.referencedPapers.length > 0 && (
+//                     <div style={{ marginBottom: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
+//                       {msg.referencedPapers.map((p) => (
+//                         <div
+//                           key={p.id || p.title}
+//                           style={{
+//                             display: "inline-flex",
+//                             alignItems: "center",
+//                             padding: "2px 6px",
+//                             borderRadius: 10,
+//                             background: "var(--color-primary-light)",
+//                             color: "var(--color-primary)",
+//                             fontSize: "0.75rem",
+//                             maxWidth: "100%",
+//                           }}
+//                         >
+//                           <span
+//                             style={{
+//                               cursor: "pointer",
+//                               overflow: "hidden",
+//                               textOverflow: "ellipsis",
+//                               whiteSpace: "nowrap",
+//                               maxWidth: 220,
+//                             }}
+//                             onClick={() => openPaperInfoModal(p.title, p.id)}
+//                           >
+//                             {p.title}
+//                           </span>
+//                         </div>
+//                       ))}
+//                     </div>
+//                   )}
+//                   {msg.text}
+//                 </div>
+//               ) : (
+//                 <div>
+//                   {(() => {
+//                     const HAS_MORE_MARKER = "[[HAS_MORE_PAPERS]]";
+//                     const rawText = msg.text || "";
+//                     const hasMarkerOrFlag = msg.hasMorePapers || rawText.includes(HAS_MORE_MARKER);
+//                     const looksLikePaperList = /Title:\s*/i.test(rawText) && /\[\[ID:[^\]]+\]\]/.test(rawText);
+//                     const hasLoadMore = hasMarkerOrFlag || (isLastAiMessage && looksLikePaperList);
+//                     const displayText = rawText.replace(new RegExp("\\s*" + HAS_MORE_MARKER.replace(/[[\]]/g, "\\$&") + "\\s*", "g"), "").trim();
+//                     return (
+//                       <>
+//                         <Markdown
+//                           components={{
+//                             p: ({ node, children }) => {
+//                               const raw = extractText(children);
+//                               const { title, id } = parseTitleAndId(raw);
+//                               if (/Title:\s*/i.test(raw)) {
+//                                 return renderPaperBlock(title, id, raw);
+//                               }
+//                               return <p>{raw.replace(/\[\[ID:[^\]]+\]\]/g, "")}</p>;
+//                             },
+
+//                             strong: ({ node, ...props }) => {
+//                               const raw = extractText(props.children);
+//                               const { title, id } = parseTitleAndId(raw);
+//                               if (/Title:\s*/i.test(raw)) {
+//                                 return renderPaperBlock(title, id, raw);
+//                               }
+//                               return <strong>{raw.replace(/\[\[ID:[^\]]+\]\]/g, "")}</strong>;
+//                             },
+
+//                             li: ({ node, children }) => {
+//                               const raw = extractText(children);
+//                               const { title, id } = parseTitleAndId(raw);
+//                               if (/Title:\s*/i.test(raw)) {
+//                                 return renderPaperBlock(title, id, raw);
+//                               }
+//                               return <li>{raw.replace(/\[\[ID:[^\]]+\]\]/g, "")}</li>;
+//                             },
+
+//                           }}
+//                         >
+//                           {displayText}
+//                         </Markdown>
+//                         {hasLoadMore && (
+//                           <div style={{ marginTop: 8 }}>
+//                             <a
+//                               style={{ cursor: "pointer", color: "#0078d4", textDecoration: "underline" }}
+//                               onClick={() => sendChat("Load more papers from this search.")}
+//                             >
+//                               Load more papers
+//                             </a>
+//                           </div>
+//                         )}
+//                       </>
+//                     );
+//                   })()}
+//                 </div>
+//               )}
+//             </div>
+//           );
+//           })}
+
+//           {isWaiting && (
+//             <div className="chat-bubble ai">
+//               <span className="spinner"></span> THINKING...
+//             </div>
+//           )}
+
+//           <div ref={messagesEndRef} />
+//         </div>
+//         )}
+
+//       </div>{/* end chat-content-row */}
+
+//       {/* 3. FIXED BOTTOM: Selected papers + input bar + action buttons */}
+//       <div className="chat-input-area">
+//           {selectedQuestionPapers.length > 0 && (
+//             <div style={{ marginBottom: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+//               {selectedQuestionPapers.map((p) => (
+//                 <div
+//                   key={p.id || p.title}
+//                   style={{
+//                     display: "inline-flex",
+//                     alignItems: "center",
+//                     padding: "4px 8px",
+//                     borderRadius: 12,
+//                     background: "var(--color-primary-light)",
+//                     color: "var(--color-primary)",
+//                     fontSize: "0.8rem",
+//                     maxWidth: "100%",
+//                   }}
+//                 >
+//                   <span
+//                     style={{
+//                       cursor: "pointer",
+//                       overflow: "hidden",
+//                       textOverflow: "ellipsis",
+//                       whiteSpace: "nowrap",
+//                       maxWidth: 220,
+//                     }}
+//                     onClick={() => openPaperInfoModal(p.title, p.id)}
+//                   >
+//                     {p.title}
+//                   </span>
+//                   <IconButton
+//                     styles={{ root: { marginLeft: 4, width: 20, height: 20 } }}
+//                     iconProps={{ iconName: "Cancel" }}
+//                     onClick={() => toggleQuestionPaper(p)}
+//                   />
+//                 </div>
+//               ))}
+//             </div>
+//           )}
+
+//           <div className="chat-input-row">
+//             <textarea
+//               ref={textareaRef}
+//               className="chat-input"
+//               value={draftChatText}
+//               onChange={onChangeChatText}
+//               onKeyDown={onKeyDown}
+//               placeholder="Type your message"
+//               rows={1}
+//             />
+//             <DefaultButton
+//               className="iconButton"
+//               styles={{ root: { padding: "0 1rem", minWidth: 0 } }}
+//               onClick={() => {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "askButtonClick",
+//                   value: draftChatText,
+//                   chatHistoryLength: chatHistory.length,
+//                 });
+//                 chatRequest();
+//               }}
+//               iconProps={{ iconName: "Rocket" }}
+//               text="Ask"
+//             />
+//           </div>
+
+//           <div className="chat-action-row" style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: '4px' }}>
+//             <DefaultButton
+//               text="ALL"
+//               iconProps={{ iconName: "Locate" }}
+//               styles={{ root: { minWidth: 0, padding: "0 6px" } }}
+//               disabled={buttonsClicked.locateAll}
+//               onClick={async () => {
+//                 const papers = extractAllPapers();
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "selectAllPapers",
+//                   responseLength: currentAIResponseText().length,
+//                   paperCount: papers.length,
+//                 });
+
+//                 if (papers.length === 0) {
+//                   console.log("No papers found in response");
+//                   return;
+//                 }
+
+//                 const paperIds: string[] = [];
+//                 for (const paper of papers) {
+//                   if (paper.id) {
+//                     paperIds.push(paper.id);
+//                   }
+//                 }
+
+//                 if (paperIds.length > 0) {
+//                   addToSelectNodeIDs(paperIds, "scatterplot");
+//                   setButtonsClicked(prev => ({ ...prev, locateAll: true }));
+//                 }
+//               }}
+//             />
+//             <DefaultButton
+//               text="ALL"
+//               iconProps={{ iconName: "PlusCircle" }}
+//               styles={{ root: { minWidth: 0, padding: "0 6px" } }}
+//               disabled={buttonsClicked.addAll}
+//               onClick={async () => {
+//                 const papers = extractAllPapers();
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "addAllToSimilarInputPapers",
+//                   responseLength: currentAIResponseText().length,
+//                   paperCount: papers.length,
+//                 });
+
+//                 if (papers.length === 0) {
+//                   console.log("No papers found in response");
+//                   return;
+//                 }
+
+//                 for (const paper of papers) {
+//                   if (paper.id) {
+//                     try {
+//                       const paperObj = await getPaperById(paper.id);
+//                       if (paperObj) {
+//                         addToSimilarInputPapers(paperObj);
+//                       }
+//                     } catch (e) {
+//                       console.error(`Failed to fetch paper ${paper.id}:`, e);
+//                     }
+//                   }
+//                 }
+//                 setButtonsClicked(prev => ({ ...prev, addAll: true }));
+//               }}
+//             />
+//             <DefaultButton
+//               text="ALL"
+//               iconProps={{ iconName: "Save" }}
+//               styles={{ root: { minWidth: 0, padding: "0 6px" } }}
+//               disabled={buttonsClicked.saveAll}
+//               onClick={async () => {
+//                 const papers = extractAllPapers();
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "saveAllPapers",
+//                   responseLength: currentAIResponseText().length,
+//                   paperCount: papers.length,
+//                 });
+
+//                 if (papers.length === 0) {
+//                   console.log("No papers found in response");
+//                   return;
+//                 }
+
+//                 for (const paper of papers) {
+//                   if (paper.id) {
+//                     try {
+//                       const paperObj = await getPaperById(paper.id);
+//                       if (paperObj) {
+//                         addToSavedPapers(paperObj);
+//                       }
+//                     } catch (e) {
+//                       console.error(`Failed to fetch paper ${paper.id}:`, e);
+//                     }
+//                   }
+//                 }
+//                 setButtonsClicked(prev => ({ ...prev, saveAll: true }));
+//               }}
+//             />
+//           </div>
+//         </div>
+
+//         {/* Paper Info Modal */}
+//         <Modal
+//           isOpen={isModalOpen}
+//           onDismiss={() => setModalState(false)}
+//           isBlocking={false}
+//           styles={{
+//             main: {
+//               maxWidth: 720,
+//               padding: 32,
+//               borderRadius: 16,
+//               boxShadow: "0 16px 40px rgba(0,0,0,0.25)",
+//             },
+//           }}
+//         >
+//           {loadingPaperInfo ? (
+//             <div style={{ padding: 20, textAlign: "center" }}>Loading details...</div>
+//           ) : paperInfo ? (
+//             <div style={{ maxHeight: "70vh", overflowY: "auto" }}>
+//               <h2 style={{ margin: 0, marginBottom: 12, fontSize: 24, lineHeight: 1.3 }}>
+//                 {paperInfo.Title}
+//               </h2>
+//               <div style={{ fontSize: 14, lineHeight: 1.6, color: "#444", marginBottom: 12 }}>
+//                 <b>Authors</b>:{" "}
+//                 {Array.isArray(paperInfo.Authors)
+//                   ? paperInfo.Authors.join(", ")
+//                   : paperInfo.Authors || "N/A"}
+//                 <br />
+//                 <b>Source</b>: {paperInfo.Source || paperInfo.Venue || "N/A"}
+//                 <br />
+//                 <b>Year</b>: {paperInfo.Year || "N/A"}
+//                 <br />
+//                 <b>No. of Citations</b>: {paperInfo.CitationCounts || "N/A"}
+//                 <br />
+//                 <b>ID</b>: {paperInfo.ID || "N/A"}
+//               </div>
+//               <p>
+//                 <b>Abstract</b>: {paperInfo.Abstract || "N/A"}
+//               </p>
+//               <div>
+//                 <b>Keywords</b>:{" "}
+//                 {Array.isArray(paperInfo.Keywords)
+//                   ? paperInfo.Keywords.join(", ")
+//                   : paperInfo.Keywords || "N/A"}
+//               </div>
+//               <hr style={{ margin: "20px 0" }} />
+//               <Stack horizontal tokens={{ childrenGap: 8 }}>
+//                 <ActionButton
+//                   iconProps={{ iconName: "PlusCircle" }}
+//                   disabled={isInSimilarInputPapers && paperInfo ? isInSimilarInputPapers(paperInfo) : false}
+//                   onClick={() => {
+//                     if (paperInfo) {
+//                       Logger.logUIInteraction({
+//                         component: "Dialog",
+//                         action: "addToSimilarPapersFromModal",
+//                         paperId: paperInfo.ID,
+//                         paperTitle: paperInfo.Title,
+//                       });
+//                       addToSimilarInputPapers(paperInfo);
+//                       setModalState(false);
+//                     }
+//                   }}
+//                 >
+//                   Select
+//                 </ActionButton>
+//                 <ActionButton
+//                   iconProps={{ iconName: "Save" }}
+//                   onClick={() => {
+//                     if (paperInfo) {
+//                       addToSavedPapers(paperInfo);
+//                       setModalState(false);
+//                     }
+//                   }}
+//                 >
+//                   Save
+//                 </ActionButton>
+//                 <ActionButton
+//                   iconProps={{ iconName: "GraduationCap" }}
+//                   onClick={() => {
+//                     if (paperInfo && paperInfo.Title) {
+//                       const q = encodeURIComponent(paperInfo.Title);
+//                       window.open(`https://scholar.google.com/scholar?q=${q}`, "_blank", "noopener,noreferrer");
+//                     }
+//                   }}
+//                 >
+//                   Google Scholar
+//                 </ActionButton>
+//                 <ActionButton
+//                   iconProps={{ iconName: "Cancel" }}
+//                   onClick={() => setModalState(false)}
+//                 >
+//                   Close
+//                 </ActionButton>
+//               </Stack>
+//             </div>
+//           ) : (
+//             <div style={{ padding: 20, textAlign: "center" }}>Paper not found</div>
+//           )}
+//         </Modal>
+
+//     </div>
+//   );
+// });
+
+// import * as React from "react";
+// import "./../assets/scss/App.scss";
+// import { ActionButton, DefaultButton, IconButton, Modal, Stack } from "@fluentui/react";
+// import { observer } from "mobx-react";
+// import { getPaperByTitle } from "./../request";
+// import Markdown from "react-markdown";
+// import { Logger } from "../socket/logger";
+// import { API_BASE_URL } from '../config';
+
+// const baseUrl = `${API_BASE_URL}/`;
+
+// // Ensure we only reset chat state and backend memory once per page load,
+// // not every time a new chat tab (Dialog instance) mounts.
+// let hasInitializedChatMemory = false;
+
+// // Define getPaperById at the top level
+// export async function getPaperById(id: string) {
+//   const res = await fetch(`${baseUrl}getPaperById?id=${id}`);
+//   return res.json();
+// }
+
+// const parseTitleAndId = (raw: string) => {
+//   // 1) Extract ID (various formats supported)
+//   const idMatch = raw.match(/(?:<!--ID:([\w-]+)-->|\[\[ID:([^\]]+)\]\])/i);
+//   const extractedId = idMatch ? (idMatch[1] || idMatch[2]) : null;
+
+//   // 2) Extract title
+//   const titleMatch = raw.match(/Title:\s*([^\n\.<]+)/i);
+//   const title = titleMatch ? titleMatch[1].trim() : null;
+
+//   // 3) Build fallback key (only for UI, never used in backend queries)
+//   const fallbackKey = extractedId || (title
+//     ? `temp_${title.replace(/\s+/g, "_").toLowerCase()}`
+//     : `temp_raw_${raw.slice(0, 20).replace(/\s+/g, "_")}`);
+
+//   return { id: extractedId, title, key: fallbackKey };
+// };
+
+// ////////////////////////////////////////////////////////
+
+
+
+// export const Dialog = observer(({ props }) => {
+//   const {
+//     chatText,
+//     chatHistory,
+//     chatSelectedPaper,
+//     displayMessages: savedDisplayMessages,
+//     updateDialogState,
+//     addToSelectNodeIDs,
+//     addToSimilarInputPapers,
+//     addToSavedPapers,
+//     isInSimilarInputPapers,
+//     isInSavedPapers,
+//     isInSelectedNodeIDs,
+//     tabId, // <-- NEW: needed for DATA_SIGNAL sidebar feature
+//     /** From corpus Results list: add paper to "Ask" selection for next message */
+//     queuedCorpusQuestionPaper,
+//     onConsumeQueuedCorpusQuestionPaper,
+//   } = props;
+
+//   // --- SIDEBAR STATE (NEW) ---
+//   const [sidebarPapers, setSidebarPapers] = React.useState<any[]>([]);
+//   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+//   const [papersToShow, setPapersToShow] = React.useState(20);
+
+//   const [displayMessages, setDisplayMessages] = React.useState<
+//     { role: "user" | "ai"; text: string; referencedPapers?: { id: string | null; title: string }[]; hasMorePapers?: boolean }[]
+//   >(
+//     chatHistory || []
+//   );
+
+//   const [retrievedPapers, setRetrievedPapers] = React.useState<{ title: string, id: string | null, key: string }[]>([]);
+
+//   const [isWaiting, setIsWaiting] = React.useState(false);
+
+//   // Query expansion state: populated when the backend signals the query is too vague
+//   const [queryExpansion, setQueryExpansion] = React.useState<{
+//     original: string;
+//     expansions: string[];
+//   } | null>(null);
+//   // null = not editing; "" or text = "Something else" input is open
+//   const [customExpansionText, setCustomExpansionText] = React.useState<string | null>(null);
+
+//   // On first mount (including browser refresh / first visit), clear all chat
+//   // state on the frontend *and* reset backend memory so every load starts clean.
+//   // IMPORTANT: Guard with a module-level flag so opening additional chat tabs
+//   // does NOT wipe existing chats.
+//   React.useEffect(() => {
+//     if (hasInitializedChatMemory) {
+//       return;
+//     }
+//     hasInitializedChatMemory = true;
+
+//     // Clear local UI state
+//     setDisplayMessages([]);
+//     setRetrievedPapers([]);
+//     setIsWaiting(false);
+
+//     // Clear dialog store state
+//     updateDialogState({
+//       chatHistory: [],
+//       chatText: "",
+//     });
+
+//     // Clear server-side chat memory for this app instance
+//     fetch(`${baseUrl}resetMemory`, {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//     }).catch((err) => {
+//       console.error("Failed to reset memory on mount:", err);
+//     });
+//   }, []);
+
+//   // Paper info modal state
+//   const [isModalOpen, setModalState] = React.useState(false);
+//   const [paperInfo, setPaperInfo] = React.useState<any>(null);
+//   const [loadingPaperInfo, setLoadingPaperInfo] = React.useState(false);
+
+//   // Function to open paper info modal
+//   const openPaperInfoModal = async (title: string, id: string | null) => {
+//     setLoadingPaperInfo(true);
+//     setModalState(true);
+
+//     try {
+//       let paper = null;
+//       if (id) {
+//         paper = await getPaperById(id);
+//       } else {
+//         const papers = await getPaperByTitle(title);
+//         paper = papers.length > 0 ? papers[0] : null;
+//       }
+
+//       if (paper) {
+//         setPaperInfo(paper);
+//         Logger.logUIInteraction({
+//           component: "Dialog",
+//           action: "paperInfoModalOpen",
+//           paperTitle: title,
+//           paperId: paper.ID || id,
+//         });
+//       } else {
+//         setPaperInfo(null);
+//       }
+//     } catch (error) {
+//       console.error("Error fetching paper info:", error);
+//       setPaperInfo(null);
+//     }
+//     setLoadingPaperInfo(false);
+//   };
+
+//   React.useEffect(() => {
+//     setDisplayMessages(chatHistory || []);
+//   }, [chatHistory]);
+
+//   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+//   /** Local draft so typing does not call updateDialogState → App re-render on every key */
+//   const [draftChatText, setDraftChatText] = React.useState(() => chatText ?? "");
+//   React.useEffect(() => {
+//     setDraftChatText(chatText ?? "");
+//   }, [chatText]);
+
+//   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+//   const prevMessageCountRef = React.useRef(0);
+
+//   // When switching chat window, scroll to latest content
+//   React.useEffect(() => {
+//     if (messagesEndRef.current) {
+//       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+//     }
+//   }, [tabId]);
+
+//   // Scroll to bottom only when the user sends a new message (not while model is generating)
+//   React.useEffect(() => {
+//     const prevLen = prevMessageCountRef.current;
+//     prevMessageCountRef.current = displayMessages.length;
+//     const addedMessage = displayMessages.length > prevLen;
+//     const lastIsUser = displayMessages.length > 0 && displayMessages[displayMessages.length - 1].role === "user";
+//     if (addedMessage && lastIsUser && messagesEndRef.current) {
+//       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+//     }
+
+//     // Reset button states when a new AI message is added
+//     if (displayMessages.length > 0 && displayMessages[displayMessages.length - 1].role === "ai") {
+//       setButtonsClicked({ locateAll: false, addAll: false, saveAll: false });
+//     }
+//   }, [displayMessages]);
+
+//   // Handle Enter key to send message
+//   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+//     if (e.key === "Enter" && !e.shiftKey) {
+//       e.preventDefault();
+//       if (draftChatText.trim()) {
+//         Logger.logUIInteraction({
+//           component: "Dialog",
+//           action: "askButtonClick",
+//           value: draftChatText,
+//           chatHistoryLength: chatHistory.length,
+//           trigger: "enter_key",
+//         });
+//         chatRequest();
+//       }
+//     }
+//   };
+
+//   const onChangeChatText = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+//     const newText = e.target.value;
+//     setDraftChatText(newText);
+
+//     // Auto-grow the textarea up to ~3 lines, then scroll
+//     if (textareaRef.current) {
+//       const el = textareaRef.current;
+//       el.style.height = "auto";
+//       const lineHeight = 24; // keep in sync with CSS line-height
+//       const maxHeight = lineHeight * 3;
+//       const newHeight = Math.min(el.scrollHeight, maxHeight);
+//       el.style.height = `${newHeight}px`;
+//       el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+//     }
+//   };
+
+//   const currentAIResponseText = React.useCallback(() => {
+//     for (let i = displayMessages.length - 1; i >= 0; i--) {
+//       if (displayMessages[i].role === "ai") return displayMessages[i].text || "";
+//     }
+//     return "";
+//   }, [displayMessages]);
+
+//   // Extract all papers from the current AI response
+//   const extractAllPapers = React.useCallback(() => {
+//     const text = currentAIResponseText();
+//     const papers: { title: string; id: string | null }[] = [];
+
+//     const titlePattern = /\*\*Title:\*\*\s*([^\[]+)\s*\[\[ID:([^\]]+)\]\]/gi;
+//     let match;
+
+//     while ((match = titlePattern.exec(text)) !== null) {
+//       const title = match[1].trim();
+//       const id = match[2].trim();
+//       papers.push({ title, id });
+//     }
+
+//     const listPattern = /Title:\s*([^\[]+)\s*\[\[ID:([^\]]+)\]\]/gi;
+//     while ((match = listPattern.exec(text)) !== null) {
+//       const title = match[1].trim();
+//       const id = match[2].trim();
+//       if (!papers.some(p => p.id === id)) {
+//         papers.push({ title, id });
+//       }
+//     }
+
+//     return papers;
+//   }, [currentAIResponseText]);
+
+//   // State to track which buttons have been clicked
+//   const [buttonsClicked, setButtonsClicked] = React.useState({
+//     locateAll: false,
+//     addAll: false,
+//     saveAll: false
+//   });
+
+//   // Papers the user wants to reference explicitly in their next question
+//   const [selectedQuestionPapers, setSelectedQuestionPapers] = React.useState<
+//     { id: string | null; title: string }[]
+//   >([]);
+
+//   const toggleQuestionPaper = React.useCallback(
+//     (paper: { id: string | null; title: string }) => {
+//       setSelectedQuestionPapers((prev) => {
+//         const exists = prev.some(
+//           (p) => (p.id && p.id === paper.id) || (!p.id && p.title === paper.title)
+//         );
+//         if (exists) {
+//           return prev.filter(
+//             (p) => !((p.id && p.id === paper.id) || (!p.id && p.title === paper.title))
+//           );
+//         }
+//         return [...prev, paper];
+//       });
+//     },
+//     []
+//   );
+
+//   // Results list "Ask" queues a paper; ref avoids duplicate toggles under React Strict Mode
+//   const consumedCorpusAskTokenRef = React.useRef<number | null>(null);
+//   React.useEffect(() => {
+//     const q = queuedCorpusQuestionPaper;
+//     if (!q) {
+//       return;
+//     }
+//     if (consumedCorpusAskTokenRef.current === q.token) {
+//       return;
+//     }
+//     consumedCorpusAskTokenRef.current = q.token;
+//     toggleQuestionPaper({
+//       id: String(q.id),
+//       title: q.title,
+//     });
+//     onConsumeQueuedCorpusQuestionPaper?.();
+//     // Only re-run when a new queue token is set
+//     // eslint-disable-next-line react-hooks/exhaustive-deps
+//   }, [queuedCorpusQuestionPaper?.token, toggleQuestionPaper]);
+
+//   const clearSelectedQuestionPapers = React.useCallback(() => {
+//     setSelectedQuestionPapers([]);
+//   }, []);
+
+//   const buildQuestionPrompt = React.useCallback(
+//     (questionText: string) => {
+//       if (!selectedQuestionPapers.length) {
+//         return questionText;
+//       }
+//       const headerLines = selectedQuestionPapers.map((p, idx) =>
+//         `${idx + 1}. ${p.title}${p.id ? ` (ID: ${p.id})` : ""}`
+//       );
+//       const header = `Selected papers:\n${headerLines.join("\n")}`;
+//       return `${header}\n\nQuestion: ${questionText}`;
+//     },
+//     [selectedQuestionPapers]
+//   );
+
+
+//   // Core chat sender used by both the text box and inline "Load more" link.
+//   const sendChat = (text: string) => {
+//     if (!text.trim()) return;
+
+//     // Clear any pending expansion panel before sending the new message
+//     setQueryExpansion(null);
+
+//     // Combine any selected papers with the user's question so the model
+//     // sees both the paper titles and the free-form question.
+//     const finalText = buildQuestionPrompt(text);
+
+//     // Draft is local-only while typing; parent chatText often stays "" so the
+//     // sync effect does not run — clear the textarea immediately on send.
+//     setDraftChatText("");
+
+//     // 1. Clear previous retrieval state
+//     setRetrievedPapers([]);
+//     setIsWaiting(true);
+
+//     // 2. Optimistically add the USER message to the UI immediately (displaying only the question text)
+//     const userMessage = {
+//       role: "user" as const,
+//       text,
+//       referencedPapers: selectedQuestionPapers.length ? [...selectedQuestionPapers] : undefined,
+//     };
+
+//     updateDialogState((prev: any) => ({
+//       chatHistory: [...prev.chatHistory, userMessage],
+//       chatText: "", // clear the input box
+//     }));
+
+//     // Reset input height back to one row and clear selected papers after sending
+//     if (textareaRef.current) {
+//       textareaRef.current.style.height = "";
+//       textareaRef.current.style.overflowY = "hidden";
+//     }
+//     clearSelectedQuestionPapers();
+
+//     const baseHistory = [...chatHistory, userMessage];
+
+//     // 3. Start the Fetch Request
+//     fetch(`${baseUrl}chat`, {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({
+//         chat_id: tabId,
+//         text: finalText,
+//         chat_history_raw: baseHistory,
+//       }),
+//     }).then((response) => {
+//       if (!response.body) return;
+//       const reader = response.body.getReader();
+//       const decoder = new TextDecoder("utf-8");
+
+//       let partialResponse = "";
+//       let isFirstChunk = true;
+
+//       const readChunk = ({ done, value }: ReadableStreamReadResult<Uint8Array>) => {
+//         const SIGNAL_SHOW_LOAD_MORE = "[SIGNAL:SHOW_LOAD_MORE]";
+//         const signalRegex = new RegExp(
+//           "\\s*" + SIGNAL_SHOW_LOAD_MORE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*",
+//           "g"
+//         );
+
+//         // --- CASE A: Stream is Finished ---
+//         if (done) {
+//           // Append any final chunk (signal or text often arrives with done=true)
+//           if (value && value.length > 0) {
+//             partialResponse += decoder.decode(value);
+//           }
+//           setIsWaiting(false);
+
+//           // Persist "load more" when backend sent signal OR when response looks like a paper list (fallback)
+//           const HAS_MORE_MARKER = "[[HAS_MORE_PAPERS]]";
+//           const hadSignal = partialResponse.includes(SIGNAL_SHOW_LOAD_MORE);
+//           const looksLikePaperList = /Title:\s*/i.test(partialResponse) && /\[\[ID:[^\]]+\]\]/.test(partialResponse);
+//           if (hadSignal || looksLikePaperList) {
+//             const cleaned = hadSignal ? partialResponse.replace(signalRegex, "").trim() : partialResponse.trim();
+//             const textWithMarker = cleaned + "\n" + HAS_MORE_MARKER;
+//             if (hadSignal) partialResponse = cleaned;
+//             updateDialogState((prev: any) => {
+//               const history = [...(prev.chatHistory || [])];
+//               const lastIdx = history.length - 1;
+//               if (lastIdx >= 0 && history[lastIdx].role === "ai") {
+//                 history[lastIdx] = { ...history[lastIdx], text: textWithMarker, hasMorePapers: true };
+//               }
+//               return { chatHistory: history };
+//             });
+//           }
+
+//           const papers: { title: string; id: string | null; key: string }[] = [];
+//           const lines = partialResponse.split("\n");
+
+//           for (const line of lines) {
+//             const { id, title, key } = parseTitleAndId(line);
+//             if (key && !papers.some((p) => p.key === key)) {
+//               if (title) papers.push({ id, title, key });
+//             }
+//           }
+//           console.log("Stream complete. Papers found:", papers);
+//           setRetrievedPapers(papers);
+//           return;
+//         }
+
+//         // --- CASE B: Process New Chunk ---
+//         let newTextChunk = decoder.decode(value);
+
+//         // --- INTERCEPT SIGNAL TAGS (e.g. [SIGNAL:SHOW_LOAD_MORE]) ---
+//         if (newTextChunk.includes(SIGNAL_SHOW_LOAD_MORE)) {
+//           newTextChunk = newTextChunk.replace(signalRegex, "");
+//         }
+
+//         // --- INTERCEPT QUERY EXPANSION SIGNAL ---
+//         const EXPANSION_PREFIX = "[SIGNAL:QUERY_EXPANSION:";
+//         if (newTextChunk.includes(EXPANSION_PREFIX)) {
+//           const startIdx = newTextChunk.indexOf(EXPANSION_PREFIX);
+//           const jsonStart = startIdx + EXPANSION_PREFIX.length;
+//           // Walk forward to find matching closing brace of the JSON object
+//           let depth = 0;
+//           let jsonEnd = -1;
+//           for (let i = jsonStart; i < newTextChunk.length; i++) {
+//             if (newTextChunk[i] === "{") depth++;
+//             else if (newTextChunk[i] === "}") { depth--; if (depth === 0) { jsonEnd = i + 1; break; } }
+//           }
+//           if (jsonEnd > 0) {
+//             try {
+//               const data = JSON.parse(newTextChunk.slice(jsonStart, jsonEnd));
+//               if (data.expansions?.length) {
+//                 setQueryExpansion({ original: data.original ?? "", expansions: data.expansions });
+//               }
+//             } catch (_) { /* malformed JSON — ignore */ }
+//             // Strip the entire signal tag from the chunk (including the closing ])
+//             const tagEnd = newTextChunk.indexOf("]", jsonEnd) + 1;
+//             newTextChunk = newTextChunk.slice(0, startIdx) + (tagEnd > 0 ? newTextChunk.slice(tagEnd) : "");
+//           }
+//         }
+
+//         // --- REGULAR TEXT STREAM (after signals stripped) ---
+//         partialResponse += newTextChunk;
+
+//         if (isFirstChunk) {
+//           setIsWaiting(false);
+
+//           // Only open an AI bubble if there is actual text to display.
+//           // When the only content was the expansion signal the chunk is now empty.
+//           // isFirstChunk must stay true until we have actual text so that the
+//           // bubble gets created on the first non-empty chunk, not on a signal-only chunk.
+//           if (newTextChunk.trim()) {
+//             isFirstChunk = false;
+//             updateDialogState((prev: any) => ({
+//               chatHistory: [...prev.chatHistory, { role: "ai", text: "" }],
+//             }));
+//           }
+//         }
+
+//         if (newTextChunk.trim()) {
+//           updateDialogState((prev: any) => {
+//             const historyCopy = [...prev.chatHistory];
+//             const lastMsgIndex = historyCopy.length - 1;
+//             const lastMsg = historyCopy[lastMsgIndex];
+
+//             if (lastMsg && lastMsg.role === "ai") {
+//               let newText = lastMsg.text + newTextChunk;
+//               newText = newText.replace(signalRegex, ""); // strip signal (handles split across chunks)
+//               historyCopy[lastMsgIndex] = {
+//                 ...lastMsg,
+//                 text: newText,
+//               };
+//             }
+//             return { chatHistory: historyCopy };
+//           });
+//         }
+
+//         reader.read().then(readChunk);
+//       };
+
+//       reader.read().then(readChunk);
+//     }).catch(err => {
+//       console.error("Stream error:", err);
+//       setIsWaiting(false);
+//     });
+//   };
+
+//   // --- Public handler for the text box / Ask button ---
+//   const chatRequest = () => {
+//     if (!draftChatText.trim()) return;
+//     sendChat(draftChatText);
+//   };
+
+
+
+//   const extractText = (children: React.ReactNode): string => {
+//     if (typeof children === "string") return children;
+//     if (Array.isArray(children)) {
+//       return children.map((child) => extractText(child)).join(" ");
+//     }
+//     if (React.isValidElement(children)) {
+//       return extractText(children.props.children);
+//     }
+//     return "";
+//   };
+
+//   const renderPaperBlock = (title: string, id: string | null, raw: string) => {
+//     // 1. If it's not a valid paper title line, just render cleaned text
+//     if (!title || title === raw || !/Title:\s*[^\n]+/i.test(raw)) {
+//       const cleaned = raw.replace(/\[\[ID:[^\]]+\]\]/g, "");
+//       return <span>{cleaned}</span>;
+//     }
+
+//     // 2. Clean the title (remove ID tags)
+//     const cleanTitle = title.replace(/\[\[ID:[^\]]+\]\]/g, "").trim();
+
+//     // 3. Extract the Summary
+//     const summary = raw
+//       .replace(/\*\*Title:[\s\S]*?\[\[ID:[^\]]+\]\]\*\*/gi, "")
+//       .replace(/Title:\s*[^\n]+/gi, "")
+//       .replace(/<!--ID:[^>]+-->/g, "")
+//       .replace(/\[\[ID:[^\]]+\]\]/g, "")
+//       .trim();
+
+//     const paperObj = { ID: id };
+//     const isAlreadySelected = id && isInSelectedNodeIDs && isInSelectedNodeIDs(id);
+//     const isAlreadyInSimilar = id && isInSimilarInputPapers && isInSimilarInputPapers(paperObj);
+//     const isAlreadySaved = id && isInSavedPapers && isInSavedPapers(paperObj);
+//     const isInQuestionList = selectedQuestionPapers.some(
+//       (p) => (p.id && p.id === id) || (!p.id && p.title === cleanTitle)
+//     );
+
+//     return (
+//       <div style={{ marginBottom: "0.5em" }}>
+//         <span
+//           style={{ color: "blue", fontWeight: "bold", cursor: "pointer" }}
+//           onClick={() => {
+//             Logger.logUIInteraction({
+//               component: "Dialog",
+//               action: "selectPaperFromResponse",
+//               paperTitle: title,
+//               previousSelectedPaper: chatSelectedPaper,
+//               paperId: id || undefined,
+//             });
+//             updateDialogState({ chatSelectedPaper: title });
+//             openPaperInfoModal(title, id);
+//           }}
+//         >
+//           {cleanTitle}
+//         </span>
+
+//         <div style={{ marginTop: "0.2em" }}>
+//           <DefaultButton
+//             iconProps={{ iconName: isInQuestionList ? "Cancel" : "Chat" }}
+//             text={isInQuestionList ? "" : "Ask"}
+//             styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
+//             onClick={() => toggleQuestionPaper({ id, title: cleanTitle })}
+//           />
+
+//           <DefaultButton
+//             iconProps={{ iconName: "Locate" }}
+//             styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
+//             disabled={isAlreadySelected}
+//             onClick={() => {
+//               if (id) {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "locateSelectedPaper",
+//                   paperTitle: title,
+//                   paperId: id,
+//                 });
+//                 getPaperById(id).then((paper) => {
+//                   if (paper && paper["ID"] != null) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "locateSelectedPaperSuccess",
+//                       paperTitle: title,
+//                       paperId: paper["ID"],
+//                       via: "id",
+//                     });
+//                     addToSelectNodeIDs([paper["ID"]], "scatterplot");
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "locateSelectedPaperNotFound",
+//                       paperTitle: title,
+//                       paperId: id,
+//                       via: "id",
+//                     });
+//                   }
+//                 });
+//               } else {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "locateSelectedPaper",
+//                   paperTitle: title,
+//                 });
+//                 getPaperByTitle(title).then((papers) => {
+//                   if (papers.length > 0) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "locateSelectedPaperSuccess",
+//                       paperTitle: title,
+//                       paperId: papers[0].ID,
+//                       papersFound: papers.length,
+//                       via: "title",
+//                     });
+//                     addToSelectNodeIDs(papers.map((d) => d["ID"]), "scatterplot");
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "locateSelectedPaperNotFound",
+//                       paperTitle: title,
+//                       via: "title",
+//                     });
+//                   }
+//                 });
+//               }
+//             }}
+//           />
+
+//           <DefaultButton
+//             iconProps={{ iconName: "PlusCircle" }}
+//             styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
+//             disabled={isAlreadyInSimilar}
+//             onClick={() => {
+//               if (id) {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "addSelectedPaperToSimilarInput",
+//                   paperTitle: title,
+//                   paperId: id,
+//                 });
+//                 getPaperById(id).then((paper) => {
+//                   if (paper) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "addSelectedPaperToSimilarInputSuccess",
+//                       paperTitle: title,
+//                       paperId: paper["ID"],
+//                     });
+//                     addToSimilarInputPapers(paper);
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "addSelectedPaperToSimilarInputNotFound",
+//                       paperTitle: title,
+//                       paperId: id,
+//                     });
+//                   }
+//                 });
+//               } else {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "addSelectedPaperToSimilarInput",
+//                   paperTitle: title,
+//                 });
+//                 getPaperByTitle(title).then((papers) => {
+//                   if (papers.length > 0) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "addSelectedPaperToSimilarInputSuccess",
+//                       paperTitle: title,
+//                       paperId: papers[0].ID,
+//                       papersFound: papers.length,
+//                       via: "title",
+//                     });
+//                     addToSimilarInputPapers(papers[0]);
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "addSelectedPaperToSimilarInputNotFound",
+//                       paperTitle: title,
+//                     });
+//                   }
+//                 });
+//               }
+//             }}
+//           />
+
+//           <DefaultButton
+//             iconProps={{ iconName: "Save" }}
+//             styles={{ root: { minWidth: 0 } }}
+//             disabled={isAlreadySaved}
+//             onClick={() => {
+//               if (id) {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "saveSelectedPaper",
+//                   paperTitle: title,
+//                   paperId: id,
+//                 });
+//                 getPaperById(id).then((paper) => {
+//                   if (paper) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "saveSelectedPaperSuccess",
+//                       paperTitle: title,
+//                       paperId: paper["ID"],
+//                     });
+//                     addToSavedPapers(paper);
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "saveSelectedPaperNotFound",
+//                       paperTitle: title,
+//                       paperId: id,
+//                     });
+//                   }
+//                 });
+//               } else {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "saveSelectedPaper",
+//                   paperTitle: title,
+//                 });
+//                 getPaperByTitle(title).then((papers) => {
+//                   if (papers.length > 0) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "saveSelectedPaperSuccess",
+//                       paperTitle: title,
+//                       paperId: papers[0].ID,
+//                       papersFound: papers.length,
+//                       via: "title",
+//                     });
+//                     addToSavedPapers(papers[0]);
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "saveSelectedPaperNotFound",
+//                       paperTitle: title,
+//                     });
+//                   }
+//                 });
+//               }
+//             }}
+//           />
+//         </div>
+//         {/* Render the extracted summary text */}
+//         {summary && (
+//           <div
+//             style={{
+//               color: "#333",
+//               fontSize: "0.95rem",
+//               lineHeight: "1.5em",
+//               whiteSpace: "pre-wrap",
+//               marginLeft: "0.2em",
+//               marginTop: "0.5em"
+//             }}
+//           >
+//             {summary}
+//           </div>
+//         )}
+//       </div>
+//     );
+//   };
+
+
+//   return (
+//     <div className="app-container" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, width: "100%", overflow: "hidden" }}>
+
+//       {/* 1. SCROLLABLE AREA: Conversation (sidebar disabled) */}
+//       <div className="chat-content-row">
+//         {displayMessages.length === 0 && !isWaiting ? (
+//           <div className="chat-empty-state" role="status" aria-live="polite">
+//             <p>Type below to start the conversation.</p>
+//           </div>
+//         ) : (
+//         <div className="chat-messages">
+//           {displayMessages.map((msg, idx) => {
+//             const isLastAiMessage = msg.role === "ai" && idx === displayMessages.length - 1;
+//             return (
+//             <div key={idx} className={`chat-bubble ${msg.role}`}>
+//               {msg.role === "user" ? (
+//                 <div>
+//                   {msg.referencedPapers && msg.referencedPapers.length > 0 && (
+//                     <div style={{ marginBottom: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
+//                       {msg.referencedPapers.map((p) => (
+//                         <div
+//                           key={p.id || p.title}
+//                           style={{
+//                             display: "inline-flex",
+//                             alignItems: "center",
+//                             padding: "2px 6px",
+//                             borderRadius: 10,
+//                             background: "var(--color-primary-light)",
+//                             color: "var(--color-primary)",
+//                             fontSize: "0.75rem",
+//                             maxWidth: "100%",
+//                           }}
+//                         >
+//                           <span
+//                             style={{
+//                               cursor: "pointer",
+//                               overflow: "hidden",
+//                               textOverflow: "ellipsis",
+//                               whiteSpace: "nowrap",
+//                               maxWidth: 220,
+//                             }}
+//                             onClick={() => openPaperInfoModal(p.title, p.id)}
+//                           >
+//                             {p.title}
+//                           </span>
+//                         </div>
+//                       ))}
+//                     </div>
+//                   )}
+//                   {msg.text}
+//                 </div>
+//               ) : (
+//                 <div>
+//                   {(() => {
+//                     const HAS_MORE_MARKER = "[[HAS_MORE_PAPERS]]";
+//                     const rawText = msg.text || "";
+//                     const hasMarkerOrFlag = msg.hasMorePapers || rawText.includes(HAS_MORE_MARKER);
+//                     const looksLikePaperList = /Title:\s*/i.test(rawText) && /\[\[ID:[^\]]+\]\]/.test(rawText);
+//                     const hasLoadMore = hasMarkerOrFlag || (isLastAiMessage && looksLikePaperList);
+//                     const displayText = rawText.replace(new RegExp("\\s*" + HAS_MORE_MARKER.replace(/[[\]]/g, "\\$&") + "\\s*", "g"), "").trim();
+//                     return (
+//                       <>
+//                         <Markdown
+//                           components={{
+//                             p: ({ node, children }) => {
+//                               const raw = extractText(children);
+//                               const { title, id } = parseTitleAndId(raw);
+//                               if (/Title:\s*/i.test(raw)) {
+//                                 return renderPaperBlock(title, id, raw);
+//                               }
+//                               return <p>{raw.replace(/\[\[ID:[^\]]+\]\]/g, "")}</p>;
+//                             },
+
+//                             strong: ({ node, ...props }) => {
+//                               const raw = extractText(props.children);
+//                               const { title, id } = parseTitleAndId(raw);
+//                               if (/Title:\s*/i.test(raw)) {
+//                                 return renderPaperBlock(title, id, raw);
+//                               }
+//                               return <strong>{raw.replace(/\[\[ID:[^\]]+\]\]/g, "")}</strong>;
+//                             },
+
+//                             li: ({ node, children }) => {
+//                               const raw = extractText(children);
+//                               const { title, id } = parseTitleAndId(raw);
+//                               if (/Title:\s*/i.test(raw)) {
+//                                 return renderPaperBlock(title, id, raw);
+//                               }
+//                               return <li>{raw.replace(/\[\[ID:[^\]]+\]\]/g, "")}</li>;
+//                             },
+
+//                           }}
+//                         >
+//                           {displayText}
+//                         </Markdown>
+//                         {hasLoadMore && (
+//                           <div style={{ marginTop: 8 }}>
+//                             <a
+//                               style={{ cursor: "pointer", color: "#0078d4", textDecoration: "underline" }}
+//                               onClick={() => sendChat("Load more papers from this search.")}
+//                             >
+//                               Load more papers
+//                             </a>
+//                           </div>
+//                         )}
+//                       </>
+//                     );
+//                   })()}
+//                 </div>
+//               )}
+//             </div>
+//           );
+//           })}
+
+//           {/* Query expansion card — shown when the backend deems the query too vague */}
+//           {queryExpansion && (
+//             <div style={{
+//               background: "#fff",
+//               borderRadius: 16,
+//               boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+//               border: "1px solid #ebebeb",
+//               padding: "20px 24px",
+//               margin: "12px 0",
+//             }}>
+//               {/* Header */}
+//               <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 4 }}>
+//                 <span style={{ flex: 1, fontSize: "0.975rem", fontWeight: 500, color: "#1a1a1a", lineHeight: 1.4 }}>
+//                   Which aspect of <em>"{queryExpansion.original}"</em> are you looking for?
+//                 </span>
+//                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+//                   <span style={{ fontSize: "0.78rem", color: "#aaa", whiteSpace: "nowrap" }}>
+//                     {queryExpansion.expansions.length} suggestions
+//                   </span>
+//                   <IconButton
+//                     iconProps={{ iconName: "Cancel" }}
+//                     styles={{ root: { width: 28, height: 28, color: "#aaa" } }}
+//                     title="Dismiss"
+//                     onClick={() => { setQueryExpansion(null); setCustomExpansionText(null); }}
+//                   />
+//                 </div>
+//               </div>
+
+//               {/* Numbered options */}
+//               {queryExpansion.expansions.map((exp: string, i: number) => (
+//                 <div
+//                   key={i}
+//                   style={{
+//                     display: "flex",
+//                     alignItems: "center",
+//                     gap: 12,
+//                     padding: "11px 0",
+//                     borderTop: "1px solid #f2f2f2",
+//                     cursor: "pointer",
+//                   }}
+//                   onClick={() => sendChat(exp)}
+//                   onMouseEnter={(e: React.MouseEvent<HTMLDivElement>) => (e.currentTarget.style.background = "#fafafa")}
+//                   onMouseLeave={(e: React.MouseEvent<HTMLDivElement>) => (e.currentTarget.style.background = "transparent")}
+//                 >
+//                   <div style={{
+//                     width: 28, height: 28, borderRadius: "50%",
+//                     background: "#f0f0f0", display: "flex", alignItems: "center",
+//                     justifyContent: "center", fontSize: "0.82rem", fontWeight: 600,
+//                     color: "#555", flexShrink: 0,
+//                   }}>
+//                     {i + 1}
+//                   </div>
+//                   <span style={{ flex: 1, fontSize: "0.92rem", color: "#1a1a1a" }}>{exp}</span>
+//                   <span style={{ color: "#ccc", fontSize: "1.1rem", lineHeight: 1 }}>›</span>
+//                 </div>
+//               ))}
+
+//               {/* "Something else" custom input row */}
+//               <div style={{
+//                 display: "flex", alignItems: "center", gap: 12,
+//                 padding: "11px 0", borderTop: "1px solid #f2f2f2",
+//               }}>
+//                 <div style={{
+//                   width: 28, height: 28, borderRadius: "50%",
+//                   background: "#f0f0f0", display: "flex", alignItems: "center",
+//                   justifyContent: "center", flexShrink: 0,
+//                 }}>
+//                   <span style={{ fontSize: "0.85rem", color: "#888" }}>✏</span>
+//                 </div>
+//                 {customExpansionText !== null ? (
+//                   <input
+//                     autoFocus
+//                     style={{
+//                       flex: 1, border: "none", outline: "none",
+//                       fontSize: "0.92rem", color: "#1a1a1a", background: "transparent",
+//                     }}
+//                     placeholder="Type your own query and press Enter…"
+//                     value={customExpansionText}
+//                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomExpansionText(e.target.value)}
+//                     onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+//                       if (e.key === "Enter" && customExpansionText.trim()) sendChat(customExpansionText);
+//                       if (e.key === "Escape") setCustomExpansionText(null);
+//                     }}
+//                   />
+//                 ) : (
+//                   <span
+//                     style={{ flex: 1, fontSize: "0.92rem", color: "#aaa", cursor: "text" }}
+//                     onClick={() => setCustomExpansionText("")}
+//                   >
+//                     Something else
+//                   </span>
+//                 )}
+//                 <DefaultButton
+//                   text="Skip"
+//                   styles={{
+//                     root: { minWidth: 0, borderRadius: 20, padding: "0 14px", height: 32, border: "1px solid #ddd" },
+//                     label: { fontSize: "0.82rem", color: "#555", fontWeight: 400 },
+//                   }}
+//                   onClick={() => sendChat(queryExpansion.original)}
+//                 />
+//               </div>
+//             </div>
+//           )}
+
+//           {isWaiting && (
+//             <div className="chat-bubble ai">
+//               <span className="spinner"></span> THINKING...
+//             </div>
+//           )}
+
+//           <div ref={messagesEndRef} />
+//         </div>
+//         )}
+
+//       </div>{/* end chat-content-row */}
+
+//       {/* 3. FIXED BOTTOM: Selected papers + input bar + action buttons */}
+//       <div className="chat-input-area">
+//           {selectedQuestionPapers.length > 0 && (
+//             <div style={{ marginBottom: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+//               {selectedQuestionPapers.map((p) => (
+//                 <div
+//                   key={p.id || p.title}
+//                   style={{
+//                     display: "inline-flex",
+//                     alignItems: "center",
+//                     padding: "4px 8px",
+//                     borderRadius: 12,
+//                     background: "var(--color-primary-light)",
+//                     color: "var(--color-primary)",
+//                     fontSize: "0.8rem",
+//                     maxWidth: "100%",
+//                   }}
+//                 >
+//                   <span
+//                     style={{
+//                       cursor: "pointer",
+//                       overflow: "hidden",
+//                       textOverflow: "ellipsis",
+//                       whiteSpace: "nowrap",
+//                       maxWidth: 220,
+//                     }}
+//                     onClick={() => openPaperInfoModal(p.title, p.id)}
+//                   >
+//                     {p.title}
+//                   </span>
+//                   <IconButton
+//                     styles={{ root: { marginLeft: 4, width: 20, height: 20 } }}
+//                     iconProps={{ iconName: "Cancel" }}
+//                     onClick={() => toggleQuestionPaper(p)}
+//                   />
+//                 </div>
+//               ))}
+//             </div>
+//           )}
+
+//           <div className="chat-input-row">
+//             <textarea
+//               ref={textareaRef}
+//               className="chat-input"
+//               value={draftChatText}
+//               onChange={onChangeChatText}
+//               onKeyDown={onKeyDown}
+//               placeholder="Type your message"
+//               rows={1}
+//             />
+//             <DefaultButton
+//               className="iconButton"
+//               styles={{ root: { padding: "0 1rem", minWidth: 0 } }}
+//               onClick={() => {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "askButtonClick",
+//                   value: draftChatText,
+//                   chatHistoryLength: chatHistory.length,
+//                 });
+//                 chatRequest();
+//               }}
+//               iconProps={{ iconName: "Rocket" }}
+//               text="Ask"
+//             />
+//           </div>
+
+//           <div className="chat-action-row" style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: '4px' }}>
+//             <DefaultButton
+//               text="ALL"
+//               iconProps={{ iconName: "Locate" }}
+//               styles={{ root: { minWidth: 0, padding: "0 6px" } }}
+//               disabled={buttonsClicked.locateAll}
+//               onClick={async () => {
+//                 const papers = extractAllPapers();
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "selectAllPapers",
+//                   responseLength: currentAIResponseText().length,
+//                   paperCount: papers.length,
+//                 });
+
+//                 if (papers.length === 0) {
+//                   console.log("No papers found in response");
+//                   return;
+//                 }
+
+//                 const paperIds: string[] = [];
+//                 for (const paper of papers) {
+//                   if (paper.id) {
+//                     paperIds.push(paper.id);
+//                   }
+//                 }
+
+//                 if (paperIds.length > 0) {
+//                   addToSelectNodeIDs(paperIds, "scatterplot");
+//                   setButtonsClicked(prev => ({ ...prev, locateAll: true }));
+//                 }
+//               }}
+//             />
+//             <DefaultButton
+//               text="ALL"
+//               iconProps={{ iconName: "PlusCircle" }}
+//               styles={{ root: { minWidth: 0, padding: "0 6px" } }}
+//               disabled={buttonsClicked.addAll}
+//               onClick={async () => {
+//                 const papers = extractAllPapers();
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "addAllToSimilarInputPapers",
+//                   responseLength: currentAIResponseText().length,
+//                   paperCount: papers.length,
+//                 });
+
+//                 if (papers.length === 0) {
+//                   console.log("No papers found in response");
+//                   return;
+//                 }
+
+//                 for (const paper of papers) {
+//                   if (paper.id) {
+//                     try {
+//                       const paperObj = await getPaperById(paper.id);
+//                       if (paperObj) {
+//                         addToSimilarInputPapers(paperObj);
+//                       }
+//                     } catch (e) {
+//                       console.error(`Failed to fetch paper ${paper.id}:`, e);
+//                     }
+//                   }
+//                 }
+//                 setButtonsClicked(prev => ({ ...prev, addAll: true }));
+//               }}
+//             />
+//             <DefaultButton
+//               text="ALL"
+//               iconProps={{ iconName: "Save" }}
+//               styles={{ root: { minWidth: 0, padding: "0 6px" } }}
+//               disabled={buttonsClicked.saveAll}
+//               onClick={async () => {
+//                 const papers = extractAllPapers();
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "saveAllPapers",
+//                   responseLength: currentAIResponseText().length,
+//                   paperCount: papers.length,
+//                 });
+
+//                 if (papers.length === 0) {
+//                   console.log("No papers found in response");
+//                   return;
+//                 }
+
+//                 for (const paper of papers) {
+//                   if (paper.id) {
+//                     try {
+//                       const paperObj = await getPaperById(paper.id);
+//                       if (paperObj) {
+//                         addToSavedPapers(paperObj);
+//                       }
+//                     } catch (e) {
+//                       console.error(`Failed to fetch paper ${paper.id}:`, e);
+//                     }
+//                   }
+//                 }
+//                 setButtonsClicked(prev => ({ ...prev, saveAll: true }));
+//               }}
+//             />
+//           </div>
+//         </div>
+
+//         {/* Paper Info Modal */}
+//         <Modal
+//           isOpen={isModalOpen}
+//           onDismiss={() => setModalState(false)}
+//           isBlocking={false}
+//           styles={{
+//             main: {
+//               maxWidth: 720,
+//               padding: 32,
+//               borderRadius: 16,
+//               boxShadow: "0 16px 40px rgba(0,0,0,0.25)",
+//             },
+//           }}
+//         >
+//           {loadingPaperInfo ? (
+//             <div style={{ padding: 20, textAlign: "center" }}>Loading details...</div>
+//           ) : paperInfo ? (
+//             <div style={{ maxHeight: "70vh", overflowY: "auto" }}>
+//               <h2 style={{ margin: 0, marginBottom: 12, fontSize: 24, lineHeight: 1.3 }}>
+//                 {paperInfo.Title}
+//               </h2>
+//               <div style={{ fontSize: 14, lineHeight: 1.6, color: "#444", marginBottom: 12 }}>
+//                 <b>Authors</b>:{" "}
+//                 {Array.isArray(paperInfo.Authors)
+//                   ? paperInfo.Authors.join(", ")
+//                   : paperInfo.Authors || "N/A"}
+//                 <br />
+//                 <b>Source</b>: {paperInfo.Source || paperInfo.Venue || "N/A"}
+//                 <br />
+//                 <b>Year</b>: {paperInfo.Year || "N/A"}
+//                 <br />
+//                 <b>No. of Citations</b>: {paperInfo.CitationCounts || "N/A"}
+//                 <br />
+//                 <b>ID</b>: {paperInfo.ID || "N/A"}
+//               </div>
+//               <p>
+//                 <b>Abstract</b>: {paperInfo.Abstract || "N/A"}
+//               </p>
+//               <div>
+//                 <b>Keywords</b>:{" "}
+//                 {Array.isArray(paperInfo.Keywords)
+//                   ? paperInfo.Keywords.join(", ")
+//                   : paperInfo.Keywords || "N/A"}
+//               </div>
+//               <hr style={{ margin: "20px 0" }} />
+//               <Stack horizontal tokens={{ childrenGap: 8 }}>
+//                 <ActionButton
+//                   iconProps={{ iconName: "PlusCircle" }}
+//                   disabled={isInSimilarInputPapers && paperInfo ? isInSimilarInputPapers(paperInfo) : false}
+//                   onClick={() => {
+//                     if (paperInfo) {
+//                       Logger.logUIInteraction({
+//                         component: "Dialog",
+//                         action: "addToSimilarPapersFromModal",
+//                         paperId: paperInfo.ID,
+//                         paperTitle: paperInfo.Title,
+//                       });
+//                       addToSimilarInputPapers(paperInfo);
+//                       setModalState(false);
+//                     }
+//                   }}
+//                 >
+//                   Select
+//                 </ActionButton>
+//                 <ActionButton
+//                   iconProps={{ iconName: "Save" }}
+//                   onClick={() => {
+//                     if (paperInfo) {
+//                       addToSavedPapers(paperInfo);
+//                       setModalState(false);
+//                     }
+//                   }}
+//                 >
+//                   Save
+//                 </ActionButton>
+//                 <ActionButton
+//                   iconProps={{ iconName: "GraduationCap" }}
+//                   onClick={() => {
+//                     if (paperInfo && paperInfo.Title) {
+//                       const q = encodeURIComponent(paperInfo.Title);
+//                       window.open(`https://scholar.google.com/scholar?q=${q}`, "_blank", "noopener,noreferrer");
+//                     }
+//                   }}
+//                 >
+//                   Google Scholar
+//                 </ActionButton>
+//                 <ActionButton
+//                   iconProps={{ iconName: "Cancel" }}
+//                   onClick={() => setModalState(false)}
+//                 >
+//                   Close
+//                 </ActionButton>
+//               </Stack>
+//             </div>
+//           ) : (
+//             <div style={{ padding: 20, textAlign: "center" }}>Paper not found</div>
+//           )}
+//         </Modal>
+
+//     </div>
+//   );
+// });
+
+
+
+// import * as React from "react";
+// import "./../assets/scss/App.scss";
+// import { ActionButton, DefaultButton, IconButton, Modal, Stack } from "@fluentui/react";
+// import { observer } from "mobx-react";
+// import { getPaperByTitle } from "./../request";
+// import Markdown from "react-markdown";
+// import { Logger } from "../socket/logger";
+// import { API_BASE_URL } from '../config';
+
+// const baseUrl = `${API_BASE_URL}/`;
+
+// // Ensure we only reset chat state and backend memory once per page load,
+// // not every time a new chat tab (Dialog instance) mounts.
+// let hasInitializedChatMemory = false;
+
+// // Define getPaperById at the top level
+// export async function getPaperById(id: string) {
+//   const res = await fetch(`${baseUrl}getPaperById?id=${id}`);
+//   return res.json();
+// }
+
+// const parseTitleAndId = (raw: string) => {
+//   // 1) Extract ID (various formats supported)
+//   const idMatch = raw.match(/(?:<!--ID:([\w-]+)-->|\[\[ID:([^\]]+)\]\])/i);
+//   const extractedId = idMatch ? (idMatch[1] || idMatch[2]) : null;
+
+//   // 2) Extract title
+//   const titleMatch = raw.match(/Title:\s*([^\n\.<]+)/i);
+//   const title = titleMatch ? titleMatch[1].trim() : null;
+
+//   // 3) Build fallback key (only for UI, never used in backend queries)
+//   const fallbackKey = extractedId || (title
+//     ? `temp_${title.replace(/\s+/g, "_").toLowerCase()}`
+//     : `temp_raw_${raw.slice(0, 20).replace(/\s+/g, "_")}`);
+
+//   return { id: extractedId, title, key: fallbackKey };
+// };
+
+// ////////////////////////////////////////////////////////
+
+
+
+// export const Dialog = observer(({ props }) => {
+//   const {
+//     chatText,
+//     chatHistory,
+//     chatSelectedPaper,
+//     displayMessages: savedDisplayMessages,
+//     updateDialogState,
+//     addToSelectNodeIDs,
+//     addToSimilarInputPapers,
+//     addToSavedPapers,
+//     isInSimilarInputPapers,
+//     isInSavedPapers,
+//     isInSelectedNodeIDs,
+//     tabId, // <-- NEW: needed for DATA_SIGNAL sidebar feature
+//     /** From corpus Results list: add paper to "Ask" selection for next message */
+//     queuedCorpusQuestionPaper,
+//     onConsumeQueuedCorpusQuestionPaper,
+//   } = props;
+
+//   // --- SIDEBAR STATE (NEW) ---
+//   const [sidebarPapers, setSidebarPapers] = React.useState<any[]>([]);
+//   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+//   const [papersToShow, setPapersToShow] = React.useState(20);
+
+//   const [displayMessages, setDisplayMessages] = React.useState<
+//     { role: "user" | "ai"; text: string; referencedPapers?: { id: string | null; title: string }[]; hasMorePapers?: boolean }[]
+//   >(
+//     chatHistory || []
+//   );
+
+//   const [retrievedPapers, setRetrievedPapers] = React.useState<{ title: string, id: string | null, key: string }[]>([]);
+
+//   const [isWaiting, setIsWaiting] = React.useState(false);
+
+//   // Query expansion state: populated when the backend signals the query is too vague
+//   const [queryExpansion, setQueryExpansion] = React.useState<{
+//     original: string;
+//     expansions: string[];
+//   } | null>(null);
+//   // null = not editing; "" or text = "Something else" input is open
+//   const [customExpansionText, setCustomExpansionText] = React.useState<string | null>(null);
+
+//   // Intent confirmation state: populated when the backend is uncertain about its interpretation
+//   const [intentConfirm, setIntentConfirm] = React.useState<{
+//     original: string;
+//     items: { field: string; label: string; display: string; editable: string; confidence: number }[];
+//     expanded_queries: string[];
+//   } | null>(null);
+//   const [customConfirmText, setCustomConfirmText] = React.useState<string | null>(null);
+
+//   // On first mount (including browser refresh / first visit), clear all chat
+//   // state on the frontend *and* reset backend memory so every load starts clean.
+//   // IMPORTANT: Guard with a module-level flag so opening additional chat tabs
+//   // does NOT wipe existing chats.
+//   React.useEffect(() => {
+//     if (hasInitializedChatMemory) {
+//       return;
+//     }
+//     hasInitializedChatMemory = true;
+
+//     // Clear local UI state
+//     setDisplayMessages([]);
+//     setRetrievedPapers([]);
+//     setIsWaiting(false);
+
+//     // Clear dialog store state
+//     updateDialogState({
+//       chatHistory: [],
+//       chatText: "",
+//     });
+
+//     // Clear server-side chat memory for this app instance
+//     fetch(`${baseUrl}resetMemory`, {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//     }).catch((err) => {
+//       console.error("Failed to reset memory on mount:", err);
+//     });
+//   }, []);
+
+//   // Paper info modal state
+//   const [isModalOpen, setModalState] = React.useState(false);
+//   const [paperInfo, setPaperInfo] = React.useState<any>(null);
+//   const [loadingPaperInfo, setLoadingPaperInfo] = React.useState(false);
+
+//   // Function to open paper info modal
+//   const openPaperInfoModal = async (title: string, id: string | null) => {
+//     setLoadingPaperInfo(true);
+//     setModalState(true);
+
+//     try {
+//       let paper = null;
+//       if (id) {
+//         paper = await getPaperById(id);
+//       } else {
+//         const papers = await getPaperByTitle(title);
+//         paper = papers.length > 0 ? papers[0] : null;
+//       }
+
+//       if (paper) {
+//         setPaperInfo(paper);
+//         Logger.logUIInteraction({
+//           component: "Dialog",
+//           action: "paperInfoModalOpen",
+//           paperTitle: title,
+//           paperId: paper.ID || id,
+//         });
+//       } else {
+//         setPaperInfo(null);
+//       }
+//     } catch (error) {
+//       console.error("Error fetching paper info:", error);
+//       setPaperInfo(null);
+//     }
+//     setLoadingPaperInfo(false);
+//   };
+
+//   React.useEffect(() => {
+//     setDisplayMessages(chatHistory || []);
+//   }, [chatHistory]);
+
+//   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+//   /** Local draft so typing does not call updateDialogState → App re-render on every key */
+//   const [draftChatText, setDraftChatText] = React.useState(() => chatText ?? "");
+//   React.useEffect(() => {
+//     setDraftChatText(chatText ?? "");
+//   }, [chatText]);
+
+//   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+//   const prevMessageCountRef = React.useRef(0);
+
+//   // When switching chat window, scroll to latest content
+//   React.useEffect(() => {
+//     if (messagesEndRef.current) {
+//       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+//     }
+//   }, [tabId]);
+
+//   // Scroll to bottom only when the user sends a new message (not while model is generating)
+//   React.useEffect(() => {
+//     const prevLen = prevMessageCountRef.current;
+//     prevMessageCountRef.current = displayMessages.length;
+//     const addedMessage = displayMessages.length > prevLen;
+//     const lastIsUser = displayMessages.length > 0 && displayMessages[displayMessages.length - 1].role === "user";
+//     if (addedMessage && lastIsUser && messagesEndRef.current) {
+//       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+//     }
+
+//     // Reset button states when a new AI message is added
+//     if (displayMessages.length > 0 && displayMessages[displayMessages.length - 1].role === "ai") {
+//       setButtonsClicked({ locateAll: false, addAll: false, saveAll: false });
+//     }
+//   }, [displayMessages]);
+
+//   // Handle Enter key to send message
+//   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+//     if (e.key === "Enter" && !e.shiftKey) {
+//       e.preventDefault();
+//       if (draftChatText.trim()) {
+//         Logger.logUIInteraction({
+//           component: "Dialog",
+//           action: "askButtonClick",
+//           value: draftChatText,
+//           chatHistoryLength: chatHistory.length,
+//           trigger: "enter_key",
+//         });
+//         chatRequest();
+//       }
+//     }
+//   };
+
+//   const onChangeChatText = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+//     const newText = e.target.value;
+//     setDraftChatText(newText);
+
+//     // Auto-grow the textarea up to ~3 lines, then scroll
+//     if (textareaRef.current) {
+//       const el = textareaRef.current;
+//       el.style.height = "auto";
+//       const lineHeight = 24; // keep in sync with CSS line-height
+//       const maxHeight = lineHeight * 3;
+//       const newHeight = Math.min(el.scrollHeight, maxHeight);
+//       el.style.height = `${newHeight}px`;
+//       el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+//     }
+//   };
+
+//   const currentAIResponseText = React.useCallback(() => {
+//     for (let i = displayMessages.length - 1; i >= 0; i--) {
+//       if (displayMessages[i].role === "ai") return displayMessages[i].text || "";
+//     }
+//     return "";
+//   }, [displayMessages]);
+
+//   // Extract all papers from the current AI response
+//   const extractAllPapers = React.useCallback(() => {
+//     const text = currentAIResponseText();
+//     const papers: { title: string; id: string | null }[] = [];
+
+//     const titlePattern = /\*\*Title:\*\*\s*([^\[]+)\s*\[\[ID:([^\]]+)\]\]/gi;
+//     let match;
+
+//     while ((match = titlePattern.exec(text)) !== null) {
+//       const title = match[1].trim();
+//       const id = match[2].trim();
+//       papers.push({ title, id });
+//     }
+
+//     const listPattern = /Title:\s*([^\[]+)\s*\[\[ID:([^\]]+)\]\]/gi;
+//     while ((match = listPattern.exec(text)) !== null) {
+//       const title = match[1].trim();
+//       const id = match[2].trim();
+//       if (!papers.some(p => p.id === id)) {
+//         papers.push({ title, id });
+//       }
+//     }
+
+//     return papers;
+//   }, [currentAIResponseText]);
+
+//   // State to track which buttons have been clicked
+//   const [buttonsClicked, setButtonsClicked] = React.useState({
+//     locateAll: false,
+//     addAll: false,
+//     saveAll: false
+//   });
+
+//   // Papers the user wants to reference explicitly in their next question
+//   const [selectedQuestionPapers, setSelectedQuestionPapers] = React.useState<
+//     { id: string | null; title: string }[]
+//   >([]);
+
+//   const toggleQuestionPaper = React.useCallback(
+//     (paper: { id: string | null; title: string }) => {
+//       setSelectedQuestionPapers((prev) => {
+//         const exists = prev.some(
+//           (p) => (p.id && p.id === paper.id) || (!p.id && p.title === paper.title)
+//         );
+//         if (exists) {
+//           return prev.filter(
+//             (p) => !((p.id && p.id === paper.id) || (!p.id && p.title === paper.title))
+//           );
+//         }
+//         return [...prev, paper];
+//       });
+//     },
+//     []
+//   );
+
+//   // Results list "Ask" queues a paper; ref avoids duplicate toggles under React Strict Mode
+//   const consumedCorpusAskTokenRef = React.useRef<number | null>(null);
+//   React.useEffect(() => {
+//     const q = queuedCorpusQuestionPaper;
+//     if (!q) {
+//       return;
+//     }
+//     if (consumedCorpusAskTokenRef.current === q.token) {
+//       return;
+//     }
+//     consumedCorpusAskTokenRef.current = q.token;
+//     toggleQuestionPaper({
+//       id: String(q.id),
+//       title: q.title,
+//     });
+//     onConsumeQueuedCorpusQuestionPaper?.();
+//     // Only re-run when a new queue token is set
+//     // eslint-disable-next-line react-hooks/exhaustive-deps
+//   }, [queuedCorpusQuestionPaper?.token, toggleQuestionPaper]);
+
+//   const clearSelectedQuestionPapers = React.useCallback(() => {
+//     setSelectedQuestionPapers([]);
+//   }, []);
+
+//   const buildQuestionPrompt = React.useCallback(
+//     (questionText: string) => {
+//       if (!selectedQuestionPapers.length) {
+//         return questionText;
+//       }
+//       const headerLines = selectedQuestionPapers.map((p, idx) =>
+//         `${idx + 1}. ${p.title}${p.id ? ` (ID: ${p.id})` : ""}`
+//       );
+//       const header = `Selected papers:\n${headerLines.join("\n")}`;
+//       return `${header}\n\nQuestion: ${questionText}`;
+//     },
+//     [selectedQuestionPapers]
+//   );
+
+
+//   // Core chat sender used by both the text box and inline "Load more" link.
+//   const sendChat = (text: string) => {
+//     if (!text.trim()) return;
+
+//     // Clear any pending expansion / confirmation panels before sending
+//     setQueryExpansion(null);
+//     setIntentConfirm(null);
+//     setCustomConfirmText(null);
+
+//     // Combine any selected papers with the user's question so the model
+//     // sees both the paper titles and the free-form question.
+//     const finalText = buildQuestionPrompt(text);
+
+//     // Draft is local-only while typing; parent chatText often stays "" so the
+//     // sync effect does not run — clear the textarea immediately on send.
+//     setDraftChatText("");
+
+//     // 1. Clear previous retrieval state
+//     setRetrievedPapers([]);
+//     setIsWaiting(true);
+
+//     // 2. Optimistically add the USER message to the UI immediately (displaying only the question text)
+//     const userMessage = {
+//       role: "user" as const,
+//       text,
+//       referencedPapers: selectedQuestionPapers.length ? [...selectedQuestionPapers] : undefined,
+//     };
+
+//     updateDialogState((prev: any) => ({
+//       chatHistory: [...prev.chatHistory, userMessage],
+//       chatText: "", // clear the input box
+//     }));
+
+//     // Reset input height back to one row and clear selected papers after sending
+//     if (textareaRef.current) {
+//       textareaRef.current.style.height = "";
+//       textareaRef.current.style.overflowY = "hidden";
+//     }
+//     clearSelectedQuestionPapers();
+
+//     const baseHistory = [...chatHistory, userMessage];
+
+//     // 3. Start the Fetch Request
+//     fetch(`${baseUrl}chat`, {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({
+//         chat_id: tabId,
+//         text: finalText,
+//         chat_history_raw: baseHistory,
+//       }),
+//     }).then((response) => {
+//       if (!response.body) return;
+//       const reader = response.body.getReader();
+//       const decoder = new TextDecoder("utf-8");
+
+//       let partialResponse = "";
+//       let isFirstChunk = true;
+
+//       const readChunk = ({ done, value }: ReadableStreamReadResult<Uint8Array>) => {
+//         const SIGNAL_SHOW_LOAD_MORE = "[SIGNAL:SHOW_LOAD_MORE]";
+//         const signalRegex = new RegExp(
+//           "\\s*" + SIGNAL_SHOW_LOAD_MORE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*",
+//           "g"
+//         );
+
+//         // --- CASE A: Stream is Finished ---
+//         if (done) {
+//           // Append any final chunk (signal or text often arrives with done=true)
+//           if (value && value.length > 0) {
+//             partialResponse += decoder.decode(value);
+//           }
+//           setIsWaiting(false);
+
+//           // Persist "load more" when backend sent signal OR when response looks like a paper list (fallback)
+//           const HAS_MORE_MARKER = "[[HAS_MORE_PAPERS]]";
+//           const hadSignal = partialResponse.includes(SIGNAL_SHOW_LOAD_MORE);
+//           const looksLikePaperList = /Title:\s*/i.test(partialResponse) && /\[\[ID:[^\]]+\]\]/.test(partialResponse);
+//           if (hadSignal || looksLikePaperList) {
+//             const cleaned = hadSignal ? partialResponse.replace(signalRegex, "").trim() : partialResponse.trim();
+//             const textWithMarker = cleaned + "\n" + HAS_MORE_MARKER;
+//             if (hadSignal) partialResponse = cleaned;
+//             updateDialogState((prev: any) => {
+//               const history = [...(prev.chatHistory || [])];
+//               const lastIdx = history.length - 1;
+//               if (lastIdx >= 0 && history[lastIdx].role === "ai") {
+//                 history[lastIdx] = { ...history[lastIdx], text: textWithMarker, hasMorePapers: true };
+//               }
+//               return { chatHistory: history };
+//             });
+//           }
+
+//           const papers: { title: string; id: string | null; key: string }[] = [];
+//           const lines = partialResponse.split("\n");
+
+//           for (const line of lines) {
+//             const { id, title, key } = parseTitleAndId(line);
+//             if (key && !papers.some((p) => p.key === key)) {
+//               if (title) papers.push({ id, title, key });
+//             }
+//           }
+//           console.log("Stream complete. Papers found:", papers);
+//           setRetrievedPapers(papers);
+//           return;
+//         }
+
+//         // --- CASE B: Process New Chunk ---
+//         let newTextChunk = decoder.decode(value);
+
+//         // --- INTERCEPT SIGNAL TAGS (e.g. [SIGNAL:SHOW_LOAD_MORE]) ---
+//         if (newTextChunk.includes(SIGNAL_SHOW_LOAD_MORE)) {
+//           newTextChunk = newTextChunk.replace(signalRegex, "");
+//         }
+
+//         // --- INTERCEPT QUERY EXPANSION SIGNAL ---
+//         const EXPANSION_PREFIX = "[SIGNAL:QUERY_EXPANSION:";
+//         if (newTextChunk.includes(EXPANSION_PREFIX)) {
+//           const startIdx = newTextChunk.indexOf(EXPANSION_PREFIX);
+//           const jsonStart = startIdx + EXPANSION_PREFIX.length;
+//           // Walk forward to find matching closing brace of the JSON object
+//           let depth = 0;
+//           let jsonEnd = -1;
+//           for (let i = jsonStart; i < newTextChunk.length; i++) {
+//             if (newTextChunk[i] === "{") depth++;
+//             else if (newTextChunk[i] === "}") { depth--; if (depth === 0) { jsonEnd = i + 1; break; } }
+//           }
+//           if (jsonEnd > 0) {
+//             try {
+//               const data = JSON.parse(newTextChunk.slice(jsonStart, jsonEnd));
+//               if (data.expansions?.length) {
+//                 setQueryExpansion({ original: data.original ?? "", expansions: data.expansions });
+//               }
+//             } catch (_) { /* malformed JSON — ignore */ }
+//             // Strip the entire signal tag from the chunk (including the closing ])
+//             const tagEnd = newTextChunk.indexOf("]", jsonEnd) + 1;
+//             newTextChunk = newTextChunk.slice(0, startIdx) + (tagEnd > 0 ? newTextChunk.slice(tagEnd) : "");
+//           }
+//         }
+
+//         // --- INTERCEPT INTENT CONFIRM SIGNAL ---
+//         const CONFIRM_PREFIX = "[SIGNAL:INTENT_CONFIRM:";
+//         if (newTextChunk.includes(CONFIRM_PREFIX)) {
+//           const startIdx = newTextChunk.indexOf(CONFIRM_PREFIX);
+//           const jsonStart = startIdx + CONFIRM_PREFIX.length;
+//           let depth = 0, jsonEnd = -1;
+//           for (let i = jsonStart; i < newTextChunk.length; i++) {
+//             if (newTextChunk[i] === "{") depth++;
+//             else if (newTextChunk[i] === "}") { depth--; if (depth === 0) { jsonEnd = i + 1; break; } }
+//           }
+//           if (jsonEnd > 0) {
+//             try {
+//               const data = JSON.parse(newTextChunk.slice(jsonStart, jsonEnd));
+//               if (data.items?.length) {
+//                 setIntentConfirm({
+//                   original: data.original ?? "",
+//                   items: data.items,
+//                   expanded_queries: data.expanded_queries ?? [],
+//                 });
+//               }
+//             } catch (_) { /* malformed JSON — ignore */ }
+//             const tagEnd = newTextChunk.indexOf("]", jsonEnd) + 1;
+//             newTextChunk = newTextChunk.slice(0, startIdx) + (tagEnd > 0 ? newTextChunk.slice(tagEnd) : "");
+//           }
+//         }
+
+//         // --- REGULAR TEXT STREAM (after signals stripped) ---
+//         partialResponse += newTextChunk;
+
+//         if (isFirstChunk) {
+//           setIsWaiting(false);
+
+//           // Only open an AI bubble if there is actual text to display.
+//           // When the only content was the expansion signal the chunk is now empty.
+//           // isFirstChunk must stay true until we have actual text so that the
+//           // bubble gets created on the first non-empty chunk, not on a signal-only chunk.
+//           if (newTextChunk.trim()) {
+//             isFirstChunk = false;
+//             updateDialogState((prev: any) => ({
+//               chatHistory: [...prev.chatHistory, { role: "ai", text: "" }],
+//             }));
+//           }
+//         }
+
+//         if (newTextChunk.trim()) {
+//           updateDialogState((prev: any) => {
+//             const historyCopy = [...prev.chatHistory];
+//             const lastMsgIndex = historyCopy.length - 1;
+//             const lastMsg = historyCopy[lastMsgIndex];
+
+//             if (lastMsg && lastMsg.role === "ai") {
+//               let newText = lastMsg.text + newTextChunk;
+//               newText = newText.replace(signalRegex, ""); // strip signal (handles split across chunks)
+//               historyCopy[lastMsgIndex] = {
+//                 ...lastMsg,
+//                 text: newText,
+//               };
+//             }
+//             return { chatHistory: historyCopy };
+//           });
+//         }
+
+//         reader.read().then(readChunk);
+//       };
+
+//       reader.read().then(readChunk);
+//     }).catch(err => {
+//       console.error("Stream error:", err);
+//       setIsWaiting(false);
+//     });
+//   };
+
+//   // --- Public handler for the text box / Ask button ---
+//   const chatRequest = () => {
+//     if (!draftChatText.trim()) return;
+//     sendChat(draftChatText);
+//   };
+
+
+
+//   const extractText = (children: React.ReactNode): string => {
+//     if (typeof children === "string") return children;
+//     if (Array.isArray(children)) {
+//       return children.map((child) => extractText(child)).join(" ");
+//     }
+//     if (React.isValidElement(children)) {
+//       return extractText(children.props.children);
+//     }
+//     return "";
+//   };
+
+//   const renderPaperBlock = (title: string, id: string | null, raw: string) => {
+//     // 1. If it's not a valid paper title line, just render cleaned text
+//     if (!title || title === raw || !/Title:\s*[^\n]+/i.test(raw)) {
+//       const cleaned = raw.replace(/\[\[ID:[^\]]+\]\]/g, "");
+//       return <span>{cleaned}</span>;
+//     }
+
+//     // 2. Clean the title (remove ID tags)
+//     const cleanTitle = title.replace(/\[\[ID:[^\]]+\]\]/g, "").trim();
+
+//     // 3. Extract the Summary
+//     const summary = raw
+//       .replace(/\*\*Title:[\s\S]*?\[\[ID:[^\]]+\]\]\*\*/gi, "")
+//       .replace(/Title:\s*[^\n]+/gi, "")
+//       .replace(/<!--ID:[^>]+-->/g, "")
+//       .replace(/\[\[ID:[^\]]+\]\]/g, "")
+//       .trim();
+
+//     const paperObj = { ID: id };
+//     const isAlreadySelected = id && isInSelectedNodeIDs && isInSelectedNodeIDs(id);
+//     const isAlreadyInSimilar = id && isInSimilarInputPapers && isInSimilarInputPapers(paperObj);
+//     const isAlreadySaved = id && isInSavedPapers && isInSavedPapers(paperObj);
+//     const isInQuestionList = selectedQuestionPapers.some(
+//       (p) => (p.id && p.id === id) || (!p.id && p.title === cleanTitle)
+//     );
+
+//     return (
+//       <div style={{ marginBottom: "0.5em" }}>
+//         <span
+//           style={{ color: "blue", fontWeight: "bold", cursor: "pointer" }}
+//           onClick={() => {
+//             Logger.logUIInteraction({
+//               component: "Dialog",
+//               action: "selectPaperFromResponse",
+//               paperTitle: title,
+//               previousSelectedPaper: chatSelectedPaper,
+//               paperId: id || undefined,
+//             });
+//             updateDialogState({ chatSelectedPaper: title });
+//             openPaperInfoModal(title, id);
+//           }}
+//         >
+//           {cleanTitle}
+//         </span>
+
+//         <div style={{ marginTop: "0.2em" }}>
+//           <DefaultButton
+//             iconProps={{ iconName: isInQuestionList ? "Cancel" : "Chat" }}
+//             text={isInQuestionList ? "" : "Ask"}
+//             styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
+//             onClick={() => toggleQuestionPaper({ id, title: cleanTitle })}
+//           />
+
+//           <DefaultButton
+//             iconProps={{ iconName: "Locate" }}
+//             styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
+//             disabled={isAlreadySelected}
+//             onClick={() => {
+//               if (id) {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "locateSelectedPaper",
+//                   paperTitle: title,
+//                   paperId: id,
+//                 });
+//                 getPaperById(id).then((paper) => {
+//                   if (paper && paper["ID"] != null) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "locateSelectedPaperSuccess",
+//                       paperTitle: title,
+//                       paperId: paper["ID"],
+//                       via: "id",
+//                     });
+//                     addToSelectNodeIDs([paper["ID"]], "scatterplot");
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "locateSelectedPaperNotFound",
+//                       paperTitle: title,
+//                       paperId: id,
+//                       via: "id",
+//                     });
+//                   }
+//                 });
+//               } else {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "locateSelectedPaper",
+//                   paperTitle: title,
+//                 });
+//                 getPaperByTitle(title).then((papers) => {
+//                   if (papers.length > 0) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "locateSelectedPaperSuccess",
+//                       paperTitle: title,
+//                       paperId: papers[0].ID,
+//                       papersFound: papers.length,
+//                       via: "title",
+//                     });
+//                     addToSelectNodeIDs(papers.map((d) => d["ID"]), "scatterplot");
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "locateSelectedPaperNotFound",
+//                       paperTitle: title,
+//                       via: "title",
+//                     });
+//                   }
+//                 });
+//               }
+//             }}
+//           />
+
+//           <DefaultButton
+//             iconProps={{ iconName: "PlusCircle" }}
+//             styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
+//             disabled={isAlreadyInSimilar}
+//             onClick={() => {
+//               if (id) {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "addSelectedPaperToSimilarInput",
+//                   paperTitle: title,
+//                   paperId: id,
+//                 });
+//                 getPaperById(id).then((paper) => {
+//                   if (paper) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "addSelectedPaperToSimilarInputSuccess",
+//                       paperTitle: title,
+//                       paperId: paper["ID"],
+//                     });
+//                     addToSimilarInputPapers(paper);
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "addSelectedPaperToSimilarInputNotFound",
+//                       paperTitle: title,
+//                       paperId: id,
+//                     });
+//                   }
+//                 });
+//               } else {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "addSelectedPaperToSimilarInput",
+//                   paperTitle: title,
+//                 });
+//                 getPaperByTitle(title).then((papers) => {
+//                   if (papers.length > 0) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "addSelectedPaperToSimilarInputSuccess",
+//                       paperTitle: title,
+//                       paperId: papers[0].ID,
+//                       papersFound: papers.length,
+//                       via: "title",
+//                     });
+//                     addToSimilarInputPapers(papers[0]);
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "addSelectedPaperToSimilarInputNotFound",
+//                       paperTitle: title,
+//                     });
+//                   }
+//                 });
+//               }
+//             }}
+//           />
+
+//           <DefaultButton
+//             iconProps={{ iconName: "Save" }}
+//             styles={{ root: { minWidth: 0 } }}
+//             disabled={isAlreadySaved}
+//             onClick={() => {
+//               if (id) {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "saveSelectedPaper",
+//                   paperTitle: title,
+//                   paperId: id,
+//                 });
+//                 getPaperById(id).then((paper) => {
+//                   if (paper) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "saveSelectedPaperSuccess",
+//                       paperTitle: title,
+//                       paperId: paper["ID"],
+//                     });
+//                     addToSavedPapers(paper);
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "saveSelectedPaperNotFound",
+//                       paperTitle: title,
+//                       paperId: id,
+//                     });
+//                   }
+//                 });
+//               } else {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "saveSelectedPaper",
+//                   paperTitle: title,
+//                 });
+//                 getPaperByTitle(title).then((papers) => {
+//                   if (papers.length > 0) {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "saveSelectedPaperSuccess",
+//                       paperTitle: title,
+//                       paperId: papers[0].ID,
+//                       papersFound: papers.length,
+//                       via: "title",
+//                     });
+//                     addToSavedPapers(papers[0]);
+//                   } else {
+//                     Logger.logUIInteraction({
+//                       component: "Dialog",
+//                       action: "saveSelectedPaperNotFound",
+//                       paperTitle: title,
+//                     });
+//                   }
+//                 });
+//               }
+//             }}
+//           />
+//         </div>
+//         {/* Render the extracted summary text */}
+//         {summary && (
+//           <div
+//             style={{
+//               color: "#333",
+//               fontSize: "0.95rem",
+//               lineHeight: "1.5em",
+//               whiteSpace: "pre-wrap",
+//               marginLeft: "0.2em",
+//               marginTop: "0.5em"
+//             }}
+//           >
+//             {summary}
+//           </div>
+//         )}
+//       </div>
+//     );
+//   };
+
+
+//   return (
+//     <div className="app-container" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, width: "100%", overflow: "hidden" }}>
+
+//       {/* 1. SCROLLABLE AREA: Conversation (sidebar disabled) */}
+//       <div className="chat-content-row">
+//         {displayMessages.length === 0 && !isWaiting ? (
+//           <div className="chat-empty-state" role="status" aria-live="polite">
+//             <p>Type below to start the conversation.</p>
+//           </div>
+//         ) : (
+//         <div className="chat-messages">
+//           {displayMessages.map((msg, idx) => {
+//             const isLastAiMessage = msg.role === "ai" && idx === displayMessages.length - 1;
+//             return (
+//             <div key={idx} className={`chat-bubble ${msg.role}`}>
+//               {msg.role === "user" ? (
+//                 <div>
+//                   {msg.referencedPapers && msg.referencedPapers.length > 0 && (
+//                     <div style={{ marginBottom: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
+//                       {msg.referencedPapers.map((p) => (
+//                         <div
+//                           key={p.id || p.title}
+//                           style={{
+//                             display: "inline-flex",
+//                             alignItems: "center",
+//                             padding: "2px 6px",
+//                             borderRadius: 10,
+//                             background: "var(--color-primary-light)",
+//                             color: "var(--color-primary)",
+//                             fontSize: "0.75rem",
+//                             maxWidth: "100%",
+//                           }}
+//                         >
+//                           <span
+//                             style={{
+//                               cursor: "pointer",
+//                               overflow: "hidden",
+//                               textOverflow: "ellipsis",
+//                               whiteSpace: "nowrap",
+//                               maxWidth: 220,
+//                             }}
+//                             onClick={() => openPaperInfoModal(p.title, p.id)}
+//                           >
+//                             {p.title}
+//                           </span>
+//                         </div>
+//                       ))}
+//                     </div>
+//                   )}
+//                   {msg.text}
+//                 </div>
+//               ) : (
+//                 <div>
+//                   {(() => {
+//                     const HAS_MORE_MARKER = "[[HAS_MORE_PAPERS]]";
+//                     const rawText = msg.text || "";
+//                     const hasMarkerOrFlag = msg.hasMorePapers || rawText.includes(HAS_MORE_MARKER);
+//                     const looksLikePaperList = /Title:\s*/i.test(rawText) && /\[\[ID:[^\]]+\]\]/.test(rawText);
+//                     const hasLoadMore = hasMarkerOrFlag || (isLastAiMessage && looksLikePaperList);
+//                     const displayText = rawText.replace(new RegExp("\\s*" + HAS_MORE_MARKER.replace(/[[\]]/g, "\\$&") + "\\s*", "g"), "").trim();
+//                     return (
+//                       <>
+//                         <Markdown
+//                           components={{
+//                             p: ({ node, children }) => {
+//                               const raw = extractText(children);
+//                               const { title, id } = parseTitleAndId(raw);
+//                               if (/Title:\s*/i.test(raw)) {
+//                                 return renderPaperBlock(title, id, raw);
+//                               }
+//                               return <p>{raw.replace(/\[\[ID:[^\]]+\]\]/g, "")}</p>;
+//                             },
+
+//                             strong: ({ node, ...props }) => {
+//                               const raw = extractText(props.children);
+//                               const { title, id } = parseTitleAndId(raw);
+//                               if (/Title:\s*/i.test(raw)) {
+//                                 return renderPaperBlock(title, id, raw);
+//                               }
+//                               return <strong>{raw.replace(/\[\[ID:[^\]]+\]\]/g, "")}</strong>;
+//                             },
+
+//                             li: ({ node, children }) => {
+//                               const raw = extractText(children);
+//                               const { title, id } = parseTitleAndId(raw);
+//                               if (/Title:\s*/i.test(raw)) {
+//                                 return renderPaperBlock(title, id, raw);
+//                               }
+//                               return <li>{raw.replace(/\[\[ID:[^\]]+\]\]/g, "")}</li>;
+//                             },
+
+//                           }}
+//                         >
+//                           {displayText}
+//                         </Markdown>
+//                         {hasLoadMore && (
+//                           <div style={{ marginTop: 8 }}>
+//                             <a
+//                               style={{ cursor: "pointer", color: "#0078d4", textDecoration: "underline" }}
+//                               onClick={() => sendChat("Load more papers from this search.")}
+//                             >
+//                               Load more papers
+//                             </a>
+//                           </div>
+//                         )}
+//                       </>
+//                     );
+//                   })()}
+//                 </div>
+//               )}
+//             </div>
+//           );
+//           })}
+
+//           {/* Query expansion card — shown when the backend deems the query too vague */}
+//           {queryExpansion && (
+//             <div style={{
+//               background: "#fff",
+//               borderRadius: 16,
+//               boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+//               border: "1px solid #ebebeb",
+//               padding: "20px 24px",
+//               margin: "12px 0",
+//             }}>
+//               {/* Header */}
+//               <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 4 }}>
+//                 <span style={{ flex: 1, fontSize: "0.975rem", fontWeight: 500, color: "#1a1a1a", lineHeight: 1.4 }}>
+//                   Which aspect of <em>"{queryExpansion.original}"</em> are you looking for?
+//                 </span>
+//                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+//                   <span style={{ fontSize: "0.78rem", color: "#aaa", whiteSpace: "nowrap" }}>
+//                     {queryExpansion.expansions.length} suggestions
+//                   </span>
+//                   <IconButton
+//                     iconProps={{ iconName: "Cancel" }}
+//                     styles={{ root: { width: 28, height: 28, color: "#aaa" } }}
+//                     title="Dismiss"
+//                     onClick={() => { setQueryExpansion(null); setCustomExpansionText(null); }}
+//                   />
+//                 </div>
+//               </div>
+
+//               {/* Numbered options */}
+//               {queryExpansion.expansions.map((exp: string, i: number) => (
+//                 <div
+//                   key={i}
+//                   style={{
+//                     display: "flex",
+//                     alignItems: "center",
+//                     gap: 12,
+//                     padding: "11px 0",
+//                     borderTop: "1px solid #f2f2f2",
+//                     cursor: "pointer",
+//                   }}
+//                   onClick={() => sendChat(exp)}
+//                   onMouseEnter={(e: React.MouseEvent<HTMLDivElement>) => (e.currentTarget.style.background = "#fafafa")}
+//                   onMouseLeave={(e: React.MouseEvent<HTMLDivElement>) => (e.currentTarget.style.background = "transparent")}
+//                 >
+//                   <div style={{
+//                     width: 28, height: 28, borderRadius: "50%",
+//                     background: "#f0f0f0", display: "flex", alignItems: "center",
+//                     justifyContent: "center", fontSize: "0.82rem", fontWeight: 600,
+//                     color: "#555", flexShrink: 0,
+//                   }}>
+//                     {i + 1}
+//                   </div>
+//                   <span style={{ flex: 1, fontSize: "0.92rem", color: "#1a1a1a" }}>{exp}</span>
+//                   <span style={{ color: "#ccc", fontSize: "1.1rem", lineHeight: 1 }}>›</span>
+//                 </div>
+//               ))}
+
+//               {/* "Something else" custom input row */}
+//               <div style={{
+//                 display: "flex", alignItems: "center", gap: 12,
+//                 padding: "11px 0", borderTop: "1px solid #f2f2f2",
+//               }}>
+//                 <div style={{
+//                   width: 28, height: 28, borderRadius: "50%",
+//                   background: "#f0f0f0", display: "flex", alignItems: "center",
+//                   justifyContent: "center", flexShrink: 0,
+//                 }}>
+//                   <span style={{ fontSize: "0.85rem", color: "#888" }}>✏</span>
+//                 </div>
+//                 {customExpansionText !== null ? (
+//                   <input
+//                     autoFocus
+//                     style={{
+//                       flex: 1, border: "none", outline: "none",
+//                       fontSize: "0.92rem", color: "#1a1a1a", background: "transparent",
+//                     }}
+//                     placeholder="Type your own query and press Enter…"
+//                     value={customExpansionText}
+//                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomExpansionText(e.target.value)}
+//                     onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+//                       if (e.key === "Enter" && customExpansionText.trim()) sendChat(customExpansionText);
+//                       if (e.key === "Escape") setCustomExpansionText(null);
+//                     }}
+//                   />
+//                 ) : (
+//                   <span
+//                     style={{ flex: 1, fontSize: "0.92rem", color: "#aaa", cursor: "text" }}
+//                     onClick={() => setCustomExpansionText("")}
+//                   >
+//                     Something else
+//                   </span>
+//                 )}
+//                 <DefaultButton
+//                   text="Skip"
+//                   styles={{
+//                     root: { minWidth: 0, borderRadius: 20, padding: "0 14px", height: 32, border: "1px solid #ddd" },
+//                     label: { fontSize: "0.82rem", color: "#555", fontWeight: 400 },
+//                   }}
+//                   onClick={() => sendChat(queryExpansion.original)}
+//                 />
+//               </div>
+//             </div>
+//           )}
+
+//           {/* Intent confirmation card — shown when the agent made uncertain inferences */}
+//           {intentConfirm && (
+//             <div style={{
+//               background: "#fff", borderRadius: 16,
+//               boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+//               border: "1px solid #ebebeb", padding: "20px 24px", margin: "12px 0",
+//             }}>
+//               {/* Header */}
+//               <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 4 }}>
+//                 <span style={{ flex: 1, fontSize: "0.975rem", fontWeight: 500, color: "#1a1a1a", lineHeight: 1.4 }}>
+//                   Here's what I understood — please confirm before searching:
+//                 </span>
+//                 <IconButton
+//                   iconProps={{ iconName: "Cancel" }}
+//                   styles={{ root: { width: 28, height: 28, color: "#aaa" } }}
+//                   title="Dismiss"
+//                   onClick={() => { setIntentConfirm(null); setCustomConfirmText(null); }}
+//                 />
+//               </div>
+
+//               {/* Confirmation items */}
+//               {intentConfirm.items.map((item: { field: string; label: string; display: string; editable: string; confidence: number }, i: number) => (
+//                 <div
+//                   key={i}
+//                   style={{
+//                     display: "flex", alignItems: "flex-start", gap: 12,
+//                     padding: "11px 0", borderTop: "1px solid #f2f2f2",
+//                   }}
+//                 >
+//                   {/* Confidence dot */}
+//                   <div style={{
+//                     width: 10, height: 10, borderRadius: "50%", marginTop: 5, flexShrink: 0,
+//                     background: item.confidence >= 0.85 ? "#22c55e" : item.confidence >= 0.70 ? "#f59e0b" : "#ef4444",
+//                   }} title={`Confidence: ${Math.round(item.confidence * 100)}%`} />
+//                   <div style={{ flex: 1 }}>
+//                     <div style={{ fontSize: "0.78rem", color: "#888", marginBottom: 2 }}>{item.label}</div>
+//                     <div style={{ fontSize: "0.92rem", color: "#1a1a1a" }}>{item.display}</div>
+//                   </div>
+//                   {/* Edit button — fills textarea with correction hint */}
+//                   <DefaultButton
+//                     text="Edit"
+//                     styles={{
+//                       root: { minWidth: 0, borderRadius: 6, padding: "0 10px", height: 28, border: "1px solid #ddd", flexShrink: 0 },
+//                       label: { fontSize: "0.78rem", color: "#555", fontWeight: 400 },
+//                     }}
+//                     onClick={() => {
+//                       setDraftChatText(item.editable);
+//                       setIntentConfirm(null);
+//                       textareaRef.current?.focus();
+//                     }}
+//                   />
+//                 </div>
+//               ))}
+
+//               {/* Custom input row */}
+//               <div style={{
+//                 display: "flex", alignItems: "center", gap: 12,
+//                 padding: "11px 0", borderTop: "1px solid #f2f2f2",
+//               }}>
+//                 <div style={{
+//                   width: 28, height: 28, borderRadius: "50%", background: "#f0f0f0",
+//                   display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+//                 }}>
+//                   <span style={{ fontSize: "0.85rem", color: "#888" }}>✏</span>
+//                 </div>
+//                 {customConfirmText !== null ? (
+//                   <input
+//                     autoFocus
+//                     style={{ flex: 1, border: "none", outline: "none", fontSize: "0.92rem", color: "#1a1a1a", background: "transparent" }}
+//                     placeholder="Rephrase your request and press Enter…"
+//                     value={customConfirmText}
+//                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomConfirmText(e.target.value)}
+//                     onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+//                       if (e.key === "Enter" && customConfirmText.trim()) sendChat(customConfirmText);
+//                       if (e.key === "Escape") setCustomConfirmText(null);
+//                     }}
+//                   />
+//                 ) : (
+//                   <span
+//                     style={{ flex: 1, fontSize: "0.92rem", color: "#aaa", cursor: "text" }}
+//                     onClick={() => setCustomConfirmText("")}
+//                   >
+//                     Rephrase differently
+//                   </span>
+//                 )}
+//                 <DefaultButton
+//                   text="Confirm & Search"
+//                   styles={{
+//                     root: { minWidth: 0, borderRadius: 20, padding: "0 14px", height: 32, background: "#0078d4", border: "none" },
+//                     label: { fontSize: "0.82rem", color: "#fff", fontWeight: 500 },
+//                   }}
+//                   onClick={() => sendChat(intentConfirm.original)}
+//                 />
+//               </div>
+//             </div>
+//           )}
+
+//           {isWaiting && (
+//             <div className="chat-bubble ai">
+//               <span className="spinner"></span> THINKING...
+//             </div>
+//           )}
+
+//           <div ref={messagesEndRef} />
+//         </div>
+//         )}
+
+//       </div>{/* end chat-content-row */}
+
+//       {/* 3. FIXED BOTTOM: Selected papers + input bar + action buttons */}
+//       <div className="chat-input-area">
+//           {selectedQuestionPapers.length > 0 && (
+//             <div style={{ marginBottom: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+//               {selectedQuestionPapers.map((p) => (
+//                 <div
+//                   key={p.id || p.title}
+//                   style={{
+//                     display: "inline-flex",
+//                     alignItems: "center",
+//                     padding: "4px 8px",
+//                     borderRadius: 12,
+//                     background: "var(--color-primary-light)",
+//                     color: "var(--color-primary)",
+//                     fontSize: "0.8rem",
+//                     maxWidth: "100%",
+//                   }}
+//                 >
+//                   <span
+//                     style={{
+//                       cursor: "pointer",
+//                       overflow: "hidden",
+//                       textOverflow: "ellipsis",
+//                       whiteSpace: "nowrap",
+//                       maxWidth: 220,
+//                     }}
+//                     onClick={() => openPaperInfoModal(p.title, p.id)}
+//                   >
+//                     {p.title}
+//                   </span>
+//                   <IconButton
+//                     styles={{ root: { marginLeft: 4, width: 20, height: 20 } }}
+//                     iconProps={{ iconName: "Cancel" }}
+//                     onClick={() => toggleQuestionPaper(p)}
+//                   />
+//                 </div>
+//               ))}
+//             </div>
+//           )}
+
+//           <div className="chat-input-row">
+//             <textarea
+//               ref={textareaRef}
+//               className="chat-input"
+//               value={draftChatText}
+//               onChange={onChangeChatText}
+//               onKeyDown={onKeyDown}
+//               placeholder="Type your message"
+//               rows={1}
+//             />
+//             <DefaultButton
+//               className="iconButton"
+//               styles={{ root: { padding: "0 1rem", minWidth: 0 } }}
+//               onClick={() => {
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "askButtonClick",
+//                   value: draftChatText,
+//                   chatHistoryLength: chatHistory.length,
+//                 });
+//                 chatRequest();
+//               }}
+//               iconProps={{ iconName: "Rocket" }}
+//               text="Ask"
+//             />
+//           </div>
+
+//           <div className="chat-action-row" style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: '4px' }}>
+//             <DefaultButton
+//               text="ALL"
+//               iconProps={{ iconName: "Locate" }}
+//               styles={{ root: { minWidth: 0, padding: "0 6px" } }}
+//               disabled={buttonsClicked.locateAll}
+//               onClick={async () => {
+//                 const papers = extractAllPapers();
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "selectAllPapers",
+//                   responseLength: currentAIResponseText().length,
+//                   paperCount: papers.length,
+//                 });
+
+//                 if (papers.length === 0) {
+//                   console.log("No papers found in response");
+//                   return;
+//                 }
+
+//                 const paperIds: string[] = [];
+//                 for (const paper of papers) {
+//                   if (paper.id) {
+//                     paperIds.push(paper.id);
+//                   }
+//                 }
+
+//                 if (paperIds.length > 0) {
+//                   addToSelectNodeIDs(paperIds, "scatterplot");
+//                   setButtonsClicked(prev => ({ ...prev, locateAll: true }));
+//                 }
+//               }}
+//             />
+//             <DefaultButton
+//               text="ALL"
+//               iconProps={{ iconName: "PlusCircle" }}
+//               styles={{ root: { minWidth: 0, padding: "0 6px" } }}
+//               disabled={buttonsClicked.addAll}
+//               onClick={async () => {
+//                 const papers = extractAllPapers();
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "addAllToSimilarInputPapers",
+//                   responseLength: currentAIResponseText().length,
+//                   paperCount: papers.length,
+//                 });
+
+//                 if (papers.length === 0) {
+//                   console.log("No papers found in response");
+//                   return;
+//                 }
+
+//                 for (const paper of papers) {
+//                   if (paper.id) {
+//                     try {
+//                       const paperObj = await getPaperById(paper.id);
+//                       if (paperObj) {
+//                         addToSimilarInputPapers(paperObj);
+//                       }
+//                     } catch (e) {
+//                       console.error(`Failed to fetch paper ${paper.id}:`, e);
+//                     }
+//                   }
+//                 }
+//                 setButtonsClicked(prev => ({ ...prev, addAll: true }));
+//               }}
+//             />
+//             <DefaultButton
+//               text="ALL"
+//               iconProps={{ iconName: "Save" }}
+//               styles={{ root: { minWidth: 0, padding: "0 6px" } }}
+//               disabled={buttonsClicked.saveAll}
+//               onClick={async () => {
+//                 const papers = extractAllPapers();
+//                 Logger.logUIInteraction({
+//                   component: "Dialog",
+//                   action: "saveAllPapers",
+//                   responseLength: currentAIResponseText().length,
+//                   paperCount: papers.length,
+//                 });
+
+//                 if (papers.length === 0) {
+//                   console.log("No papers found in response");
+//                   return;
+//                 }
+
+//                 for (const paper of papers) {
+//                   if (paper.id) {
+//                     try {
+//                       const paperObj = await getPaperById(paper.id);
+//                       if (paperObj) {
+//                         addToSavedPapers(paperObj);
+//                       }
+//                     } catch (e) {
+//                       console.error(`Failed to fetch paper ${paper.id}:`, e);
+//                     }
+//                   }
+//                 }
+//                 setButtonsClicked(prev => ({ ...prev, saveAll: true }));
+//               }}
+//             />
+//           </div>
+//         </div>
+
+//         {/* Paper Info Modal */}
+//         <Modal
+//           isOpen={isModalOpen}
+//           onDismiss={() => setModalState(false)}
+//           isBlocking={false}
+//           styles={{
+//             main: {
+//               maxWidth: 720,
+//               padding: 32,
+//               borderRadius: 16,
+//               boxShadow: "0 16px 40px rgba(0,0,0,0.25)",
+//             },
+//           }}
+//         >
+//           {loadingPaperInfo ? (
+//             <div style={{ padding: 20, textAlign: "center" }}>Loading details...</div>
+//           ) : paperInfo ? (
+//             <div style={{ maxHeight: "70vh", overflowY: "auto" }}>
+//               <h2 style={{ margin: 0, marginBottom: 12, fontSize: 24, lineHeight: 1.3 }}>
+//                 {paperInfo.Title}
+//               </h2>
+//               <div style={{ fontSize: 14, lineHeight: 1.6, color: "#444", marginBottom: 12 }}>
+//                 <b>Authors</b>:{" "}
+//                 {Array.isArray(paperInfo.Authors)
+//                   ? paperInfo.Authors.join(", ")
+//                   : paperInfo.Authors || "N/A"}
+//                 <br />
+//                 <b>Source</b>: {paperInfo.Source || paperInfo.Venue || "N/A"}
+//                 <br />
+//                 <b>Year</b>: {paperInfo.Year || "N/A"}
+//                 <br />
+//                 <b>No. of Citations</b>: {paperInfo.CitationCounts || "N/A"}
+//                 <br />
+//                 <b>ID</b>: {paperInfo.ID || "N/A"}
+//               </div>
+//               <p>
+//                 <b>Abstract</b>: {paperInfo.Abstract || "N/A"}
+//               </p>
+//               <div>
+//                 <b>Keywords</b>:{" "}
+//                 {Array.isArray(paperInfo.Keywords)
+//                   ? paperInfo.Keywords.join(", ")
+//                   : paperInfo.Keywords || "N/A"}
+//               </div>
+//               <hr style={{ margin: "20px 0" }} />
+//               <Stack horizontal tokens={{ childrenGap: 8 }}>
+//                 <ActionButton
+//                   iconProps={{ iconName: "PlusCircle" }}
+//                   disabled={isInSimilarInputPapers && paperInfo ? isInSimilarInputPapers(paperInfo) : false}
+//                   onClick={() => {
+//                     if (paperInfo) {
+//                       Logger.logUIInteraction({
+//                         component: "Dialog",
+//                         action: "addToSimilarPapersFromModal",
+//                         paperId: paperInfo.ID,
+//                         paperTitle: paperInfo.Title,
+//                       });
+//                       addToSimilarInputPapers(paperInfo);
+//                       setModalState(false);
+//                     }
+//                   }}
+//                 >
+//                   Select
+//                 </ActionButton>
+//                 <ActionButton
+//                   iconProps={{ iconName: "Save" }}
+//                   onClick={() => {
+//                     if (paperInfo) {
+//                       addToSavedPapers(paperInfo);
+//                       setModalState(false);
+//                     }
+//                   }}
+//                 >
+//                   Save
+//                 </ActionButton>
+//                 <ActionButton
+//                   iconProps={{ iconName: "GraduationCap" }}
+//                   onClick={() => {
+//                     if (paperInfo && paperInfo.Title) {
+//                       const q = encodeURIComponent(paperInfo.Title);
+//                       window.open(`https://scholar.google.com/scholar?q=${q}`, "_blank", "noopener,noreferrer");
+//                     }
+//                   }}
+//                 >
+//                   Google Scholar
+//                 </ActionButton>
+//                 <ActionButton
+//                   iconProps={{ iconName: "Cancel" }}
+//                   onClick={() => setModalState(false)}
+//                 >
+//                   Close
+//                 </ActionButton>
+//               </Stack>
+//             </div>
+//           ) : (
+//             <div style={{ padding: 20, textAlign: "center" }}>Paper not found</div>
+//           )}
+//         </Modal>
+
+//     </div>
+//   );
+// });
+
+
+
+
 import * as React from "react";
 import "./../assets/scss/App.scss";
 import { ActionButton, DefaultButton, IconButton, Modal, Stack } from "@fluentui/react";
@@ -9,45 +3894,15 @@ import { API_BASE_URL } from '../config';
 
 const baseUrl = `${API_BASE_URL}/`;
 
-// ✅ Define getPaperById at the top level
+// Ensure we only reset chat state and backend memory once per page load,
+// not every time a new chat tab (Dialog instance) mounts.
+let hasInitializedChatMemory = false;
+
+// Define getPaperById at the top level
 export async function getPaperById(id: string) {
   const res = await fetch(`${baseUrl}getPaperById?id=${id}`);
   return res.json();
 }
-
-
-
-
-////////////////////////////////////////////////////////////////////// modified code
-// Parse paper title and ID from raw string
-// const parseTitleAndId = (raw: string) => {
-//   const match = raw.match(/\[\[ID:([^\]]+)\]\]/); // Match [[ID:xxx]]
-//   const id = match ? match[1] : null;
-
-//   let title = raw;
-
-//   // Check if there's a "Title:" prefix (handle both **Title:** and Title:)
-//   const titleMatch = raw.match(/\*{0,2}Title:\*{0,2}\s*([^\[.\n]+)/i);
-//   if (titleMatch) {
-//     title = titleMatch[1].trim();
-//     // Remove trailing period if present
-//     title = title.replace(/\.\s*$/, '');
-//   } else if (id) {
-//     // Extract everything before [[ID:xxx]]
-//     const beforeId = raw.split('[[ID:')[0].trim();
-
-//     // Remove any metadata after the title (could be inline or on same line)
-//     // Pattern matches: Authors:, Year:, Source:, Venue:, etc.
-//     title = beforeId
-//       .split(/\n/)[0]  // Take only first line if multiline
-//       .replace(/\s+(Authors?:|Year:|Source:|Venue:|ID:).*$/gi, '')  // Remove inline metadata
-//       .replace(/\.\s*$/, '')  // Remove trailing period
-//       .trim();
-//   }
-
-//   console.log("parseTitleAndId → raw:", raw, "title:", title, "id:", id);
-//   return { title, id };
-// };
 
 const parseTitleAndId = (raw: string) => {
   // 1) Extract ID (various formats supported)
@@ -66,31 +3921,260 @@ const parseTitleAndId = (raw: string) => {
   return { id: extractedId, title, key: fallbackKey };
 };
 
-async function fetchPaper(id: string | null, title: string | null) {
-  try {
-    if (id && !id.startsWith("temp_")) {
-      const res = await getPaperById(id);
-      const paper = Array.isArray(res) ? res[0] : (res?.data || res);
-      if (paper && paper.ID) return paper;
+// Build a map of paperId → {title, source} from paper-block lines in a message
+const buildRefMap = (text: string): Map<string, { title: string; source: string }> => {
+  const map = new Map<string, { title: string; source: string }>();
+  const lines = text.split("\n");
+  let lastId: string | null = null;
+  for (const line of lines) {
+    const m = line.match(/Title:\s*([^\[]+)\s*\[\[ID:([^\]]+)\]\]/i);
+    if (m) {
+      lastId = m[2].trim();
+      map.set(lastId, { title: m[1].replace(/\*\*/g, "").trim(), source: "" });
+    } else if (lastId) {
+      const src = line.match(/[-\s*]*Source:\s*(.+)/i);
+      if (src) {
+        const entry = map.get(lastId);
+        if (entry) map.set(lastId, { ...entry, source: src[1].trim() });
+        lastId = null;
+      }
     }
-
-    // Fallback to title
-    if (title) {
-      const papers = await getPaperByTitle(title);
-      if (papers && papers.length > 0) return papers[0];
-    }
-
-    return null;
-  } catch (err) {
-    console.error("fetchPaper error:", err);
-    return null;
   }
-}
-/////////////////////////////////////////////////////////////
+  return map;
+};
 
+const CitationBadge = ({ title: initialTitle, source: initialSource, paperId }: { title: string; source: string; paperId: string }) => {
+  const [hovered, setHovered] = React.useState(false);
+  const [fetchedTitle, setFetchedTitle] = React.useState("");
+  const [fetchedSource, setFetchedSource] = React.useState("");
+  const fetchStarted = React.useRef(false);
 
+  const isArxiv      = paperId.startsWith("arxiv_");
+  const isOpenalex   = /^W\d+$/.test(paperId);
+  const isOpenreview = paperId.startsWith("or_");
 
+  // title/source are the reactive values used for display and URL building.
+  // fetchedTitle is set lazily on hover when initialTitle is absent.
+  const title  = fetchedTitle  || initialTitle;
+  const source = fetchedSource || initialSource;
 
+  // url must be derived from the reactive `title` (not the prop `initialTitle`) so the
+  // Google Scholar fallback URL updates after fetchedTitle is set on hover.
+  const hasSourceUrl = isArxiv || isOpenalex || isOpenreview;
+  const url = isArxiv
+    ? `https://arxiv.org/abs/${paperId.replace("arxiv_", "")}`
+    : isOpenalex
+    ? `https://openalex.org/${paperId}`
+    : isOpenreview
+    ? `https://openreview.net/forum?id=${paperId.replace("or_", "")}`
+    : title
+    ? `https://scholar.google.com/scholar?q=${encodeURIComponent(title)}`
+    : "";
+
+  const displaySource = source || (isArxiv ? "arXiv" : isOpenalex ? "OpenAlex" : isOpenreview ? "OpenReview" : "Source");
+  const shortSource   = displaySource.length > 14 ? displaySource.slice(0, 12) + "…" : displaySource;
+  const letter        = displaySource[0]?.toUpperCase() || "S";
+
+  const handleMouseEnter = React.useCallback(() => {
+    setHovered(true);
+    // Skip fetch only when:
+    //   - already fetched, OR
+    //   - the ID maps to a known source URL (no title needed for the URL) AND we already have a title
+    if (fetchStarted.current) return;
+    if (hasSourceUrl && initialTitle) return;
+    fetchStarted.current = true;
+    getPaperById(paperId)
+      .then((paper: any) => {
+        if (paper?.Title)  setFetchedTitle(paper.Title);
+        if (paper?.Source) setFetchedSource(paper.Source);
+      })
+      .catch(() => {});
+  }, [paperId, initialTitle, hasSourceUrl]);
+
+  return (
+    <span
+      style={{ position: "relative", display: "inline-block", verticalAlign: "middle", margin: "0 2px" }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <a
+        href={url || undefined}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 3,
+          padding: "1px 8px 1px 6px", borderRadius: 20,
+          background: hovered ? "#e4e4e4" : "#f0f0f0",
+          color: "#333", fontSize: "0.78rem", textDecoration: "none",
+          border: "1px solid #e0e0e0", lineHeight: 1.6, whiteSpace: "nowrap",
+          transition: "background 0.15s",
+        }}
+      >
+        {shortSource}
+        {url && <span style={{ fontSize: "0.65rem", color: "#888", marginLeft: 1 }}>↗</span>}
+      </a>
+      {hovered && (
+        <div style={{
+          position: "absolute", bottom: "calc(100% + 6px)", left: "50%",
+          transform: "translateX(-50%)",
+          background: "#fff", border: "1px solid #e5e5e5", borderRadius: 12,
+          boxShadow: "0 4px 20px rgba(0,0,0,0.13)", padding: "12px 14px",
+          minWidth: 240, maxWidth: 320, zIndex: 9999, pointerEvents: "none", textAlign: "left",
+        }}>
+          <div style={{ fontSize: "0.87rem", color: "#1a1a1a", lineHeight: 1.45, marginBottom: 8 }}>
+            {title || paperId}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{
+              width: 18, height: 18, borderRadius: "50%", background: "#1a1a1a", color: "#fff",
+              fontSize: "0.6rem", fontWeight: 700,
+              display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}>
+              {letter}
+            </span>
+            <span style={{ fontSize: "0.8rem", color: "#666" }}>{displaySource}</span>
+          </div>
+        </div>
+      )}
+    </span>
+  );
+};
+
+// Matches [[ID:xxx]] (backend format) AND [[xxx]] (LLM inline citation format)
+const CITE_REGEX     = /(\[\[(?:ID:)?[^\]]+\]\])/g;
+const CITE_EXTRACT   = /\[\[(?:ID:)?([^\]]+)\]\]/;
+const CITE_STRIP     = /\[\[(?:ID:)?[^\]]+\]\]/g;
+
+// Extract a clean, linkable ID from whatever the LLM stuffed inside [[...]].
+// The LLM sometimes appends the paper title: "W4401857375: A Survey on RAG" or
+// "W4389984066; Corrective RAG" — strip everything after the real ID.
+const normalizeId = (raw: string): string => {
+  const t = raw.trim();
+  const extracted =
+    t.match(/^(W\d+)/)?.[1]                  // OpenAlex  W4401857375…
+    ?? t.match(/^(arxiv_[^\s;:,]+)/)?.[1]    // ArXiv     arxiv_2301.00001v2…
+    ?? t.match(/^(or_[^\s;:,]+)/)?.[1]       // OpenReview or_abc123…
+    ?? t.split(/[;:,\s]/)[0].trim();         // Unknown — take first token
+  return extracted || t;
+};
+
+// Expand grouped citations before Markdown parses the text.
+// The LLM sometimes groups multiple IDs inside one block:
+//   [[W1234]; [W5678]; [W9999]]  →  [[W1234]] [[W5678]] [[W9999]]
+// Without this, CITE_REGEX (which uses [^\]]+) stops at the first ] and
+// the whole grouped block is left as raw visible text.
+const expandGroupedCitations = (text: string): string =>
+  text.replace(
+    /\[\[([^\[\]]*(?:\];\s*\[[^\[\]]*)*)\]\]/g,
+    (_: string, content: string) => {
+      const ids = content.split(/\];\s*\[/).map((s: string) => s.trim());
+      return ids.map((id: string) => `[[${id}]]`).join(" ");
+    }
+  );
+
+const renderInlineCitations = (
+  raw: string,
+  refMap: Map<string, { title: string; source: string }>
+): React.ReactNode[] =>
+  raw.split(CITE_REGEX).map((part, i) => {
+    const m = part.match(CITE_EXTRACT);
+    if (m) {
+      const id = normalizeId(m[1]);
+      const ref = refMap.get(id);
+      return <React.Fragment key={i}><CitationBadge title={ref?.title || ""} source={ref?.source || ""} paperId={id} /></React.Fragment>;
+    }
+    return <React.Fragment key={i}>{part}</React.Fragment>;
+  });
+
+////////////////////////////////////////////////////////
+
+/**
+ * Foldable "thinking process" timeline.
+ *
+ * Renders the sequence of [SIGNAL:STATUS:...] steps the backend emits during a
+ * turn (rewrite → classify → plan → collect → assess → generate, etc.) as a
+ * collapsible checklist. While the turn is in progress (`live`) the last step
+ * shows a pulsing indicator; once persisted on the AI message it renders as a
+ * collapsed "Thought process" the user can expand to review what happened.
+ */
+const ThinkingProcess: React.FC<{
+  steps: string[];
+  live?: boolean;
+  defaultOpen?: boolean;
+}> = ({ steps, live = false, defaultOpen = false }) => {
+  const [open, setOpen] = React.useState<boolean>(defaultOpen || live);
+  React.useEffect(() => { if (live) setOpen(true); }, [live]);
+
+  const hasSteps = !!steps && steps.length > 0;
+  if (!live && !hasSteps) return null;
+
+  const headerLabel = live
+    ? (hasSteps ? steps[steps.length - 1] : "Thinking…")
+    : "Thought process";
+
+  return (
+    <div className="thinking-process" style={{ margin: "6px 0 10px" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          display: "flex", alignItems: "center", gap: 8, width: "100%",
+          background: "transparent", border: "none", cursor: "pointer",
+          padding: "4px 2px", textAlign: "left",
+        }}
+      >
+        <span style={{
+          display: "inline-block", transition: "transform .15s ease",
+          transform: open ? "rotate(90deg)" : "rotate(0deg)",
+          color: "#9aa4b2", fontSize: "0.7rem",
+        }}>▶</span>
+        {live && (
+          <span style={{ display: "inline-flex", gap: 4 }}>
+            {[0, 1, 2].map((i) => (
+              <span key={i} style={{
+                display: "inline-block", width: 6, height: 6, borderRadius: "50%",
+                background: "#0078d4",
+                animation: `_agDot 1.4s ease-in-out ${i * 0.18}s infinite both`,
+              }} />
+            ))}
+          </span>
+        )}
+        <span style={{
+          fontWeight: 600, fontSize: "0.85rem",
+          color: live ? "#0078d4" : "#444", fontStyle: live ? "italic" : "normal",
+        }}>
+          {headerLabel}
+        </span>
+        {!live && hasSteps && (
+          <span style={{ color: "#aaa", fontSize: "0.78rem" }}>
+            · {steps.length} step{steps.length > 1 ? "s" : ""}
+          </span>
+        )}
+      </button>
+
+      {open && hasSteps && (
+        <ol style={{ listStyle: "none", margin: "2px 0 0", padding: "0 0 0 6px", borderLeft: "1px solid #e5e7eb" }}>
+          {steps.map((s, i) => {
+            const pending = live && i === steps.length - 1;
+            return (
+              <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "5px 0 5px 10px" }}>
+                <span style={{
+                  flexShrink: 0, marginTop: 1, width: 16, height: 16, borderRadius: "50%",
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "0.62rem", fontWeight: 700, background: "#fff",
+                  border: pending ? "2px solid #0078d4" : "1px solid #2e9e83",
+                  color: pending ? "transparent" : "#2e9e83",
+                  animation: pending ? "_agDot 1.4s ease-in-out infinite both" : "none",
+                }}>{pending ? "" : "✓"}</span>
+                <span style={{ fontSize: "0.86rem", color: "#333", lineHeight: 1.35 }}>{s}</span>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </div>
+  );
+};
 
 
 export const Dialog = observer(({ props }) => {
@@ -99,7 +4183,6 @@ export const Dialog = observer(({ props }) => {
     chatHistory,
     chatSelectedPaper,
     displayMessages: savedDisplayMessages,
-    chatSessionId,
     updateDialogState,
     addToSelectNodeIDs,
     addToSimilarInputPapers,
@@ -107,42 +4190,86 @@ export const Dialog = observer(({ props }) => {
     isInSimilarInputPapers,
     isInSavedPapers,
     isInSelectedNodeIDs,
+    tabId, // <-- NEW: needed for DATA_SIGNAL sidebar feature
+    /** From corpus Results list: add paper to "Ask" selection for next message */
+    queuedCorpusQuestionPaper,
+    onConsumeQueuedCorpusQuestionPaper,
   } = props;
 
+  // --- SIDEBAR STATE (NEW) ---
+  const [sidebarPapers, setSidebarPapers] = React.useState<any[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [papersToShow, setPapersToShow] = React.useState(20);
 
-
-
-//////////////////////////////////////////////////////////////////// modified code
-  // Ensure chatSessionId is always set (create on first use if missing)
-  // const sessionId = React.useMemo(() => {
-  //   if (chatSessionId) {
-  //     return chatSessionId;
-  //   }
-  //   const newId = `chat_${Date.now()}`;
-  //   updateDialogState({ chatSessionId: newId });
-  //   return newId;
-  // }, [chatSessionId]);
-
-  // const [displayMessages, setDisplayMessages] = React.useState<
-  //   { role: "user" | "ai"; text: string }[]
-  // >(savedDisplayMessages || []);
-
-  const [displayMessages, setDisplayMessages] = React.useState<{ role: "user" | "ai"; text: string }[]>(
-    chatHistory || [] 
+  const [displayMessages, setDisplayMessages] = React.useState<any[]>(
+    chatHistory || []
   );
 
-  const [retrievedPapers, setRetrievedPapers] = React.useState<{title: string, id: string | null, key: string}[]>([]);
+  const [retrievedPapers, setRetrievedPapers] = React.useState<{ title: string, id: string | null, key: string }[]>([]);
 
-///////////////////////////////////////////////////////////////////
+  // isWaiting: true while the "thinking" sentinel is present in chatHistory.
+  // agentStatus: local state so STATUS signals update the label directly without
+  // going through the MobX→prop→useEffect chain (which batches away intermediate renders).
+  const thinkingEntry = displayMessages.find((m: any) => m.role === "thinking");
+  const isWaiting: boolean = !!thinkingEntry;
 
+  // "Something else" / "Rephrase" custom inputs inside clarification cards (ephemeral).
+  const [customExpansionText, setCustomExpansionText] = React.useState<string | null>(null);
+  const [customConfirmText, setCustomConfirmText] = React.useState<string | null>(null);
+  const [agentStatus, setAgentStatus] = React.useState<string>("");
+  React.useEffect(() => { console.log("[agentStatus render]", agentStatus); }, [agentStatus]);
 
+  // Accumulated "thinking process" steps for the in-progress turn. The ref is
+  // the synchronous source of truth inside the streaming closure; liveSteps
+  // mirrors it for rendering.
+  const [liveSteps, setLiveSteps] = React.useState<string[]>([]);
+  const thinkingStepsRef = React.useRef<string[]>([]);
+  const pushThinkingStep = React.useCallback((label: string) => {
+    const clean = (label || "").trim();
+    if (!clean) return;
+    const arr = thinkingStepsRef.current;
+    if (arr.length && arr[arr.length - 1] === clean) return; // dedupe consecutive
+    arr.push(clean);
+    setLiveSteps([...arr]);
+  }, []);
 
+  // When the tab switches (tabId changes) clear ephemeral card input state.
+  React.useEffect(() => {
+    setCustomExpansionText(null);
+    setCustomConfirmText(null);
+    setAgentStatus("");
+    thinkingStepsRef.current = [];
+    setLiveSteps([]);
+  }, [tabId]);
 
+  // On first mount (including browser refresh / first visit), clear all chat
+  // state on the frontend *and* reset backend memory so every load starts clean.
+  // IMPORTANT: Guard with a module-level flag so opening additional chat tabs
+  // does NOT wipe existing chats.
+  React.useEffect(() => {
+    if (hasInitializedChatMemory) {
+      return;
+    }
+    hasInitializedChatMemory = true;
 
+    // Clear local UI state
+    setDisplayMessages([]);
+    setRetrievedPapers([]);
 
+    // Clear dialog store state (also drops any thinking sentinel in chatHistory)
+    updateDialogState({
+      chatHistory: [],
+      chatText: "",
+    });
 
-
-  const [isWaiting, setIsWaiting] = React.useState(false);
+    // Clear server-side chat memory for this app instance
+    fetch(`${baseUrl}resetMemory`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    }).catch((err) => {
+      console.error("Failed to reset memory on mount:", err);
+    });
+  }, []);
 
   // Paper info modal state
   const [isModalOpen, setModalState] = React.useState(false);
@@ -153,7 +4280,7 @@ export const Dialog = observer(({ props }) => {
   const openPaperInfoModal = async (title: string, id: string | null) => {
     setLoadingPaperInfo(true);
     setModalState(true);
-    
+
     try {
       let paper = null;
       if (id) {
@@ -162,7 +4289,7 @@ export const Dialog = observer(({ props }) => {
         const papers = await getPaperByTitle(title);
         paper = papers.length > 0 ? papers[0] : null;
       }
-      
+
       if (paper) {
         setPaperInfo(paper);
         Logger.logUIInteraction({
@@ -181,63 +4308,54 @@ export const Dialog = observer(({ props }) => {
     setLoadingPaperInfo(false);
   };
 
-
-
-
-
-///////////////////////////////////////////////////////// modified code
-      // Sync displayMessages to dialogStates whenever it changes
-      // React.useEffect(() => {
-      //   updateDialogState({ displayMessages });
-      // }, [displayMessages]);
-
-      React.useEffect(() => {
-        setDisplayMessages(chatHistory || []);
-    }, [chatHistory]);
-/////////////////////////////////////////////////////////
-
-
+  React.useEffect(() => {
+    setDisplayMessages(chatHistory || []);
+  }, [chatHistory]);
 
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
+  /** Local draft so typing does not call updateDialogState → App re-render on every key */
+  const [draftChatText, setDraftChatText] = React.useState(() => chatText ?? "");
+  React.useEffect(() => {
+    setDraftChatText(chatText ?? "");
+  }, [chatText]);
 
-
-//////////////////////////////////////////////////////////////// modified code
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
-  const chatMessagesContainerRef = React.useRef<HTMLDivElement>(null);
-
-  // Removed auto-scroll on every chatHistory change to prevent page jumping
-/////////////////////////////////////////////////////////////////
-
-
-
 
   const prevMessageCountRef = React.useRef(0);
 
-  // Auto scroll to the latest message only when new messages are added
+  // When switching chat window, scroll to latest content
   React.useEffect(() => {
-    // Only scroll if messages were actually added (not on initial render)
-    if (displayMessages.length > prevMessageCountRef.current && chatMessagesContainerRef.current) {
-      // Scroll only within the chat container, not the entire page
-      chatMessagesContainerRef.current.scrollTop = chatMessagesContainerRef.current.scrollHeight;
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
+  }, [tabId]);
+
+  // Scroll to bottom only when the user sends a new message (not while model is generating)
+  React.useEffect(() => {
+    const prevLen = prevMessageCountRef.current;
     prevMessageCountRef.current = displayMessages.length;
+    const addedMessage = displayMessages.length > prevLen;
+    const lastIsUser = displayMessages.length > 0 && displayMessages[displayMessages.length - 1].role === "user";
+    if (addedMessage && lastIsUser && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
 
     // Reset button states when a new AI message is added
     if (displayMessages.length > 0 && displayMessages[displayMessages.length - 1].role === "ai") {
       setButtonsClicked({ locateAll: false, addAll: false, saveAll: false });
     }
-  }, [displayMessages, isWaiting]);
+  }, [displayMessages]);
 
   // Handle Enter key to send message
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault(); // Prevent newline
-      if (chatText.trim()) {
+      e.preventDefault();
+      if (draftChatText.trim()) {
         Logger.logUIInteraction({
           component: "Dialog",
           action: "askButtonClick",
-          value: chatText,
+          value: draftChatText,
           chatHistoryLength: chatHistory.length,
           trigger: "enter_key",
         });
@@ -248,20 +4366,17 @@ export const Dialog = observer(({ props }) => {
 
   const onChangeChatText = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = e.target.value;
-    updateDialogState({ chatText: newText });
+    setDraftChatText(newText);
 
+    // Auto-grow the textarea up to ~3 lines, then scroll
     if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-
-      const lineHeight = 24;
+      const el = textareaRef.current;
+      el.style.height = "auto";
+      const lineHeight = 24; // keep in sync with CSS line-height
       const maxHeight = lineHeight * 3;
-      if (textareaRef.current.scrollHeight > maxHeight) {
-        textareaRef.current.style.height = `${maxHeight}px`;
-        textareaRef.current.style.overflowY = "auto";
-      } else {
-        textareaRef.current.style.overflowY = "hidden";
-      }
+      const newHeight = Math.min(el.scrollHeight, maxHeight);
+      el.style.height = `${newHeight}px`;
+      el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
     }
   };
 
@@ -277,7 +4392,6 @@ export const Dialog = observer(({ props }) => {
     const text = currentAIResponseText();
     const papers: { title: string; id: string | null }[] = [];
 
-    // Match paper titles in format: **Title: xxx [[ID:yyy]]** or **Title:** xxx [[ID:yyy]]
     const titlePattern = /\*\*Title:\*\*\s*([^\[]+)\s*\[\[ID:([^\]]+)\]\]/gi;
     let match;
 
@@ -287,12 +4401,10 @@ export const Dialog = observer(({ props }) => {
       papers.push({ title, id });
     }
 
-    // Also match list items: Title: xxx [[ID:yyy]]
     const listPattern = /Title:\s*([^\[]+)\s*\[\[ID:([^\]]+)\]\]/gi;
     while ((match = listPattern.exec(text)) !== null) {
       const title = match[1].trim();
       const id = match[2].trim();
-      // Check if not already added
       if (!papers.some(p => p.id === id)) {
         papers.push({ title, id });
       }
@@ -308,61 +4420,189 @@ export const Dialog = observer(({ props }) => {
     saveAll: false
   });
 
+  // Papers the user wants to reference explicitly in their next question
+  const [selectedQuestionPapers, setSelectedQuestionPapers] = React.useState<
+    { id: string | null; title: string }[]
+  >([]);
+
+  const toggleQuestionPaper = React.useCallback(
+    (paper: { id: string | null; title: string }) => {
+      setSelectedQuestionPapers((prev) => {
+        const exists = prev.some(
+          (p) => (p.id && p.id === paper.id) || (!p.id && p.title === paper.title)
+        );
+        if (exists) {
+          return prev.filter(
+            (p) => !((p.id && p.id === paper.id) || (!p.id && p.title === paper.title))
+          );
+        }
+        return [...prev, paper];
+      });
+    },
+    []
+  );
+
+  // Results list "Ask" queues a paper; ref avoids duplicate toggles under React Strict Mode
+  const consumedCorpusAskTokenRef = React.useRef<number | null>(null);
+  React.useEffect(() => {
+    const q = queuedCorpusQuestionPaper;
+    if (!q) {
+      return;
+    }
+    if (consumedCorpusAskTokenRef.current === q.token) {
+      return;
+    }
+    consumedCorpusAskTokenRef.current = q.token;
+    toggleQuestionPaper({
+      id: String(q.id),
+      title: q.title,
+    });
+    onConsumeQueuedCorpusQuestionPaper?.();
+    // Only re-run when a new queue token is set
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queuedCorpusQuestionPaper?.token, toggleQuestionPaper]);
+
+  const clearSelectedQuestionPapers = React.useCallback(() => {
+    setSelectedQuestionPapers([]);
+  }, []);
+
+  const buildQuestionPrompt = React.useCallback(
+    (questionText: string) => {
+      if (!selectedQuestionPapers.length) {
+        return questionText;
+      }
+      const headerLines = selectedQuestionPapers.map((p, idx) =>
+        `${idx + 1}. ${p.title}${p.id ? ` (ID: ${p.id})` : ""}`
+      );
+      const header = `Selected papers:\n${headerLines.join("\n")}`;
+      return `${header}\n\nQuestion: ${questionText}`;
+    },
+    [selectedQuestionPapers]
+  );
 
 
-///////////////////////////////////////////////////////////////// modified code
-  const chatRequest = () => {
-    if (!chatText.trim()) return;
+  // Core chat sender used by both the text box and inline "Load more" link.
+  const sendChat = (text: string) => {
+    if (!text.trim()) return;
+
+    // Clear any pending clarification cards and transient input state
+    setCustomExpansionText(null);
+    setCustomConfirmText(null);
+
+    // Combine any selected papers with the user's question so the model
+    // sees both the paper titles and the free-form question.
+    const finalText = buildQuestionPrompt(text);
+
+    // Draft is local-only while typing; parent chatText often stays "" so the
+    // sync effect does not run — clear the textarea immediately on send.
+    setDraftChatText("");
 
     // 1. Clear previous retrieval state
-    setRetrievedPapers([]); 
-    setIsWaiting(true);
+    setRetrievedPapers([]);
+    // Reset the thinking-process timeline for this new turn.
+    thinkingStepsRef.current = [];
+    setLiveSteps([]);
 
-    // 2. Optimistically add the USER message to the UI immediately
-    const userMessage = { role: "user", text: chatText };
-    
-    // Update global state with the new user message
+    // 2. Optimistically add the USER message and the thinking sentinel to parent
+    // chatHistory so both survive split-pane remounts.
+    const userMessage = {
+      role: "user" as const,
+      text,
+      referencedPapers: selectedQuestionPapers.length ? [...selectedQuestionPapers] : undefined,
+    };
+
     updateDialogState((prev: any) => ({
-      chatHistory: [...prev.chatHistory, userMessage],
-      chatText: "", // Clear input
+      // Drop any signal cards and old thinking sentinel; add user msg + new thinking sentinel
+      chatHistory: [
+        ...(prev.chatHistory || []).filter((m: any) => m.role !== "signal" && m.role !== "thinking"),
+        userMessage,
+        { role: "thinking" },
+      ],
+      chatText: "", // clear the input box
     }));
 
-    // Prepare history to send to backend (existing history + new user msg)
-    const baseHistory = [...chatHistory, userMessage];
+    // Reset input height back to one row and clear selected papers after sending
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "";
+      textareaRef.current.style.overflowY = "hidden";
+    }
+    clearSelectedQuestionPapers();
+
+    const baseHistory = [...chatHistory.filter((m: any) => m.role !== "signal"), userMessage];
 
     // 3. Start the Fetch Request
     fetch(`${baseUrl}chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        chat_id: props.tabId,
-        text: chatText,
+        chat_id: tabId,
+        text: finalText,
         chat_history_raw: baseHistory,
       }),
     }).then((response) => {
-      // 4. Initialize the Stream Reader
       if (!response.body) return;
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
-      
-      let partialResponse = ""; // Accumulates the full text for final processing
+
+      let partialResponse = "";
       let isFirstChunk = true;
 
-      // 5. Define the Recursive Reader Function
       const readChunk = ({ done, value }: ReadableStreamReadResult<Uint8Array>) => {
+        const SIGNAL_SHOW_LOAD_MORE = "[SIGNAL:SHOW_LOAD_MORE]";
+        const signalRegex = new RegExp(
+          "\\s*" + SIGNAL_SHOW_LOAD_MORE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*",
+          "g"
+        );
+
         // --- CASE A: Stream is Finished ---
         if (done) {
-          setIsWaiting(false);
-          
-          // Parse all papers found in the complete response for the "ALL" buttons
+          // Append any final chunk (signal or text often arrives with done=true)
+          if (value && value.length > 0) {
+            partialResponse += decoder.decode(value);
+          }
+          // Remove the thinking sentinel and clear the status label.
+          setAgentStatus("");
+          updateDialogState((prev: any) => ({
+            chatHistory: (prev.chatHistory || []).filter((m: any) => m.role !== "thinking"),
+          }));
+          // Persist the complete thinking-process timeline onto the final AI
+          // message (in case steps arrived after the bubble was created), then
+          // clear the live timeline.
+          updateDialogState((prev: any) => {
+            const history = [...(prev.chatHistory || [])];
+            const lastIdx = history.length - 1;
+            if (lastIdx >= 0 && history[lastIdx].role === "ai" && thinkingStepsRef.current.length) {
+              history[lastIdx] = { ...history[lastIdx], thinkingSteps: [...thinkingStepsRef.current] };
+            }
+            return { chatHistory: history };
+          });
+          setLiveSteps([]);
+
+          // Persist "load more" when backend sent signal OR when response looks like a paper list (fallback)
+          const HAS_MORE_MARKER = "[[HAS_MORE_PAPERS]]";
+          const hadSignal = partialResponse.includes(SIGNAL_SHOW_LOAD_MORE);
+          const looksLikePaperList = /Title:\s*/i.test(partialResponse) && /\[\[ID:[^\]]+\]\]/.test(partialResponse);
+          if (hadSignal || looksLikePaperList) {
+            const cleaned = hadSignal ? partialResponse.replace(signalRegex, "").trim() : partialResponse.trim();
+            const textWithMarker = cleaned + "\n" + HAS_MORE_MARKER;
+            if (hadSignal) partialResponse = cleaned;
+            updateDialogState((prev: any) => {
+              const history = [...(prev.chatHistory || [])];
+              const lastIdx = history.length - 1;
+              if (lastIdx >= 0 && history[lastIdx].role === "ai") {
+                history[lastIdx] = { ...history[lastIdx], text: textWithMarker, hasMorePapers: true };
+              }
+              return { chatHistory: history };
+            });
+          }
+
           const papers: { title: string; id: string | null; key: string }[] = [];
           const lines = partialResponse.split("\n");
 
           for (const line of lines) {
             const { id, title, key } = parseTitleAndId(line);
             if (key && !papers.some((p) => p.key === key)) {
-               // Only add if it looks like a valid paper line
-               if(title) papers.push({ id, title, key });
+              if (title) papers.push({ id, title, key });
             }
           }
           console.log("Stream complete. Papers found:", papers);
@@ -371,55 +4611,155 @@ export const Dialog = observer(({ props }) => {
         }
 
         // --- CASE B: Process New Chunk ---
-        const newTextChunk = decoder.decode(value);
-        partialResponse += newTextChunk;
+        let newTextChunk = decoder.decode(value);
+        console.log("[STREAM chunk]", JSON.stringify(newTextChunk.slice(0, 120)));
 
-        // If this is the very first bit of text, create the "AI" message bubble
-        if (isFirstChunk) {
-          isFirstChunk = false;
-          setIsWaiting(false); // Stop the "Thinking..." spinner
-          
-          updateDialogState((prev: any) => ({
-            chatHistory: [...prev.chatHistory, { role: "ai", text: "" }],
-          }));
+        // --- INTERCEPT SIGNAL TAGS (e.g. [SIGNAL:SHOW_LOAD_MORE]) ---
+        if (newTextChunk.includes(SIGNAL_SHOW_LOAD_MORE)) {
+          newTextChunk = newTextChunk.replace(signalRegex, "");
         }
 
-        // Append the new chunk to the *last* message (the AI's message)
-        updateDialogState((prev: any) => {
-          const historyCopy = [...prev.chatHistory];
-          const lastMsgIndex = historyCopy.length - 1;
-          const lastMsg = historyCopy[lastMsgIndex];
-
-          if (lastMsg && lastMsg.role === "ai") {
-            historyCopy[lastMsgIndex] = {
-              ...lastMsg,
-              text: lastMsg.text + newTextChunk,
-            };
+        // --- INTERCEPT STATUS SIGNALS [SIGNAL:STATUS:...] ---
+        // A chunk may carry several status signals; capture each as a step so
+        // the foldable thinking-process timeline shows the full sequence.
+        if (newTextChunk.includes("[SIGNAL:STATUS:")) {
+          let lastLabel = "";
+          const statusRe = /\[SIGNAL:STATUS:([^\]]+)\]/g;
+          let sm: RegExpExecArray | null;
+          while ((sm = statusRe.exec(newTextChunk)) !== null) {
+            pushThinkingStep(sm[1]);
+            lastLabel = sm[1];
           }
-          return { chatHistory: historyCopy };
-        });
+          if (lastLabel) {
+            console.log("[STATUS] setting agentStatus →", lastLabel);
+            setAgentStatus(lastLabel);
+          }
+          newTextChunk = newTextChunk.replace(/\[SIGNAL:STATUS:[^\]]+\]/g, "");
+        }
 
-        // Read the next chunk
+        // --- INTERCEPT QUERY EXPANSION SIGNAL ---
+        const EXPANSION_PREFIX = "[SIGNAL:QUERY_EXPANSION:";
+        if (newTextChunk.includes(EXPANSION_PREFIX)) {
+          const startIdx = newTextChunk.indexOf(EXPANSION_PREFIX);
+          const jsonStart = startIdx + EXPANSION_PREFIX.length;
+          let depth = 0;
+          let jsonEnd = -1;
+          for (let i = jsonStart; i < newTextChunk.length; i++) {
+            if (newTextChunk[i] === "{") depth++;
+            else if (newTextChunk[i] === "}") { depth--; if (depth === 0) { jsonEnd = i + 1; break; } }
+          }
+          if (jsonEnd > 0) {
+            try {
+              const data = JSON.parse(newTextChunk.slice(jsonStart, jsonEnd));
+              if (data.expansions?.length) {
+                // Store signal card and remove thinking sentinel in one update
+                updateDialogState((prev: any) => ({
+                  chatHistory: [
+                    ...(prev.chatHistory || []).filter((m: any) => m.role !== "thinking"),
+                    { role: "signal", signalType: "query_expansion", signalData: data },
+                  ],
+                }));
+              }
+            } catch (_) { /* malformed JSON — ignore */ }
+            const tagEnd = newTextChunk.indexOf("]", jsonEnd) + 1;
+            newTextChunk = newTextChunk.slice(0, startIdx) + (tagEnd > 0 ? newTextChunk.slice(tagEnd) : "");
+          }
+        }
+
+        // --- INTERCEPT INTENT CONFIRM SIGNAL ---
+        const CONFIRM_PREFIX = "[SIGNAL:INTENT_CONFIRM:";
+        if (newTextChunk.includes(CONFIRM_PREFIX)) {
+          const startIdx = newTextChunk.indexOf(CONFIRM_PREFIX);
+          const jsonStart = startIdx + CONFIRM_PREFIX.length;
+          let depth = 0, jsonEnd = -1;
+          for (let i = jsonStart; i < newTextChunk.length; i++) {
+            if (newTextChunk[i] === "{") depth++;
+            else if (newTextChunk[i] === "}") { depth--; if (depth === 0) { jsonEnd = i + 1; break; } }
+          }
+          if (jsonEnd > 0) {
+            try {
+              const data = JSON.parse(newTextChunk.slice(jsonStart, jsonEnd));
+              if (data.items?.length) {
+                // Store signal card and remove thinking sentinel in one update
+                updateDialogState((prev: any) => ({
+                  chatHistory: [
+                    ...(prev.chatHistory || []).filter((m: any) => m.role !== "thinking"),
+                    { role: "signal", signalType: "intent_confirm", signalData: data },
+                  ],
+                }));
+              }
+            } catch (_) { /* malformed JSON — ignore */ }
+            const tagEnd = newTextChunk.indexOf("]", jsonEnd) + 1;
+            newTextChunk = newTextChunk.slice(0, startIdx) + (tagEnd > 0 ? newTextChunk.slice(tagEnd) : "");
+          }
+        }
+
+        // --- REGULAR TEXT STREAM (after signals stripped) ---
+        partialResponse += newTextChunk;
+
+        if (isFirstChunk) {
+          if (newTextChunk.trim()) {
+            // First real text chunk: remove thinking sentinel and create AI bubble in ONE
+            // updateDialogState call so the parent always sees them together.
+            isFirstChunk = false;
+            updateDialogState((prev: any) => ({
+              chatHistory: [
+                ...(prev.chatHistory || []).filter((m: any) => m.role !== "thinking"),
+                { role: "ai", text: newTextChunk, thinkingSteps: [...thinkingStepsRef.current] },
+              ],
+            }));
+            reader.read().then(readChunk);
+            return;
+          }
+        }
+
+        if (newTextChunk.trim()) {
+          updateDialogState((prev: any) => {
+            const historyCopy = [...prev.chatHistory];
+            const lastMsgIndex = historyCopy.length - 1;
+            const lastMsg = historyCopy[lastMsgIndex];
+
+            if (lastMsg && lastMsg.role === "ai") {
+              let newText = lastMsg.text + newTextChunk;
+              newText = newText.replace(signalRegex, ""); // strip signal (handles split across chunks)
+              historyCopy[lastMsgIndex] = {
+                ...lastMsg,
+                text: newText,
+              };
+            }
+            return { chatHistory: historyCopy };
+          });
+        }
+
         reader.read().then(readChunk);
       };
 
-      // Kick off the reading loop
       reader.read().then(readChunk);
     }).catch(err => {
       console.error("Stream error:", err);
-      setIsWaiting(false);
+      setAgentStatus("");
+      setLiveSteps([]);
+      updateDialogState((prev: any) => ({
+        chatHistory: (prev.chatHistory || []).filter((m: any) => m.role !== "thinking"),
+      }));
     });
   };
-/////////////////////////////////////////////////////////////////
 
-
+  // --- Public handler for the text box / Ask button ---
+  const chatRequest = () => {
+    if (!draftChatText.trim()) return;
+    sendChat(draftChatText);
+  };
 
 
 
   const extractText = (children: React.ReactNode): string => {
     if (typeof children === "string") return children;
     if (Array.isArray(children)) {
-      return children.map((child) => extractText(child)).join(" ");
+      const joined = children.map((child: React.ReactNode) => extractText(child)).join(" ");
+      // Markdown parses [[W1234]] as "[" + "[W1234]" (ref link) + "]", joined with spaces
+      // as "[ [W1234] ]". Repair that back to "[[W1234]]" so CITE_REGEX can match.
+      return joined.replace(/\[\s*\[([^\]]*)\]\s*\]/g, "[[$1]]");
     }
     if (React.isValidElement(children)) {
       return extractText(children.props.children);
@@ -427,315 +4767,37 @@ export const Dialog = observer(({ props }) => {
     return "";
   };
 
-  // Helper function to check if text is part of a summary (not an individual paper)
-  const isSummaryText = (text: string): boolean => {
-    // Summary text characteristics:
-    // - Doesn't start with "Title:"
-    // - Contains narrative text (commas, parentheses, conjunctions)
-    // - May contain multiple [[ID:xxx]] references
-
-    if (!text || text.trim().startsWith("Title:")) {
-      return false;
-    }
-
-    // Check if it's embedded in parentheses (common in summaries)
-    if (/^\s*\(/i.test(text) || /\)\s*$/i.test(text)) {
-      return true;
-    }
-
-    // Check if it contains summary-like patterns or narrative structure
-    const hasSummaryKeywords = /short summary|results include|highlights?|guidance|survey|taxonomy|special issues|applied collections/i.test(text);
-    const hasNarrativeStructure = /[,()]/g.test(text) && text.length > 50;
-
-    // Check if it contains multiple [[ID:xxx]] references (indicates it's a summary paragraph)
-    const idMatches = text.match(/\[\[ID:[^\]]+\]\]/g);
-    const hasMultipleIDs = idMatches && idMatches.length > 1;
-
-    return hasSummaryKeywords || hasNarrativeStructure || hasMultipleIDs;
-  };
-
-  // Helper function to strip [[ID:xxx]] tags from text
-  const stripIDTags = (text: string): string => {
-    return text.replace(/\[\[ID:[^\]]+\]\]/g, '').trim();
-  };
-
-
-
-
-  // Helper function to check if a line is metadata (Authors, Year, Source, etc.)
-  const isMetadataLine = (text: string): boolean => {
-    if (!text) return false;
-    const trimmed = text.trim();
-
-    // Match lines like "**Authors:** ...", "**Year:** ...", "**Source:** ...", etc.
-    const metadataPattern = /^\*{0,2}(Authors?|Year|Source|Venue|ID):\*{0,2}/i;
-
-    // Also match standalone "ID: xxx" lines
-    const standaloneIdPattern = /^ID:\s*\d+\s*$/i;
-
-    return metadataPattern.test(trimmed) || standaloneIdPattern.test(trimmed);
-  };
-
-
-
-
-////////////////////////////////////////////////////////////////////////////////////// modified code
-  // const renderPaperBlock = (title: string, id: string | null, raw: string) => {
-  //   // 🔹 Check if this is summary text (not an individual paper)
-  //   if (isSummaryText(raw)) {
-  //     // For summary text, strip ID tags and display as normal text
-  //     const cleanedText = stripIDTags(raw);
-  //     return <span>{cleanedText}</span>;
-  //   }
-
-  //   // 🔹 If no Title was parsed OR title === raw text, then it's not a paper title
-  //   if (!id && (!title || title === raw)) {
-  //     return <span>{raw}</span>; // Normal text → display as is
-  //   }
-
-  //   // Check if buttons should be disabled
-  //   const paperObj = { ID: id };
-  //   const isAlreadySelected = id && isInSelectedNodeIDs && isInSelectedNodeIDs(id);
-  //   const isAlreadyInSimilar = id && isInSimilarInputPapers && isInSimilarInputPapers(paperObj);
-  //   const isAlreadySaved = id && isInSavedPapers && isInSavedPapers(paperObj);
-
-  //   // 🔹 Otherwise it's a paper title → render in blue + show buttons
-  //   return (
-  //     <div style={{ marginBottom: "0.5em" }}>
-  //       <span
-  //         style={{ color: "blue", fontWeight: "bold", cursor: "pointer" }}
-  //         onClick={() => {
-  //           // 🟣 Open paper info modal when clicking on paper title
-  //           Logger.logUIInteraction({
-  //             component: "Dialog",
-  //             action: "selectPaperFromResponse",
-  //             paperTitle: title,
-  //             previousSelectedPaper: chatSelectedPaper,
-  //             paperId: id || undefined,
-  //           });
-  //           updateDialogState({ chatSelectedPaper: title });
-  //           // Open info modal
-  //           openPaperInfoModal(title, id);
-  //         }}
-  //       >
-  //         {title}
-  //       </span>
-
-  //       <div style={{ marginTop: "0.2em" }}>
-  //         <DefaultButton
-  //           iconProps={{ iconName: "Locate" }}
-  //           styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
-  //           disabled={isAlreadySelected}
-  //           onClick={() => {
-  //             // 🔍 Locate (by ID first, else by title) + logs
-  //             if (id) {
-  //               Logger.logUIInteraction({
-  //                 component: "Dialog",
-  //                 action: "locateSelectedPaper",
-  //                 paperTitle: title,
-  //                 paperId: id,
-  //               });
-  //               getPaperById(id).then((paper) => {
-  //                 if (paper && paper["ID"] != null) {
-  //                   Logger.logUIInteraction({
-  //                     component: "Dialog",
-  //                     action: "locateSelectedPaperSuccess",
-  //                     paperTitle: title,
-  //                     paperId: paper["ID"],
-  //                     via: "id",
-  //                   });
-  //                   addToSelectNodeIDs([paper["ID"]], "scatterplot");
-  //                 } else {
-  //                   Logger.logUIInteraction({
-  //                     component: "Dialog",
-  //                     action: "locateSelectedPaperNotFound",
-  //                     paperTitle: title,
-  //                     paperId: id,
-  //                     via: "id",
-  //                   });
-  //                 }
-  //               });
-  //             } else {
-  //               Logger.logUIInteraction({
-  //                 component: "Dialog",
-  //                 action: "locateSelectedPaper",
-  //                 paperTitle: title,
-  //               });
-  //               getPaperByTitle(title).then((papers) => {
-  //                 if (papers.length > 0) {
-  //                   Logger.logUIInteraction({
-  //                     component: "Dialog",
-  //                     action: "locateSelectedPaperSuccess",
-  //                     paperTitle: title,
-  //                     paperId: papers[0].ID,
-  //                     papersFound: papers.length,
-  //                     via: "title",
-  //                   });
-  //                   addToSelectNodeIDs(papers.map((d) => d["ID"]), "scatterplot");
-  //                 } else {
-  //                   Logger.logUIInteraction({
-  //                     component: "Dialog",
-  //                     action: "locateSelectedPaperNotFound",
-  //                     paperTitle: title,
-  //                     via: "title",
-  //                   });
-  //                 }
-  //               });
-  //             }
-  //           }}
-  //         />
-
-  //         <DefaultButton
-  //           iconProps={{ iconName: "PlusCircle" }}
-  //           styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
-  //           disabled={isAlreadyInSimilar}
-  //           onClick={() => {
-  //             // ➕ Add to similar input + logs
-  //             if (id) {
-  //               Logger.logUIInteraction({
-  //                 component: "Dialog",
-  //                 action: "addSelectedPaperToSimilarInput",
-  //                 paperTitle: title,
-  //                 paperId: id,
-  //               });
-  //               getPaperById(id).then((paper) => {
-  //                 if (paper) {
-  //                   Logger.logUIInteraction({
-  //                     component: "Dialog",
-  //                     action: "addSelectedPaperToSimilarInputSuccess",
-  //                     paperTitle: title,
-  //                     paperId: paper["ID"],
-  //                   });
-  //                   addToSimilarInputPapers(paper);
-  //                 } else {
-  //                   Logger.logUIInteraction({
-  //                     component: "Dialog",
-  //                     action: "addSelectedPaperToSimilarInputNotFound",
-  //                     paperTitle: title,
-  //                     paperId: id,
-  //                   });
-  //                 }
-  //               });
-  //             } else {
-  //               Logger.logUIInteraction({
-  //                 component: "Dialog",
-  //                 action: "addSelectedPaperToSimilarInput",
-  //                 paperTitle: title,
-  //               });
-  //               getPaperByTitle(title).then((papers) => {
-  //                 if (papers.length > 0) {
-  //                   Logger.logUIInteraction({
-  //                     component: "Dialog",
-  //                     action: "addSelectedPaperToSimilarInputSuccess",
-  //                     paperTitle: title,
-  //                     paperId: papers[0].ID,
-  //                   });
-  //                   addToSimilarInputPapers(papers[0]);
-  //                 } else {
-  //                   Logger.logUIInteraction({
-  //                     component: "Dialog",
-  //                     action: "addSelectedPaperToSimilarInputNotFound",
-  //                     paperTitle: title,
-  //                   });
-  //                 }
-  //               });
-  //             }
-  //           }}
-  //         />
-
-  //         <DefaultButton
-  //           iconProps={{ iconName: "Save" }}
-  //           styles={{ root: { minWidth: 0 } }}
-  //           disabled={isAlreadySaved}
-  //           onClick={() => {
-  //             // 💾 Save + logs
-  //             if (id) {
-  //               Logger.logUIInteraction({
-  //                 component: "Dialog",
-  //                 action: "saveSelectedPaper",
-  //                 paperTitle: title,
-  //                 paperId: id,
-  //               });
-  //               getPaperById(id).then((paper) => {
-  //                 if (paper) {
-  //                   Logger.logUIInteraction({
-  //                     component: "Dialog",
-  //                     action: "saveSelectedPaperSuccess",
-  //                     paperTitle: title,
-  //                     paperId: paper["ID"],
-  //                   });
-  //                   addToSavedPapers(paper);
-  //                 } else {
-  //                   Logger.logUIInteraction({
-  //                     component: "Dialog",
-  //                     action: "saveSelectedPaperNotFound",
-  //                     paperTitle: title,
-  //                     paperId: id,
-  //                   });
-  //                 }
-  //               });
-  //             } else {
-  //               Logger.logUIInteraction({
-  //                 component: "Dialog",
-  //                 action: "saveSelectedPaper",
-  //                 paperTitle: title,
-  //               });
-  //               getPaperByTitle(title).then((papers) => {
-  //                 if (papers.length > 0) {
-  //                   Logger.logUIInteraction({
-  //                     component: "Dialog",
-  //                     action: "saveSelectedPaperSuccess",
-  //                     paperTitle: title,
-  //                     paperId: papers[0].ID,
-  //                   });
-  //                   addToSavedPapers(papers[0]);
-  //                 } else {
-  //                   Logger.logUIInteraction({
-  //                     component: "Dialog",
-  //                     action: "saveSelectedPaperNotFound",
-  //                     paperTitle: title,
-  //                   });
-  //                 }
-  //               });
-  //             }
-  //           }}
-  //         />
-  //       </div>
-  //     </div>
-  //   );
-  // };
-
   const renderPaperBlock = (title: string, id: string | null, raw: string) => {
     // 1. If it's not a valid paper title line, just render cleaned text
     if (!title || title === raw || !/Title:\s*[^\n]+/i.test(raw)) {
       const cleaned = raw.replace(/\[\[ID:[^\]]+\]\]/g, "");
       return <span>{cleaned}</span>;
     }
-  
+
     // 2. Clean the title (remove ID tags)
     const cleanTitle = title.replace(/\[\[ID:[^\]]+\]\]/g, "").trim();
-  
-    // 3. Extract the Summary (Remove Title line and ID tags from the raw block)
+
+    // 3. Extract the Summary
     const summary = raw
       .replace(/\*\*Title:[\s\S]*?\[\[ID:[^\]]+\]\]\*\*/gi, "")
       .replace(/Title:\s*[^\n]+/gi, "")
       .replace(/<!--ID:[^>]+-->/g, "")
       .replace(/\[\[ID:[^\]]+\]\]/g, "")
       .trim();
-  
-    // Check if buttons should be disabled
+
     const paperObj = { ID: id };
     const isAlreadySelected = id && isInSelectedNodeIDs && isInSelectedNodeIDs(id);
     const isAlreadyInSimilar = id && isInSimilarInputPapers && isInSimilarInputPapers(paperObj);
     const isAlreadySaved = id && isInSavedPapers && isInSavedPapers(paperObj);
-  
-    // 🔹 Otherwise it's a paper title → render in blue + show buttons
+    const isInQuestionList = selectedQuestionPapers.some(
+      (p) => (p.id && p.id === id) || (!p.id && p.title === cleanTitle)
+    );
+
     return (
       <div style={{ marginBottom: "0.5em" }}>
         <span
           style={{ color: "blue", fontWeight: "bold", cursor: "pointer" }}
           onClick={() => {
-            // Open paper info modal when clicking on paper title
             Logger.logUIInteraction({
               component: "Dialog",
               action: "selectPaperFromResponse",
@@ -744,20 +4806,25 @@ export const Dialog = observer(({ props }) => {
               paperId: id || undefined,
             });
             updateDialogState({ chatSelectedPaper: title });
-            // Open info modal
             openPaperInfoModal(title, id);
           }}
         >
-          {cleanTitle}             
+          {cleanTitle}
         </span>
-  
+
         <div style={{ marginTop: "0.2em" }}>
+          <DefaultButton
+            iconProps={{ iconName: isInQuestionList ? "Cancel" : "Chat" }}
+            text={isInQuestionList ? "" : "Ask"}
+            styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
+            onClick={() => toggleQuestionPaper({ id, title: cleanTitle })}
+          />
+
           <DefaultButton
             iconProps={{ iconName: "Locate" }}
             styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
             disabled={isAlreadySelected}
             onClick={() => {
-              // Locate (by ID first, else by title) + logs
               if (id) {
                 Logger.logUIInteraction({
                   component: "Dialog",
@@ -814,13 +4881,12 @@ export const Dialog = observer(({ props }) => {
               }
             }}
           />
-  
+
           <DefaultButton
             iconProps={{ iconName: "PlusCircle" }}
             styles={{ root: { marginRight: "0.3em", minWidth: 0 } }}
             disabled={isAlreadyInSimilar}
             onClick={() => {
-              // ➕ Add to similar input + logs
               if (id) {
                 Logger.logUIInteraction({
                   component: "Dialog",
@@ -874,13 +4940,12 @@ export const Dialog = observer(({ props }) => {
               }
             }}
           />
-  
+
           <DefaultButton
             iconProps={{ iconName: "Save" }}
             styles={{ root: { minWidth: 0 } }}
             disabled={isAlreadySaved}
             onClick={() => {
-              // Save + logs
               if (id) {
                 Logger.logUIInteraction({
                   component: "Dialog",
@@ -935,7 +5000,7 @@ export const Dialog = observer(({ props }) => {
             }}
           />
         </div>
-        {/* 📝 Render the extracted summary text */}
+        {/* Render the extracted summary text */}
         {summary && (
           <div
             style={{
@@ -953,403 +5018,524 @@ export const Dialog = observer(({ props }) => {
       </div>
     );
   };
-/////////////////////////////////////////////////////////////////////////////////
-
-
 
 
   return (
-    <div className="chat-window">
-      {/* Chat messages */}
-      <div className="chat-messages" ref={chatMessagesContainerRef}>
-        {displayMessages.map((msg, idx) => (
-          <div key={idx} className={`chat-bubble ${msg.role}`}>
-            {msg.role === "user" ? (
-              `${msg.text}`
-            ) : (
-              <div>
-                
-                <Markdown
-                  components={{
-                    strong: ({ node, ...props }) => {
-                      const raw = extractText(props.children);
+    <div className="app-container" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, width: "100%", overflow: "hidden" }}>
+      <style>{`@keyframes _agDot{0%,80%,100%{opacity:.2;transform:scale(.75)}40%{opacity:1;transform:scale(1.15)}}`}</style>
 
-                      // Filter out metadata lines completely
-                      if (isMetadataLine(raw)) {
-                        return null;
-                      }
+      {/* 1. SCROLLABLE AREA: Conversation (sidebar disabled) */}
+      <div className="chat-content-row">
+        {displayMessages.filter((m: any) => m.role !== "signal" && m.role !== "thinking").length === 0 && !isWaiting && !agentStatus ? (
+          <div className="chat-empty-state" role="status" aria-live="polite">
+            <p>Type below to start the conversation.</p>
+          </div>
+        ) : (
+        <div className="chat-messages">
+          {displayMessages.map((msg, idx) => {
+            // Skip the thinking sentinel — it drives isWaiting only, not a visible bubble.
+            if ((msg as any).role === "thinking") return null;
 
-                      const { title, id } = parseTitleAndId(raw);
-                      return renderPaperBlock(title, id, raw);
-                    },
-                    li: ({ node, children }) => {
-                      const raw = extractText(children);
+            // ── Signal cards (clarification / expansion) ──────────────────────
+            if ((msg as any).role === "signal") {
+              const sm = msg as any;
+              const dismissSignal = () => updateDialogState((prev: any) => ({
+                chatHistory: (prev.chatHistory || []).filter((_: any, i: number) => i !== idx),
+              }));
+              if (sm.signalType === "query_expansion") {
+                const d = sm.signalData;
+                return (
+                  <div key={idx} style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,0.10)", border: "1px solid #ebebeb", padding: "20px 24px", margin: "12px 0" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 4 }}>
+                      <span style={{ flex: 1, fontSize: "0.975rem", fontWeight: 500, color: "#1a1a1a", lineHeight: 1.4 }}>
+                        Which aspect of <em>"{d.original}"</em> are you looking for?
+                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                        <span style={{ fontSize: "0.78rem", color: "#aaa", whiteSpace: "nowrap" }}>{d.expansions.length} suggestions</span>
+                        <IconButton iconProps={{ iconName: "Cancel" }} styles={{ root: { width: 28, height: 28, color: "#aaa" } }} title="Dismiss"
+                          onClick={() => { dismissSignal(); setCustomExpansionText(null); }} />
+                      </div>
+                    </div>
+                    {d.expansions.map((exp: string, i: number) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderTop: "1px solid #f2f2f2", cursor: "pointer" }}
+                        onClick={() => sendChat(exp)}
+                        onMouseEnter={(e: React.MouseEvent<HTMLDivElement>) => (e.currentTarget.style.background = "#fafafa")}
+                        onMouseLeave={(e: React.MouseEvent<HTMLDivElement>) => (e.currentTarget.style.background = "transparent")}>
+                        <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.82rem", fontWeight: 600, color: "#555", flexShrink: 0 }}>{i + 1}</div>
+                        <span style={{ flex: 1, fontSize: "0.92rem", color: "#1a1a1a" }}>{exp}</span>
+                        <span style={{ color: "#ccc", fontSize: "1.1rem" }}>›</span>
+                      </div>
+                    ))}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderTop: "1px solid #f2f2f2" }}>
+                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <span style={{ fontSize: "0.85rem", color: "#888" }}>✏</span>
+                      </div>
+                      {customExpansionText !== null ? (
+                        <input autoFocus style={{ flex: 1, border: "none", outline: "none", fontSize: "0.92rem", color: "#1a1a1a", background: "transparent" }}
+                          placeholder="Type your own query and press Enter…" value={customExpansionText}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomExpansionText(e.target.value)}
+                          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                            if (e.key === "Enter" && customExpansionText.trim()) sendChat(customExpansionText);
+                            if (e.key === "Escape") setCustomExpansionText(null);
+                          }} />
+                      ) : (
+                        <span style={{ flex: 1, fontSize: "0.92rem", color: "#aaa", cursor: "text" }} onClick={() => setCustomExpansionText("")}>Something else</span>
+                      )}
+                      <DefaultButton text="Skip" styles={{ root: { minWidth: 0, borderRadius: 20, padding: "0 14px", height: 32, border: "1px solid #ddd" }, label: { fontSize: "0.82rem", color: "#555", fontWeight: 400 } }}
+                        onClick={() => sendChat(d.original)} />
+                    </div>
+                  </div>
+                );
+              }
+              if (sm.signalType === "intent_confirm") {
+                const d = sm.signalData;
+                return (
+                  <div key={idx} style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,0.10)", border: "1px solid #ebebeb", padding: "20px 24px", margin: "12px 0" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 4 }}>
+                      <span style={{ flex: 1, fontSize: "0.975rem", fontWeight: 500, color: "#1a1a1a", lineHeight: 1.4 }}>Here's what I understood — please confirm before searching:</span>
+                      <IconButton iconProps={{ iconName: "Cancel" }} styles={{ root: { width: 28, height: 28, color: "#aaa" } }} title="Dismiss"
+                        onClick={() => { dismissSignal(); setCustomConfirmText(null); }} />
+                    </div>
+                    {d.items.map((item: { field: string; label: string; display: string; editable: string; confidence: number }, i: number) => (
+                      <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "11px 0", borderTop: "1px solid #f2f2f2" }}>
+                        <div style={{ width: 10, height: 10, borderRadius: "50%", marginTop: 5, flexShrink: 0, background: item.confidence >= 0.85 ? "#22c55e" : item.confidence >= 0.70 ? "#f59e0b" : "#ef4444" }} title={`Confidence: ${Math.round(item.confidence * 100)}%`} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: "0.78rem", color: "#888", marginBottom: 2 }}>{item.label}</div>
+                          <div style={{ fontSize: "0.92rem", color: "#1a1a1a" }}>{item.display}</div>
+                        </div>
+                        <DefaultButton text="Edit" styles={{ root: { minWidth: 0, borderRadius: 6, padding: "0 10px", height: 28, border: "1px solid #ddd", flexShrink: 0 }, label: { fontSize: "0.78rem", color: "#555", fontWeight: 400 } }}
+                          onClick={() => { setDraftChatText(item.editable); dismissSignal(); textareaRef.current?.focus(); }} />
+                      </div>
+                    ))}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderTop: "1px solid #f2f2f2" }}>
+                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <span style={{ fontSize: "0.85rem", color: "#888" }}>✏</span>
+                      </div>
+                      {customConfirmText !== null ? (
+                        <input autoFocus style={{ flex: 1, border: "none", outline: "none", fontSize: "0.92rem", color: "#1a1a1a", background: "transparent" }}
+                          placeholder="Rephrase your request and press Enter…" value={customConfirmText}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomConfirmText(e.target.value)}
+                          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                            if (e.key === "Enter" && customConfirmText.trim()) sendChat(customConfirmText);
+                            if (e.key === "Escape") setCustomConfirmText(null);
+                          }} />
+                      ) : (
+                        <span style={{ flex: 1, fontSize: "0.92rem", color: "#aaa", cursor: "text" }} onClick={() => setCustomConfirmText("")}>Rephrase differently</span>
+                      )}
+                      <DefaultButton text="Confirm & Search" styles={{ root: { minWidth: 0, borderRadius: 20, padding: "0 14px", height: 32, background: "#0078d4", border: "none" }, label: { fontSize: "0.82rem", color: "#fff", fontWeight: 500 } }}
+                        onClick={() => sendChat(d.original)} />
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            }
 
-                      // Filter out metadata lines in list items
-                      if (isMetadataLine(raw)) {
-                        return null;
-                      }
-
-                      const { title, id } = parseTitleAndId(raw);
-                      return renderPaperBlock(title, id, raw);
-                    },
-                    p: ({ node, children }) => {
-                      const raw = extractText(children);
-
-                      // Filter out metadata lines
-                      if (isMetadataLine(raw)) {
-                        return null;
-                      }
-
-                      // Check if paragraph contains summary text with IDs
-                      if (raw && /\[\[ID:[^\]]+\]\]/g.test(raw)) {
-                        // Check if this looks like a summary paragraph
-                        if (isSummaryText(raw)) {
-                          const cleanedText = stripIDTags(raw);
-                          return <p>{cleanedText}</p>;
-                        }
-                      }
-
-                      // Otherwise render normally
-                      return <p>{children}</p>;
-                    },
-                    // Also filter metadata in plain text nodes
-                    text: ({ node, ...props }) => {
-                      const text = props.children as string;
-                      if (typeof text === 'string' && isMetadataLine(text)) {
-                        return null;
-                      }
-                      return <>{text}</>;
-                    },
-                  }}
-                >
-                  {msg.text}
-                </Markdown>
-              </div>
+            const isLastAiMessage = msg.role === "ai" && idx === displayMessages.length - 1;
+            const aiThinkingSteps = msg.role === "ai" ? (msg as any).thinkingSteps : null;
+            return (
+            <React.Fragment key={idx}>
+            {aiThinkingSteps && aiThinkingSteps.length > 0 && (
+              <ThinkingProcess steps={aiThinkingSteps} />
             )}
-          </div>
-        ))}
+            <div className={`chat-bubble ${msg.role}`}>
+              {msg.role === "user" ? (
+                <div>
+                  {msg.referencedPapers && msg.referencedPapers.length > 0 && (
+                    <div style={{ marginBottom: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {msg.referencedPapers.map((p) => (
+                        <div
+                          key={p.id || p.title}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            padding: "2px 6px",
+                            borderRadius: 10,
+                            background: "var(--color-primary-light)",
+                            color: "var(--color-primary)",
+                            fontSize: "0.75rem",
+                            maxWidth: "100%",
+                          }}
+                        >
+                          <span
+                            style={{
+                              cursor: "pointer",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              maxWidth: 220,
+                            }}
+                            onClick={() => openPaperInfoModal(p.title, p.id)}
+                          >
+                            {p.title}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {msg.text}
+                </div>
+              ) : (
+                <div>
+                  {(() => {
+                    const HAS_MORE_MARKER = "[[HAS_MORE_PAPERS]]";
+                    const rawText = msg.text || "";
+                    const refMap = buildRefMap(rawText);
+                    const hasMarkerOrFlag = msg.hasMorePapers || rawText.includes(HAS_MORE_MARKER);
+                    const looksLikePaperList = /Title:\s*/i.test(rawText) && /\[\[ID:[^\]]+\]\]/.test(rawText);
+                    const hasLoadMore = hasMarkerOrFlag || (isLastAiMessage && looksLikePaperList);
+                    const displayText = expandGroupedCitations(
+                      rawText.replace(new RegExp("\\s*" + HAS_MORE_MARKER.replace(/[[\]]/g, "\\$&") + "\\s*", "g"), "").trim()
+                    );
+                    return (
+                      <>
+                        <Markdown
+                          components={{
+                            p: ({ node, children }) => {
+                              const raw = extractText(children);
+                              const { title, id } = parseTitleAndId(raw);
+                              if (/Title:\s*/i.test(raw)) {
+                                return renderPaperBlock(title, id, raw);
+                              }
+                              if (CITE_REGEX.test(raw)) {
+                                CITE_REGEX.lastIndex = 0;
+                                return <p>{renderInlineCitations(raw, refMap)}</p>;
+                              }
+                              return <p>{raw.replace(CITE_STRIP, "")}</p>;
+                            },
 
-        {isWaiting && (
-          <div className="chat-bubble ai">
-            <span className="spinner"></span> THINKING...
-          </div>
+                            strong: ({ node, ...props }) => {
+                              const raw = extractText(props.children);
+                              const { title, id } = parseTitleAndId(raw);
+                              if (/Title:\s*/i.test(raw)) {
+                                return renderPaperBlock(title, id, raw);
+                              }
+                              if (CITE_REGEX.test(raw)) {
+                                CITE_REGEX.lastIndex = 0;
+                                return <strong>{renderInlineCitations(raw, refMap)}</strong>;
+                              }
+                              return <strong>{raw.replace(CITE_STRIP, "")}</strong>;
+                            },
+
+                            li: ({ node, children }) => {
+                              const raw = extractText(children);
+                              const { title, id } = parseTitleAndId(raw);
+                              if (/Title:\s*/i.test(raw)) {
+                                return renderPaperBlock(title, id, raw);
+                              }
+                              if (CITE_REGEX.test(raw)) {
+                                CITE_REGEX.lastIndex = 0;
+                                return <li>{renderInlineCitations(raw, refMap)}</li>;
+                              }
+                              return <li>{raw.replace(CITE_STRIP, "")}</li>;
+                            },
+
+                          }}
+                        >
+                          {displayText}
+                        </Markdown>
+                        {hasLoadMore && (
+                          <div style={{ marginTop: 8 }}>
+                            <a
+                              style={{ cursor: "pointer", color: "#0078d4", textDecoration: "underline" }}
+                              onClick={() => sendChat("Load more papers from this search.")}
+                            >
+                              Load more papers
+                            </a>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+            </React.Fragment>
+          );
+          })}
+
+          {(isWaiting || agentStatus) && (
+            <ThinkingProcess steps={liveSteps} live defaultOpen />
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
         )}
 
-        <div ref={messagesEndRef} />
-      </div>
+      </div>{/* end chat-content-row */}
 
-      {/* Input area */}
+      {/* 3. FIXED BOTTOM: Selected papers + input bar + action buttons */}
       <div className="chat-input-area">
-        <div className="chat-input-row">
-          <textarea
-            ref={textareaRef}
-            className="chat-input"
-            value={chatText}
-            onChange={onChangeChatText}
-            onKeyDown={onKeyDown}
-            placeholder="Type your message"
-            rows={1}
-          />
-          <DefaultButton
-            className="iconButton"
-            styles={{ root: { padding: "0 1rem", minWidth: 0 } }}
-            onClick={() => {
-              // 🔵 Ported Ask button click log
-              Logger.logUIInteraction({
-                component: "Dialog",
-                action: "askButtonClick",
-                value: chatText,
-                chatHistoryLength: chatHistory.length,
-              });
-              chatRequest();
-            }}
-            iconProps={{ iconName: "Rocket" }}
-            text="Ask"
-          />
-        </div>
+          {selectedQuestionPapers.length > 0 && (
+            <div style={{ marginBottom: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {selectedQuestionPapers.map((p) => (
+                <div
+                  key={p.id || p.title}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    padding: "4px 8px",
+                    borderRadius: 12,
+                    background: "var(--color-primary-light)",
+                    color: "var(--color-primary)",
+                    fontSize: "0.8rem",
+                    maxWidth: "100%",
+                  }}
+                >
+                  <span
+                    style={{
+                      cursor: "pointer",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      maxWidth: 220,
+                    }}
+                    onClick={() => openPaperInfoModal(p.title, p.id)}
+                  >
+                    {p.title}
+                  </span>
+                  <IconButton
+                    styles={{ root: { marginLeft: 4, width: 20, height: 20 } }}
+                    iconProps={{ iconName: "Cancel" }}
+                    onClick={() => toggleQuestionPaper(p)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
 
-        <div className="chat-action-row" style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: '4px' }}>
-          <DefaultButton
-            text="ALL"
-            iconProps={{ iconName: "Locate" }}
-            styles={{ root: { minWidth: 0, padding: "0 6px" } }}
-            disabled={buttonsClicked.locateAll}
-            onClick={async () => {
-              const papers = extractAllPapers();
-              Logger.logUIInteraction({
-                component: "Dialog",
-                action: "selectAllPapers",
-                responseLength: currentAIResponseText().length,
-                paperCount: papers.length,
-              });
+          <div className="chat-input-row">
+            <textarea
+              ref={textareaRef}
+              className="chat-input"
+              value={draftChatText}
+              onChange={onChangeChatText}
+              onKeyDown={onKeyDown}
+              placeholder="Type your message"
+              rows={1}
+            />
+            <DefaultButton
+              className="iconButton"
+              styles={{ root: { padding: "0 1rem", minWidth: 0 } }}
+              onClick={() => {
+                Logger.logUIInteraction({
+                  component: "Dialog",
+                  action: "askButtonClick",
+                  value: draftChatText,
+                  chatHistoryLength: chatHistory.length,
+                });
+                chatRequest();
+              }}
+              iconProps={{ iconName: "Rocket" }}
+              text="Ask"
+            />
+          </div>
 
-              if (papers.length === 0) {
-                console.log("No papers found in response");
-                return;
-              }
+          <div className="chat-action-row" style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: '4px' }}>
+            <DefaultButton
+              text="ALL"
+              iconProps={{ iconName: "Locate" }}
+              styles={{ root: { minWidth: 0, padding: "0 6px" } }}
+              disabled={buttonsClicked.locateAll}
+              onClick={async () => {
+                const papers = extractAllPapers();
+                Logger.logUIInteraction({
+                  component: "Dialog",
+                  action: "selectAllPapers",
+                  responseLength: currentAIResponseText().length,
+                  paperCount: papers.length,
+                });
 
-              // Collect all paper IDs
-              const paperIds: string[] = [];
-              for (const paper of papers) {
-                if (paper.id) {
-                  paperIds.push(paper.id);
+                if (papers.length === 0) {
+                  console.log("No papers found in response");
+                  return;
                 }
-              }
 
-              if (paperIds.length > 0) {
-                addToSelectNodeIDs(paperIds, "scatterplot");
-                setButtonsClicked(prev => ({ ...prev, locateAll: true }));
-              }
-            }}
-          />
-          <DefaultButton
-            text="ALL"
-            iconProps={{ iconName: "PlusCircle" }}
-            styles={{ root: { minWidth: 0, padding: "0 6px" } }}
-            disabled={buttonsClicked.addAll}
-            onClick={async () => {
-              const papers = extractAllPapers();
-              Logger.logUIInteraction({
-                component: "Dialog",
-                action: "addAllToSimilarInputPapers",
-                responseLength: currentAIResponseText().length,
-                paperCount: papers.length,
-              });
-
-              if (papers.length === 0) {
-                console.log("No papers found in response");
-                return;
-              }
-
-              // Add all papers to similar input
-              for (const paper of papers) {
-                if (paper.id) {
-                  try {
-                    const paperObj = await getPaperById(paper.id);
-                    if (paperObj) {
-                      addToSimilarInputPapers(paperObj);
-                    }
-                  } catch (e) {
-                    console.error(`Failed to fetch paper ${paper.id}:`, e);
+                const paperIds: string[] = [];
+                for (const paper of papers) {
+                  if (paper.id) {
+                    paperIds.push(paper.id);
                   }
                 }
-              }
-              setButtonsClicked(prev => ({ ...prev, addAll: true }));
-            }}
-          />
-          <DefaultButton
-            text="ALL"
-            iconProps={{ iconName: "Save" }}
-            styles={{ root: { minWidth: 0, padding: "0 6px" } }}
-            disabled={buttonsClicked.saveAll}
-            onClick={async () => {
-              const papers = extractAllPapers();
-              Logger.logUIInteraction({
-                component: "Dialog",
-                action: "saveAllPapers",
-                responseLength: currentAIResponseText().length,
-                paperCount: papers.length,
-              });
 
-              if (papers.length === 0) {
-                console.log("No papers found in response");
-                return;
-              }
+                if (paperIds.length > 0) {
+                  addToSelectNodeIDs(paperIds, "scatterplot");
+                  setButtonsClicked(prev => ({ ...prev, locateAll: true }));
+                }
+              }}
+            />
+            <DefaultButton
+              text="ALL"
+              iconProps={{ iconName: "PlusCircle" }}
+              styles={{ root: { minWidth: 0, padding: "0 6px" } }}
+              disabled={buttonsClicked.addAll}
+              onClick={async () => {
+                const papers = extractAllPapers();
+                Logger.logUIInteraction({
+                  component: "Dialog",
+                  action: "addAllToSimilarInputPapers",
+                  responseLength: currentAIResponseText().length,
+                  paperCount: papers.length,
+                });
 
-              // Save all papers
-              for (const paper of papers) {
-                if (paper.id) {
-                  try {
-                    const paperObj = await getPaperById(paper.id);
-                    if (paperObj) {
-                      addToSavedPapers(paperObj);
+                if (papers.length === 0) {
+                  console.log("No papers found in response");
+                  return;
+                }
+
+                for (const paper of papers) {
+                  if (paper.id) {
+                    try {
+                      const paperObj = await getPaperById(paper.id);
+                      if (paperObj) {
+                        addToSimilarInputPapers(paperObj);
+                      }
+                    } catch (e) {
+                      console.error(`Failed to fetch paper ${paper.id}:`, e);
                     }
-                  } catch (e) {
-                    console.error(`Failed to fetch paper ${paper.id}:`, e);
                   }
                 }
-              }
-              setButtonsClicked(prev => ({ ...prev, saveAll: true }));
-            }}
-          />
+                setButtonsClicked(prev => ({ ...prev, addAll: true }));
+              }}
+            />
+            <DefaultButton
+              text="ALL"
+              iconProps={{ iconName: "Save" }}
+              styles={{ root: { minWidth: 0, padding: "0 6px" } }}
+              disabled={buttonsClicked.saveAll}
+              onClick={async () => {
+                const papers = extractAllPapers();
+                Logger.logUIInteraction({
+                  component: "Dialog",
+                  action: "saveAllPapers",
+                  responseLength: currentAIResponseText().length,
+                  paperCount: papers.length,
+                });
 
+                if (papers.length === 0) {
+                  console.log("No papers found in response");
+                  return;
+                }
 
-
-{/*////////////////////////////////////////////////////////////////////modified code */}
-          {/* <DefaultButton
-            text="Clear"
-            iconProps={{ iconName: "Delete" }}
-            styles={{ root: { minWidth: 0, padding: "0 6px", marginLeft: "8px" } }}
-            onClick={() => {
-              Logger.logUIInteraction({
-                component: "Dialog",
-                action: "clearConversation",
-                messageCount: displayMessages.length,
-                previousSessionId: sessionId,
-              });
-
-              // Clear messages and generate new chat session ID for fresh conversation
-              const newSessionId = `chat_${Date.now()}`;
-              setDisplayMessages([]);
-              updateDialogState({
-                displayMessages: [],
-                chatHistory: [],
-                chatSessionId: newSessionId,
-              });
-            }}
-          /> */}
-
-          <DefaultButton
-            text="Clear"
-            iconProps={{ iconName: "Delete" }}
-            styles={{ root: { minWidth: 0, padding: "0 6px", marginLeft: "8px" } }}
-            onClick={() => {
-              // 1. Log the action
-              // Note: We use chatSessionId from props, as 'sessionId' variable was commented out
-              Logger.logUIInteraction({
-                component: "Dialog",
-                action: "clearConversation",
-                messageCount: displayMessages.length,
-                previousSessionId: chatSessionId, 
-              });
-
-              // 2. Generate a new Session ID for the backend
-              const newSessionId = `chat_${Date.now()}`;
-
-              // 3. Clear Local Component State (UI immediate update)
-              setDisplayMessages([]);
-              setRetrievedPapers([]); // Clear any parsed papers held in memory
-              setButtonsClicked({ locateAll: false, addAll: false, saveAll: false }); // Reset "ALL" buttons to enabled
-              setIsWaiting(false); // Stop loading spinner if active
-
-              // 4. Update Parent/MobX State (Source of Truth)
-              // This ensures persistence if the user switches tabs and comes back
-              updateDialogState({
-                displayMessages: [],
-                chatHistory: [], // Clear the history array sent to backend
-                chatSessionId: newSessionId,
-                chatText: "",    // Clear any drafted text input
-                chatSelectedPaper: null // Optional: Deselect any currently active paper
-              });
-            }}
-          />
+                for (const paper of papers) {
+                  if (paper.id) {
+                    try {
+                      const paperObj = await getPaperById(paper.id);
+                      if (paperObj) {
+                        addToSavedPapers(paperObj);
+                      }
+                    } catch (e) {
+                      console.error(`Failed to fetch paper ${paper.id}:`, e);
+                    }
+                  }
+                }
+                setButtonsClicked(prev => ({ ...prev, saveAll: true }));
+              }}
+            />
+          </div>
         </div>
-      </div>
-{/*///////////////////////////////////////////////////////////////////////////////////////////*/}
 
-
-
-      {/* Paper Info Modal */}
-      <Modal
-        styles={{ main: { maxWidth: 700 } }}
-        isOpen={isModalOpen}
-        onDismiss={() => setModalState(false)}
-        isBlocking={false}
-      >
-        <div className="p-lg">
+        {/* Paper Info Modal */}
+        <Modal
+          isOpen={isModalOpen}
+          onDismiss={() => setModalState(false)}
+          isBlocking={false}
+          styles={{
+            main: {
+              maxWidth: 720,
+              padding: 32,
+              borderRadius: 16,
+              boxShadow: "0 16px 40px rgba(0,0,0,0.25)",
+            },
+          }}
+        >
           {loadingPaperInfo ? (
-            <div style={{ padding: 20, textAlign: "center" }}>Loading...</div>
+            <div style={{ padding: 20, textAlign: "center" }}>Loading details...</div>
           ) : paperInfo ? (
-            <>
-              <h2 className="p-0 m-0">
+            <div style={{ maxHeight: "70vh", overflowY: "auto" }}>
+              <h2 style={{ margin: 0, marginBottom: 12, fontSize: 24, lineHeight: 1.3 }}>
                 {paperInfo.Title}
-                <IconButton
-                  className="float-right iconButton"
-                  iconProps={{ iconName: "Times" }}
-                  ariaLabel="Close popup modal"
-                  onClick={() => setModalState(false)}
-                />
               </h2>
-              <br />
-              <div>
+              <div style={{ fontSize: 14, lineHeight: 1.6, color: "#444", marginBottom: 12 }}>
                 <b>Authors</b>:{" "}
-                {paperInfo.Authors
-                  ? Array.isArray(paperInfo.Authors)
-                    ? paperInfo.Authors.filter(Boolean).join(", ")
-                    : paperInfo.Authors
-                  : null}
+                {Array.isArray(paperInfo.Authors)
+                  ? paperInfo.Authors.join(", ")
+                  : paperInfo.Authors || "N/A"}
                 <br />
-                <b>Source</b>: {paperInfo.Source || paperInfo.Venue}
+                <b>Source</b>: {paperInfo.Source || paperInfo.Venue || "N/A"}
                 <br />
-                <b>Year</b>: {paperInfo.Year}
+                <b>Year</b>: {paperInfo.Year || "N/A"}
                 <br />
-                <b>No. of Citations</b>: {paperInfo.CitationCounts}
+                <b>No. of Citations</b>: {paperInfo.CitationCounts || "N/A"}
                 <br />
-                <b>ID</b>: {paperInfo.ID}
-                <br />
+                <b>ID</b>: {paperInfo.ID || "N/A"}
               </div>
               <p>
-                <b>Abstract</b>: {paperInfo.Abstract}
+                <b>Abstract</b>: {paperInfo.Abstract || "N/A"}
               </p>
               <div>
                 <b>Keywords</b>:{" "}
-                {paperInfo.Keywords
-                  ? Array.isArray(paperInfo.Keywords)
-                    ? paperInfo.Keywords.filter(Boolean).join(", ")
-                    : paperInfo.Keywords
-                  : null}
+                {Array.isArray(paperInfo.Keywords)
+                  ? paperInfo.Keywords.join(", ")
+                  : paperInfo.Keywords || "N/A"}
               </div>
-              <br />
-              <hr></hr>
-              <Stack tokens={{ childrenGap: 8 }} horizontal>
+              <hr style={{ margin: "20px 0" }} />
+              <Stack horizontal tokens={{ childrenGap: 8 }}>
                 <ActionButton
                   iconProps={{ iconName: "PlusCircle" }}
-                  disabled={isInSimilarInputPapers && isInSimilarInputPapers(paperInfo)}
+                  disabled={isInSimilarInputPapers && paperInfo ? isInSimilarInputPapers(paperInfo) : false}
                   onClick={() => {
-                    Logger.logUIInteraction({
-                      component: "Dialog",
-                      action: "addToSimilarPapersFromModal",
-                      paperId: paperInfo.ID,
-                      paperTitle: paperInfo.Title,
-                    });
-                    addToSimilarInputPapers(paperInfo);
+                    if (paperInfo) {
+                      Logger.logUIInteraction({
+                        component: "Dialog",
+                        action: "addToSimilarPapersFromModal",
+                        paperId: paperInfo.ID,
+                        paperTitle: paperInfo.Title,
+                      });
+                      addToSimilarInputPapers(paperInfo);
+                      setModalState(false);
+                    }
                   }}
-                  allowDisabledFocus
                 >
                   Select
                 </ActionButton>
                 <ActionButton
-                  disabled={isInSavedPapers && isInSavedPapers(paperInfo)}
                   iconProps={{ iconName: "Save" }}
                   onClick={() => {
-                    Logger.logUIInteraction({
-                      component: "Dialog",
-                      action: "savePaperFromModal",
-                      paperId: paperInfo.ID,
-                      paperTitle: paperInfo.Title,
-                    });
-                    addToSavedPapers(paperInfo);
+                    if (paperInfo) {
+                      addToSavedPapers(paperInfo);
+                      setModalState(false);
+                    }
                   }}
-                  allowDisabledFocus
                 >
                   Save
                 </ActionButton>
                 <ActionButton
                   iconProps={{ iconName: "GraduationCap" }}
                   onClick={() => {
-                    Logger.logUIInteraction({
-                      component: "Dialog",
-                      action: "openGoogleScholar",
-                      paperId: paperInfo.ID,
-                      paperTitle: paperInfo.Title,
-                    });
-                    const url =
-                      "https://scholar.google.com/scholar?hl=en&q=" +
-                      encodeURI(paperInfo.Title);
-                    window.open(url, "_blank");
+                    if (paperInfo && paperInfo.Title) {
+                      const q = encodeURIComponent(paperInfo.Title);
+                      window.open(`https://scholar.google.com/scholar?q=${q}`, "_blank", "noopener,noreferrer");
+                    }
                   }}
-                  allowDisabledFocus
                 >
                   Google Scholar
                 </ActionButton>
+                <ActionButton
+                  iconProps={{ iconName: "Cancel" }}
+                  onClick={() => setModalState(false)}
+                >
+                  Close
+                </ActionButton>
               </Stack>
-            </>
+            </div>
           ) : (
             <div style={{ padding: 20, textAlign: "center" }}>Paper not found</div>
           )}
-        </div>
-      </Modal>
+        </Modal>
+
     </div>
-  );
+  )
 });
+
+

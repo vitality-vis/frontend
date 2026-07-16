@@ -1,0 +1,225 @@
+.corpus-results-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.corpus-results-layout__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+  padding-bottom: 4px;
+}
+
+.corpus-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.corpus-results__pager {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 4px 2px;
+  margin-top: 4px;
+  border-top: 1px solid var(--color-border-light);
+  background: var(--color-surface);
+}
+
+.corpus-results__pager-range {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  min-width: 8.5rem;
+  text-align: center;
+}
+
+.corpus-results__pager-btn {
+  color: var(--color-text-secondary);
+
+  &:disabled {
+    color: var(--color-text-muted);
+    opacity: 0.45;
+  }
+}
+
+.corpus-results--empty {
+  padding: var(--spacing-lg);
+  text-align: center;
+}
+
+.corpus-results__empty {
+  margin: 0 0 8px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.corpus-results__hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.corpus-results__card {
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+  font-family: inherit;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
+
+  &:hover {
+    border-color: #c4cdd9;
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+
+  &.is-selected {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
+    background: #f8fbff;
+  }
+}
+
+.corpus-results__title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.corpus-results__title-hit {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.corpus-results__info-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  color: #0078d4;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+
+  &:hover {
+    background: #deecf9;
+    color: #106ebe;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #0078d4;
+    outline-offset: 2px;
+  }
+}
+
+.corpus-results__info-btn-svg {
+  display: block;
+}
+
+.corpus-results__meta-block {
+  margin-top: 8px;
+
+  .corpus-results__meta {
+    margin-top: 0;
+  }
+}
+
+.corpus-results__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-light);
+
+  // Compact Fluent buttons
+  .ms-Button {
+    min-height: 26px;
+    border-radius: var(--radius-sm) !important;
+    font-size: 0.75rem !important;
+  }
+}
+
+.corpus-results__title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.corpus-results__meta {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.corpus-results__authors {
+  flex: 1;
+  min-width: 0;
+}
+
+.corpus-results__year {
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.corpus-results__stats {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.corpus-results__source {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

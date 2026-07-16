@@ -30,20 +30,21 @@ import {
     faArrowAltCircleRight,
     faExpand,
     faMinus,
-    faRocket
+    faRocket,
+    faFilter
 } from '@fortawesome/free-solid-svg-icons';
 import {
     Callout,
-    CommandBar,
+    DirectionalHint,
     DefaultButton,
     DelayedRender,
     Dropdown,
-    ICommandBarItemProps,
     Icon,
     IconButton,
     IDropdownOption,
     IPivotItemProps,
-    Label, Modal,
+    Label,
+    Modal,
     Panel,
     PanelType,
     Pivot,
@@ -57,6 +58,17 @@ import {
     TextField
 } from "@fluentui/react";
 import SmartTable, {SmartTableProps} from "./SmartTable";
+import LiteratureReviewPanel from "./LiteratureReviewPanel";
+import ResultPaperExplore from "./ResultPaperExplore";
+import MultiFunctionSearchBar, {MainWorkspaceTool} from "./MultiFunctionSearchBar";
+import {CorpusResultsList, PaperRow} from "./CorpusResultsList";
+import {
+    CorpusResultsFilterState,
+    emptyCorpusResultsFilter,
+    hasActiveCorpusResultsFilters,
+    filterCorpusResultsByFacets,
+} from "./corpusFilter";
+import {SimilarityByAbstractPanel} from "./SimilarityByAbstractPanel";
 import LoadingOverlay from 'react-loading-overlay';
 import Split from 'react-split';
 import Markdown from 'react-markdown'
@@ -70,7 +82,7 @@ import unccLogo from './../assets/img/uncc-logo.png';
 import emoryLogo from './../assets/img/emory-logo.png';
 
 import visConferenceLogo from './../assets/img/ieeevis2021-logo.png';
-import {Dialog} from "./Dialog";
+import {Dialog, getPaperById} from "./Dialog";
 import {MetaTable} from "./MetaTable";
 import { NotImpactedSolidIcon } from "@fluentui/react-icons";
 import { API_BASE_URL } from '../config';
@@ -194,6 +206,60 @@ interface AppState {
     lastWritingActivity: number;
     writingStartTime: number;
     isCurrentlyWriting: boolean;
+    /** Main workspace panels: hidden via header X; pills open and move panel to top of stack */
+    similarityWorkspaceOpen: boolean;
+    visualizationWorkspaceOpen: boolean;
+    /** Top-to-bottom render order among open panels (first opened on top; later opens append below) */
+    workspacePanelOrder: MainWorkspaceTool[];
+    /** Chat sidebar visibility; toggled by the Chat pill; state persists when hidden */
+    chatSidebarOpen: boolean;
+    /** Text in the multifunction corpus search bar */
+    corpusSearchInput: string;
+    /** Selected paper in the master results list (Litmaps-style) */
+    selectedPaperId: number | null;
+    /** Results paper info modal (same content style as chat paper info modal). */
+    isResultPaperModalOpen: boolean;
+    resultPaperInfo: any | null;
+    loadingResultPaperInfo: boolean;
+    /** "explore" = Litmaps-style full read; "summary" = compact metadata + actions (info icon). */
+    resultPaperViewMode: "explore" | "summary";
+    /** Full filtered results list — used for Previous / Next in the paper modal. */
+    resultPaperNavList: PaperRow[];
+    resultPaperNavIndex: number;
+    /** Results sidebar: shown after user applies corpus search (Enter / Search); hidden until then or via header X */
+    resultsPanelOpen: boolean;
+    /** One-shot queue so Results "Ask" adds the paper to the active chat tab (see Dialog.toggleQuestionPaper) */
+    corpusAskQueue: { id: number; title: string; token: number } | null;
+    /** One-shot queue so the Literature Review panel "Ask" adds the paper to its dedicated chat. */
+    litReviewAskQueue: { id: number; title: string; token: number } | null;
+    /** Slide-over panel to set year / citation / venue filters on Results */
+    resultsFilterPanelOpen: boolean;
+    corpusResultsFilter: CorpusResultsFilterState;
+    corpusResultsFilterDraft: CorpusResultsFilterState;
+    /** Litmaps-style full paper read shown inside the Results column (not a centered modal). */
+    resultsExploreInline: boolean;
+    /** Per-paper inline highlight operations for result explore text. */
+    resultHighlightOpsByPaper: { [paperId: number]: ResultHighlightOp[] };
+    /** Loading state scoped to the Results window (corpus search bar), not the whole screen. */
+    resultsLoading: boolean;
+    /** Inline explore reading view open inside the Literature Review panel (column 1). */
+    litReviewExploreOpen: boolean;
+    /** LIFO stack of deleted saved papers (with original index) so each delete can be undone step by step. */
+    deletedSavedPaperUndoStack: Array<{ paper: PaperRow; index: number }>;
+    /** Dedicated explore state for the Literature Review panel (kept separate from the
+     * main Results column so closing the panel never disturbs the main column). */
+    litReviewPaperInfo: PaperRow | null;
+    litReviewLoadingPaperInfo: boolean;
+    litReviewNavList: PaperRow[];
+    litReviewNavIndex: number;
+}
+
+interface ResultHighlightOp {
+    field: "title" | "year" | "abstract" | "keywords";
+    start: number;
+    end: number;
+    text: string;
+    createdAt: number;
 }
 
 interface TabType {
@@ -223,6 +289,26 @@ const maxSimilarPapersDropdownOptions = [
     {key: '250', text: '250'},
     {key: '-1', text: 'All'},
 ];
+
+/** Stack top-to-bottom: first opened stays on top; each newly opened tool is appended below. */
+const appendWorkspacePanelToOrder = (
+    order: MainWorkspaceTool[],
+    openedTool: MainWorkspaceTool,
+    similarityOpen: boolean,
+    visualizationOpen: boolean
+): MainWorkspaceTool[] => {
+    const kept = order.filter(
+        (k) =>
+            (k === "similarity" && similarityOpen) ||
+            (k === "visualization" && visualizationOpen)
+    );
+    const withoutOpened = kept.filter((k) => k !== openedTool);
+    const openedIsVisible =
+        (openedTool === "similarity" && similarityOpen) ||
+        (openedTool === "visualization" && visualizationOpen);
+    return openedIsVisible ? [...withoutOpened, openedTool] : withoutOpened;
+};
+
 const areQueryConditionsUndefined = (queryPayload) => {
     const {title, author, source, keyword, min_year, max_year, abstract, min_citation_counts, max_citation_counts} = queryPayload;
 
@@ -261,6 +347,12 @@ class App extends React.Component<AppProps, AppState> {
     practiceTasksCompleted: Set<string> = new Set();
     contentChangeTimer: ReturnType<typeof setTimeout> | null = null;
     periodicLogTimer: ReturnType<typeof setInterval> | null = null;
+    /** Anchor for the Results filter popover (Callout). */
+    resultsFilterButtonRef = React.createRef<HTMLButtonElement>();
+    /** Results sidebar column — used to constrain the filter Callout so it stays in-column (Litmaps-style). */
+    resultsSidebarRef = React.createRef<HTMLElement>();
+    /** Inline results explore content container (for text selection highlight). */
+    resultsExploreContentRef = React.createRef<HTMLDivElement>();
 
     constructor(props: any) {
         super(props);
@@ -422,6 +514,14 @@ class App extends React.Component<AppProps, AppState> {
                     chatSelectedPaper: '',
                     displayMessages: [],
                     chatSessionId: `chat_${Date.now()}_1`  // Unique persistent ID for first tab
+                },
+                'litReview': {
+                    chatText: '',
+                    chatHistory: [],
+                    chatResponse: '',
+                    chatSelectedPaper: '',
+                    displayMessages: [],
+                    chatSessionId: `chat_${Date.now()}_litReview`  // Independent chat for the Literature Review panel
                 }
             },
             offset: 0,
@@ -437,9 +537,793 @@ class App extends React.Component<AppProps, AppState> {
             lastWritingActivity: 0,
             writingStartTime: 0,
             isCurrentlyWriting: false,
+            similarityWorkspaceOpen: false,
+            visualizationWorkspaceOpen: true,
+            workspacePanelOrder: ["visualization"],
+            chatSidebarOpen: false,
+            corpusAskQueue: null,
+            litReviewAskQueue: null,
+            corpusSearchInput: "",
+            selectedPaperId: null,
+            isResultPaperModalOpen: false,
+            resultPaperInfo: null,
+            loadingResultPaperInfo: false,
+            resultPaperViewMode: "summary",
+            resultPaperNavList: [],
+            resultPaperNavIndex: 0,
+            resultsPanelOpen: false,
+            resultsFilterPanelOpen: false,
+            corpusResultsFilter: emptyCorpusResultsFilter(),
+            corpusResultsFilterDraft: emptyCorpusResultsFilter(),
+            resultsExploreInline: false,
+            resultHighlightOpsByPaper: {},
+            resultsLoading: false,
+            litReviewExploreOpen: false,
+            deletedSavedPaperUndoStack: [],
+            litReviewPaperInfo: null,
+            litReviewLoadingPaperInfo: false,
+            litReviewNavList: [],
+            litReviewNavIndex: 0,
         }
         this.setSpinner = this.setSpinner.bind(this);
     }
+
+    /** Filter loaded papers by the corpus search bar (client-side; Enter to apply). */
+    applyCorpusSearchFromBar = () => {
+        const q = this.state.corpusSearchInput.trim();
+        if (this.props.isPractice && q.length > 0) {
+            this.completePracticeTask("search");
+        }
+        if (!q) {
+            this.setState((prev) => ({
+                dataFiltered: {
+                    ...prev.dataFiltered,
+                    all: [],
+                },
+                dataFilteredID: [],
+                selectedPaperId: null,
+                corpusResultsFilter: emptyCorpusResultsFilter(),
+                corpusResultsFilterDraft: emptyCorpusResultsFilter(),
+            }));
+            Logger.logUIInteraction({
+                component: "App",
+                action: "corpus_search_bar_submit",
+                queryLength: 0,
+                resultCount: 0,
+            });
+            return;
+        }
+
+        this.setState({ resultsLoading: true });
+        fetch(baseUrl + "searchCorpus", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: q, offset: 0, limit: 2000 }),
+        })
+            .then((response) => response.json())
+            .then((payload) => {
+                const filtered = payload?.papers || [];
+                const totalFromServer = payload?.total ?? filtered.length;
+                this.setState((prev) => {
+                    const ids = new Set(filtered.map((p: { ID: number }) => p.ID));
+                    const sel = prev.selectedPaperId;
+                    return {
+                        dataFiltered: {
+                            ...prev.dataFiltered,
+                            all: filtered,
+                        },
+                        dataFilteredID: filtered.map((p: { ID: number }) => p.ID),
+                        selectedPaperId: sel != null && !ids.has(sel) ? null : sel,
+                        totalPaperCount: totalFromServer,
+                        resultsLoading: false,
+                        corpusResultsFilter: emptyCorpusResultsFilter(),
+                        corpusResultsFilterDraft: emptyCorpusResultsFilter(),
+                    };
+                });
+                Logger.logUIInteraction({
+                    component: "App",
+                    action: "corpus_search_bar_submit",
+                    queryLength: q.length,
+                    resultCount: filtered.length,
+                });
+            })
+            .catch((err) => {
+                console.error("Corpus search failed:", err);
+                this.setState({ resultsLoading: false });
+            });
+    };
+
+    clearCorpusSearchFromBar = () => {
+        this.setState((prev) => ({
+            corpusSearchInput: "",
+            resultsPanelOpen: false,
+            dataFiltered: {
+                ...prev.dataFiltered,
+                all: [],
+            },
+            dataFilteredID: [],
+            selectedPaperId: null,
+            corpusResultsFilter: emptyCorpusResultsFilter(),
+            corpusResultsFilterDraft: emptyCorpusResultsFilter(),
+            resultsFilterPanelOpen: false,
+            resultsExploreInline: false,
+        }), () => {
+            this.requestSplitRelayout();
+        });
+    };
+
+    getFilteredCorpusSearchPapers = (): PaperRow[] => {
+        return filterCorpusResultsByFacets(
+            this.state.dataFiltered["all"] || [],
+            this.state.corpusResultsFilter
+        );
+    };
+
+    toggleResultsFilterPanel = () => {
+        this.setState((prev) => {
+            const nextOpen = !prev.resultsFilterPanelOpen;
+            return {
+                resultsFilterPanelOpen: nextOpen,
+                corpusResultsFilterDraft: nextOpen
+                    ? { ...prev.corpusResultsFilter }
+                    : prev.corpusResultsFilterDraft,
+            };
+        });
+    };
+
+    applyCorpusResultsFilters = () => {
+        this.setState((prev) => {
+            const nextFilter = { ...prev.corpusResultsFilterDraft };
+            const filtered = filterCorpusResultsByFacets(
+                prev.dataFiltered["all"] || [],
+                nextFilter
+            );
+            const ids = new Set(filtered.map((p) => p.ID));
+            const sel = prev.selectedPaperId;
+            return {
+                corpusResultsFilter: nextFilter,
+                resultsFilterPanelOpen: false,
+                selectedPaperId: sel != null && !ids.has(sel) ? null : sel,
+            };
+        });
+    };
+
+    clearCorpusResultsFilters = () => {
+        this.setState((prev) => {
+            const all = prev.dataFiltered["all"] || [];
+            const ids = new Set(all.map((p: { ID: number }) => p.ID));
+            const sel = prev.selectedPaperId;
+            return {
+                corpusResultsFilter: emptyCorpusResultsFilter(),
+                corpusResultsFilterDraft: emptyCorpusResultsFilter(),
+                resultsFilterPanelOpen: false,
+                selectedPaperId: sel != null && !ids.has(sel) ? null : sel,
+            };
+        });
+    };
+
+    /** Summarize a single saved paper into the Studio "LLM Output" (Literature Review panel). */
+    summarizeSinglePaper = (paper: PaperRow) => {
+        const prompt = `You are a scholar expert in the field of data visualization. \
+Now, I'm giving you relevant information about a paper. \
+Could you please help me summarize the content of this paper? \
+The requirement is to provide a detailed summary and also to expand upon it as appropriate.`;
+        Logger.logLLMInteraction({
+            component: "App",
+            action: "summarize_single_paper_start",
+            query: prompt,
+            paperCount: 1,
+            paperIds: [paper.ID],
+        });
+        this.setState({ summarizeResponse: "SUMMARIZING ... ..." });
+        const startTime = Date.now();
+        fetch(`${baseUrl}summarize`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: [paper.ID], prompt }),
+        })
+            .then((response) => {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let partial = "";
+                this.setState({ summarizeResponse: "" });
+                const readChunk = ({ done, value }: { done: boolean; value?: Uint8Array }) => {
+                    if (done) {
+                        if (partial) {
+                            this.setState({ summarizeResponse: `${partial}` });
+                        }
+                        Logger.logLLMInteraction({
+                            component: "App",
+                            action: "summarize_single_paper_complete",
+                            responseLength: partial?.length || 0,
+                            duration: Date.now() - startTime,
+                            paperCount: 1,
+                        });
+                        return;
+                    }
+                    partial += decoder.decode(value);
+                    this.setState({ summarizeResponse: `${partial}` });
+                    reader.read().then(readChunk);
+                };
+                reader.read().then(readChunk);
+            })
+            .catch((err) => {
+                console.error("Single-paper summarize failed:", err);
+                this.setState({ summarizeResponse: "Failed to summarize this paper." });
+            });
+    };
+
+    /** Open the inline explore reading view inside the Literature Review panel (column 1). */
+    openLitReviewExplore = (paper: PaperRow, navList: PaperRow[]) => {
+        const idx = navList.findIndex((p) => p.ID === paper.ID);
+        const index = idx >= 0 ? idx : 0;
+        const target = navList[index] ?? paper;
+        this.setState(
+            {
+                litReviewExploreOpen: true,
+                litReviewNavList: navList,
+                litReviewNavIndex: index,
+                litReviewLoadingPaperInfo: true,
+                litReviewPaperInfo: null,
+            },
+            () => {
+                void this.loadLitReviewPaperById(target.ID);
+            }
+        );
+        Logger.logUIInteraction({
+            component: "App",
+            action: "lit_review_paper_explore_open",
+            paperId: target.ID,
+            paperTitle: target.Title,
+        });
+    };
+
+    closeLitReviewExplore = () => {
+        this.setState({
+            litReviewExploreOpen: false,
+            litReviewPaperInfo: null,
+            litReviewLoadingPaperInfo: false,
+            litReviewNavList: [],
+            litReviewNavIndex: 0,
+        });
+    };
+
+    /** Load a paper into the Literature Review panel's dedicated explore state. */
+    loadLitReviewPaperById = async (paperId: number) => {
+        this.setState({ litReviewLoadingPaperInfo: true, litReviewPaperInfo: null });
+        try {
+            const fromAll = (this.state.dataFiltered["all"] || []).find(
+                (r: { ID: number }) => r.ID === paperId
+            );
+            const fromNav = this.state.litReviewNavList.find((p) => p.ID === paperId);
+            const row = fromAll || fromNav;
+            const fetched = await getPaperById(String(paperId));
+            this.setState({
+                litReviewPaperInfo: fetched || row,
+                litReviewLoadingPaperInfo: false,
+            });
+        } catch (e) {
+            console.error("Failed to fetch lit-review paper info:", e);
+            const fallback =
+                this.state.litReviewNavList.find((p) => p.ID === paperId) || null;
+            this.setState({
+                litReviewPaperInfo: fallback,
+                litReviewLoadingPaperInfo: false,
+            });
+        }
+    };
+
+    /** Previous / Next within the Literature Review panel's explore view. */
+    goLitReviewNav = (delta: number) => {
+        this.setState(
+            (prev) => {
+                const list = prev.litReviewNavList;
+                if (!list.length) {
+                    return null;
+                }
+                const nextIndex = Math.max(
+                    0,
+                    Math.min(list.length - 1, prev.litReviewNavIndex + delta)
+                );
+                if (nextIndex === prev.litReviewNavIndex) {
+                    return null;
+                }
+                return {
+                    litReviewNavIndex: nextIndex,
+                    litReviewLoadingPaperInfo: true,
+                    litReviewPaperInfo: null,
+                };
+            },
+            () => {
+                const id =
+                    this.state.litReviewNavList[this.state.litReviewNavIndex]?.ID;
+                if (id != null) {
+                    void this.loadLitReviewPaperById(id);
+                }
+            }
+        );
+    };
+
+    /** Remove a paper from the saved list (by ID) and persist to localStorage.
+     * Keeps a snapshot (with its original position) so the deletion can be undone. */
+    removeSavedPaper = (paper: PaperRow) => {
+        const prevSaved = this.state.dataSaved || [];
+        const removedIndex = prevSaved.findIndex(
+            (p: { ID: number }) => p.ID === paper.ID
+        );
+        const removedPaper = removedIndex >= 0 ? prevSaved[removedIndex] : paper;
+        this.setState(
+            (prev) => {
+                const nextSaved = (prev.dataSaved || []).filter(
+                    (p: { ID: number }) => p.ID !== paper.ID
+                );
+                const nextSavedID = (prev.dataSavedID || []).filter(
+                    (id: number) => id !== paper.ID
+                );
+                return {
+                    dataSaved: nextSaved,
+                    dataSavedID: nextSavedID,
+                    deletedSavedPaperUndoStack: [
+                        ...(prev.deletedSavedPaperUndoStack || []),
+                        {
+                            paper: removedPaper,
+                            index: removedIndex >= 0 ? removedIndex : prevSaved.length,
+                        },
+                    ],
+                };
+            },
+            () => {
+                try {
+                    sessionStorage.setItem(
+                        "saved_papers",
+                        JSON.stringify(this.state.dataSaved)
+                    );
+                } catch (e) {
+                    console.warn("Failed to update saved papers in localStorage:", e);
+                }
+                Logger.logUIInteraction({
+                    component: "App",
+                    action: "saved_paper_delete",
+                    paperId: paper.ID,
+                });
+            }
+        );
+    };
+
+    /** Restore the most recently deleted saved paper (Undo). Each click pops one step off
+     * the stack, so undoing N times after N deletions returns to the initial state. */
+    undoRemoveSavedPaper = () => {
+        const stack = this.state.deletedSavedPaperUndoStack || [];
+        if (!stack.length) {
+            return;
+        }
+        const undo = stack[stack.length - 1];
+        this.setState(
+            (prev) => {
+                const saved = [...(prev.dataSaved || [])];
+                // Don't duplicate if it somehow got re-added in the meantime.
+                const alreadyPresent = saved.some(
+                    (p: { ID: number }) => p.ID === undo.paper.ID
+                );
+                if (!alreadyPresent) {
+                    const insertAt = Math.max(0, Math.min(undo.index, saved.length));
+                    saved.splice(insertAt, 0, undo.paper);
+                }
+                return {
+                    dataSaved: saved,
+                    dataSavedID: saved.map((p: any) => p.ID),
+                    deletedSavedPaperUndoStack: (
+                        prev.deletedSavedPaperUndoStack || []
+                    ).slice(0, -1),
+                };
+            },
+            () => {
+                try {
+                    sessionStorage.setItem(
+                        "saved_papers",
+                        JSON.stringify(this.state.dataSaved)
+                    );
+                } catch (e) {
+                    console.warn("Failed to restore saved paper in storage:", e);
+                }
+                Logger.logUIInteraction({
+                    component: "App",
+                    action: "saved_paper_delete_undo",
+                    paperId: undo.paper.ID,
+                });
+            }
+        );
+    };
+
+    closeResultPaperModal = () => {
+        this.setState({
+            isResultPaperModalOpen: false,
+            resultPaperNavList: [],
+            resultPaperNavIndex: 0,
+        });
+    };
+
+    /** Leave inline explore view and return to the results list (Results column). */
+    closeResultPaperExplore = () => {
+        this.setState(
+            {
+                resultsExploreInline: false,
+                resultPaperNavList: [],
+                resultPaperNavIndex: 0,
+                resultPaperInfo: null,
+                loadingResultPaperInfo: false,
+            },
+            () => this.requestSplitRelayout()
+        );
+    };
+
+    getResultHighlightOps = (paperId: number): ResultHighlightOp[] => {
+        return this.state.resultHighlightOpsByPaper[paperId] || [];
+    };
+
+    getResultHighlightOpsForField = (
+        paperId: number,
+        field: ResultHighlightOp["field"]
+    ): ResultHighlightOp[] => {
+        return this.getResultHighlightOps(paperId).filter((op) => op.field === field);
+    };
+
+    getSelectionOffsetsInContainer = (
+        container: HTMLElement
+    ): { field: ResultHighlightOp["field"]; start: number; end: number; text: string } | null => {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) {
+            return null;
+        }
+        const range = selection.getRangeAt(0);
+        if (range.collapsed) {
+            return null;
+        }
+        if (!container.contains(range.commonAncestorContainer)) {
+            return null;
+        }
+        const selectedText = range.toString();
+        if (!selectedText.trim()) {
+            return null;
+        }
+        const startElement =
+            range.startContainer.nodeType === Node.ELEMENT_NODE
+                ? (range.startContainer as Element)
+                : range.startContainer.parentElement;
+        const endElement =
+            range.endContainer.nodeType === Node.ELEMENT_NODE
+                ? (range.endContainer as Element)
+                : range.endContainer.parentElement;
+        const startFieldEl = startElement?.closest("[data-highlight-field]");
+        const endFieldEl = endElement?.closest("[data-highlight-field]");
+        if (!startFieldEl || !endFieldEl || startFieldEl !== endFieldEl) {
+            return null;
+        }
+        const field = startFieldEl.getAttribute("data-highlight-field") as ResultHighlightOp["field"] | null;
+        if (
+            field !== "title" &&
+            field !== "year" &&
+            field !== "abstract" &&
+            field !== "keywords"
+        ) {
+            return null;
+        }
+        const preRange = range.cloneRange();
+        preRange.selectNodeContents(startFieldEl);
+        preRange.setEnd(range.startContainer, range.startOffset);
+        const start = preRange.toString().length;
+        const end = start + selectedText.length;
+        return { field, start, end, text: selectedText };
+    };
+
+    renderHighlightedText = (
+        text: string,
+        ops: ResultHighlightOp[]
+    ): React.ReactNode => {
+        if (!text) {
+            return "N/A";
+        }
+        if (!ops.length) {
+            return text;
+        }
+
+        const len = text.length;
+        const diff = new Array(len + 1).fill(0);
+        ops.forEach((op) => {
+            const s = Math.max(0, Math.min(len, Math.floor(op.start)));
+            const e = Math.max(s, Math.min(len, Math.floor(op.end)));
+            if (e > s) {
+                diff[s] += 1;
+                diff[e] -= 1;
+            }
+        });
+
+        const nodes: React.ReactNode[] = [];
+        let running = 0;
+        let segmentStart = 0;
+        let previousHighlighted = false;
+        for (let i = 0; i < len; i++) {
+            running += diff[i];
+            const isHighlighted = running > 0;
+            if (i === 0) {
+                previousHighlighted = isHighlighted;
+            } else if (isHighlighted !== previousHighlighted) {
+                const chunk = text.slice(segmentStart, i);
+                if (chunk) {
+                    nodes.push(
+                        previousHighlighted ? (
+                            <span
+                                key={`hl-${segmentStart}-${i}`}
+                                className="result-paper-highlight"
+                            >
+                                {chunk}
+                            </span>
+                        ) : (
+                            <React.Fragment key={`txt-${segmentStart}-${i}`}>
+                                {chunk}
+                            </React.Fragment>
+                        )
+                    );
+                }
+                segmentStart = i;
+                previousHighlighted = isHighlighted;
+            }
+        }
+        const tail = text.slice(segmentStart);
+        if (tail) {
+            nodes.push(
+                previousHighlighted ? (
+                    <span
+                        key={`hl-${segmentStart}-${len}`}
+                        className="result-paper-highlight"
+                    >
+                        {tail}
+                    </span>
+                ) : (
+                    <React.Fragment key={`txt-${segmentStart}-${len}`}>
+                        {tail}
+                    </React.Fragment>
+                )
+            );
+        }
+        return nodes;
+    };
+
+    /** The paper currently shown in whichever explore view is active (panel or main column). */
+    getActiveExplorePaper = (): PaperRow | null => {
+        return this.state.litReviewExploreOpen
+            ? this.state.litReviewPaperInfo
+            : this.state.resultPaperInfo;
+    };
+
+    applyResultHighlight = () => {
+        const activePaper = this.getActiveExplorePaper();
+        const paperId = activePaper?.ID;
+        if (paperId == null) {
+            return;
+        }
+        const container = this.resultsExploreContentRef.current;
+        if (!container) {
+            return;
+        }
+        const selection = this.getSelectionOffsetsInContainer(container);
+        if (!selection) {
+            return;
+        }
+        const fieldText = (() => {
+            const rp: any = activePaper || {};
+            if (selection.field === "title") {
+                return String(rp.Title || "(No title)");
+            }
+            if (selection.field === "year") {
+                return rp.Year != null ? String(rp.Year) : "N/A";
+            }
+            if (selection.field === "keywords") {
+                return Array.isArray(rp.Keywords)
+                    ? rp.Keywords.join(", ")
+                    : String(rp.Keywords || "N/A");
+            }
+            return String(rp.Abstract || "N/A");
+        })();
+        const start = Math.max(
+            0,
+            Math.min(selection.start, fieldText.length)
+        );
+        const end = Math.max(start, Math.min(selection.end, fieldText.length));
+        if (end <= start) {
+            return;
+        }
+        const op: ResultHighlightOp = {
+            field: selection.field,
+            start,
+            end,
+            text: selection.text,
+            createdAt: Date.now(),
+        };
+        this.setState(
+            (prev) => {
+                const current = prev.resultHighlightOpsByPaper[paperId] || [];
+                return {
+                    resultHighlightOpsByPaper: {
+                        ...prev.resultHighlightOpsByPaper,
+                        [paperId]: [...current, op],
+                    },
+                };
+            },
+            () => this.persistResultHighlights()
+        );
+        try {
+            window.getSelection()?.removeAllRanges();
+        } catch {
+            // ignore
+        }
+    };
+
+    undoResultHighlight = () => {
+        const paperId = this.getActiveExplorePaper()?.ID;
+        if (paperId == null) {
+            return;
+        }
+        this.setState(
+            (prev) => {
+                const current = prev.resultHighlightOpsByPaper[paperId] || [];
+                if (!current.length) {
+                    return null;
+                }
+                return {
+                    resultHighlightOpsByPaper: {
+                        ...prev.resultHighlightOpsByPaper,
+                        [paperId]: current.slice(0, -1),
+                    },
+                };
+            },
+            () => this.persistResultHighlights()
+        );
+    };
+
+    clearResultHighlights = () => {
+        const paperId = this.getActiveExplorePaper()?.ID;
+        if (paperId == null) {
+            return;
+        }
+        this.setState(
+            (prev) => ({
+                resultHighlightOpsByPaper: {
+                    ...prev.resultHighlightOpsByPaper,
+                    [paperId]: [],
+                },
+            }),
+            () => this.persistResultHighlights()
+        );
+    };
+
+    /** Save all per-paper highlight operations so they survive page reloads. */
+    persistResultHighlights = () => {
+        try {
+            sessionStorage.setItem(
+                "result_highlights",
+                JSON.stringify(this.state.resultHighlightOpsByPaper || {})
+            );
+        } catch (error) {
+            console.warn("Failed to save highlights to localStorage:", error);
+        }
+    };
+
+    /** Restore per-paper highlight operations saved in a previous session. */
+    loadResultHighlights = () => {
+        try {
+            const saved = sessionStorage.getItem("result_highlights");
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed && typeof parsed === "object") {
+                    this.setState({ resultHighlightOpsByPaper: parsed });
+                }
+            }
+        } catch (error) {
+            console.warn("Failed to load highlights from localStorage:", error);
+        }
+    };
+
+    loadResultPaperById = async (paperId: number) => {
+        this.setState({ loadingResultPaperInfo: true, resultPaperInfo: null });
+        try {
+            const fromAll = (this.state.dataFiltered["all"] || []).find(
+                (r: { ID: number }) => r.ID === paperId
+            );
+            const fromNav = this.state.resultPaperNavList.find((p) => p.ID === paperId);
+            const row = fromAll || fromNav;
+            const fetched = await getPaperById(String(paperId));
+            this.setState({
+                resultPaperInfo: fetched || row,
+                loadingResultPaperInfo: false,
+            });
+        } catch (e) {
+            console.error("Failed to fetch result paper info:", e);
+            const fallback =
+                this.state.resultPaperNavList.find((p) => p.ID === paperId) || null;
+            this.setState({
+                resultPaperInfo: fallback,
+                loadingResultPaperInfo: false,
+            });
+        }
+    };
+
+    openResultPaperModalWithNav = (
+        paper: PaperRow,
+        mode: "explore" | "summary",
+        navList: PaperRow[]
+    ) => {
+        const idx = navList.findIndex((p) => p.ID === paper.ID);
+        const index = idx >= 0 ? idx : 0;
+        const target = navList[index] ?? paper;
+        const isExplore = mode === "explore";
+        this.setState(
+            {
+                resultsExploreInline: isExplore,
+                isResultPaperModalOpen: !isExplore,
+                loadingResultPaperInfo: true,
+                resultPaperInfo: null,
+                resultPaperViewMode: mode,
+                resultPaperNavList: navList,
+                resultPaperNavIndex: index,
+                selectedPaperId: target.ID,
+            },
+            () => {
+                void this.loadResultPaperById(target.ID);
+                if (isExplore) {
+                    this.requestSplitRelayout();
+                }
+            }
+        );
+        Logger.logUIInteraction({
+            component: "App",
+            action: isExplore
+                ? "corpus_results_paper_explore_inline_open"
+                : "corpus_results_paper_summary_modal_open",
+            mode,
+            paperId: target.ID,
+            paperTitle: target.Title,
+        });
+    };
+
+    goResultPaperNav = (delta: number) => {
+        this.setState(
+            (prev) => {
+                const list = prev.resultPaperNavList;
+                if (!list.length) {
+                    return null;
+                }
+                const nextIndex = Math.max(
+                    0,
+                    Math.min(list.length - 1, prev.resultPaperNavIndex + delta)
+                );
+                if (nextIndex === prev.resultPaperNavIndex) {
+                    return null;
+                }
+                const nextId = list[nextIndex].ID;
+                return {
+                    resultPaperNavIndex: nextIndex,
+                    loadingResultPaperInfo: true,
+                    resultPaperInfo: null,
+                    selectedPaperId: nextId,
+                };
+            },
+            () => {
+                const id =
+                    this.state.resultPaperNavList[this.state.resultPaperNavIndex]?.ID;
+                if (id != null) {
+                    void this.loadResultPaperById(id);
+                }
+            }
+        );
+    };
+
+    /** split.js / react-split do not always reflow when the master-detail tree changes width */
+    requestSplitRelayout = () => {
+        requestAnimationFrame(() => {
+            window.dispatchEvent(new Event("resize"));
+        });
+    };
 
     setSpinner(isSpinnerActive: boolean, loadingText: string = 'Loading...') {
         this.setState({
@@ -464,7 +1348,7 @@ class App extends React.Component<AppProps, AppState> {
         });
 
         try {
-            localStorage.setItem('research_notes', content)
+            sessionStorage.setItem('research_notes', content)
         }
         catch(error) {
             console.warn('Error with saving the research notes', error)
@@ -878,14 +1762,19 @@ class App extends React.Component<AppProps, AppState> {
     };
 
     applyLocalFilters = (data, columnFilters, globalFilter = null) => {
-        if (!columnFilters || columnFilters.length === 0) {
-            return data; // No filters applied, return all data
+        const hasColumnFilters = columnFilters && columnFilters.length > 0;
+        const globalNeedle =
+            globalFilter != null && String(globalFilter).trim().length > 0
+                ? String(globalFilter).trim().toLowerCase()
+                : null;
+
+        if (!hasColumnFilters && !globalNeedle) {
+            return data;
         }
 
-
         const filteredData = data.filter((row) => {
-            // Apply column filters
-            const columnFilterPass = columnFilters.every((filter) => {
+            const columnFilterPass = hasColumnFilters
+                ? columnFilters.every((filter) => {
                 const {id, value} = filter;
 
 
@@ -936,12 +1825,12 @@ class App extends React.Component<AppProps, AppState> {
                 }
 
                 return true;
-            });
+            })
+                : true;
 
-            // Apply global filter
-            const globalFilterPass = globalFilter
+            const globalFilterPass = globalNeedle
                 ? Object.values(row).some((value) =>
-                    String(value).toLowerCase().includes(globalFilter.toLowerCase())
+                    String(value).toLowerCase().includes(globalNeedle)
                 )
                 : true;
 
@@ -1111,7 +2000,10 @@ class App extends React.Component<AppProps, AppState> {
                 totalPaperCount: totalFromServer,
                 // hasMoreData: check if we have less loaded than total
                 hasMoreData: totalFromServer !== null ? _dataAll.length < totalFromServer : true,
-            }));
+            }), () => {
+                // Re-apply corpus bar query (user may have searched before papers finished loading)
+                parent.applyCorpusSearchFromBar();
+            });
         });
     }
 
@@ -1150,7 +2042,8 @@ class App extends React.Component<AppProps, AppState> {
             parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["ada"], "ada");
             parent.setState({
                 "pointsAll": _pointsAll,
-                "spinner": false
+                "spinner": false,
+                "dataLoaded": true
             });
         });
     }
@@ -1241,7 +2134,7 @@ class App extends React.Component<AppProps, AppState> {
     };
     loadSavedPapers = () => {
         try {
-            const raw = localStorage.getItem("saved_papers");
+            const raw = sessionStorage.getItem("saved_papers");
             if (raw) {
             const papers = JSON.parse(raw);
             this.setState({
@@ -1259,6 +2152,7 @@ class App extends React.Component<AppProps, AppState> {
         this.loadInitialData();
         this.loadSavedNotes();
         this.loadSavedPapers();
+        this.loadResultHighlights();
     }
 
     componentWillUnmount() {
@@ -1276,7 +2170,7 @@ class App extends React.Component<AppProps, AppState> {
 
     loadSavedNotes = () => {
         try {
-            const savedContent = localStorage.getItem('research_notes')
+            const savedContent = sessionStorage.getItem('research_notes')
             if (savedContent) {
                 this.setState({notesContent:savedContent})
             }
@@ -1294,11 +2188,7 @@ class App extends React.Component<AppProps, AppState> {
             
             // Load metadata first (this is usually the slowest)
             await this.getMetaData();
-            if (onLoadingProgress) onLoadingProgress(0.5);
-            
-            // Load papers data
-            await this.getData();
-            if (onLoadingProgress) onLoadingProgress(0.8);
+            if (onLoadingProgress) onLoadingProgress(0.7);
             
             // Load UMAP points
             await this.getUmapPoints();
@@ -1326,6 +2216,11 @@ class App extends React.Component<AppProps, AppState> {
 
 
         const {dataLoaded} = this.state;
+        const corpusResultsTotalUnfiltered = (this.state.dataFiltered["all"] || []).length;
+        const corpusResultsFilteredList = this.getFilteredCorpusSearchPapers();
+        const corpusResultsFiltersOn = hasActiveCorpusResultsFilters(
+            this.state.corpusResultsFilter
+        );
         const toggleIsCiteUsCalloutVisible = () => {
             this.setState({
                 isCiteUsCalloutVisible: !this.state.isCiteUsCalloutVisible
@@ -1406,12 +2301,28 @@ class App extends React.Component<AppProps, AppState> {
             })
         }
 
+        // Corpus search: match Results list (including client-side year/citation/venue filters).
+        const hasActiveCorpusSearch = this.state.corpusSearchInput.trim().length > 0;
+        const corpusBaseList = hasActiveCorpusSearch
+            ? this.state.dataFiltered["all"] || []
+            : this.state.pointsAll || [];
+        const corpusListForHighlight =
+            hasActiveCorpusSearch &&
+            hasActiveCorpusResultsFilters(this.state.corpusResultsFilter)
+                ? filterCorpusResultsByFacets(
+                      corpusBaseList as PaperRow[],
+                      this.state.corpusResultsFilter
+                  )
+                : corpusBaseList;
+        const filteredPaperIdSet = new Set(
+            corpusListForHighlight.map((p: { ID: number }) => p.ID)
+        );
         const isInFilteredPapers = (row) => {
             if (Array.isArray(row)) {
                 let _numFiltered = 0;
                 row.forEach((r) => {
                     try {
-                        if (this.state.dataFilteredID.includes(r["ID"])) {
+                        if (filteredPaperIdSet.has(r["ID"])) {
                             _numFiltered += 1;
                         }
                     } catch (err) {
@@ -1421,7 +2332,7 @@ class App extends React.Component<AppProps, AppState> {
                 return _numFiltered == row.length;
             } else {
                 try {
-                    return this.state.dataFilteredID.includes(row["ID"]);
+                    return filteredPaperIdSet.has(row["ID"]);
                 } catch (err) {
                     return false;
                 }
@@ -1502,7 +2413,7 @@ class App extends React.Component<AppProps, AppState> {
             }, () => {
                 // Save to localStorage for persistence across steps
                 try {
-                    localStorage.setItem('saved_papers', JSON.stringify(_papers));
+                    sessionStorage.setItem('saved_papers', JSON.stringify(_papers));
                 } catch (e) {
                     console.warn('Failed to save papers to localStorage:', e);
                 }
@@ -1972,159 +2883,6 @@ class App extends React.Component<AppProps, AppState> {
         }
 
 
-        const allPapersTableProps: SmartTableProps = {
-            loadMoreData: this.loadMoreData,
-            loadAllData: this.loadAllData,
-            hasMoreData: this.state.hasMoreData,
-            totalPaperCount: this.state.totalPaperCount,
-            tableType: "all",
-            embeddingType: this.state.embeddingType.key as string,
-            hasEmbeddings: hasEmbeddings,
-            tableData: {
-                all: this.state.dataAll,
-                saved: this.state.dataSaved,
-                similar: this.state.dataSimilar,
-                similarPayload: this.state.dataSimilarPayload,
-                keyword: this.state.dataKeywords,
-                author: this.state.dataAuthors,
-                source: this.state.dataSources,
-                year: this.state.dataYears,
-            },
-            columnsVisible: this.state.columnsVisible["all"],
-            updateVisibleColumns: (columnId) => {
-                updateVisibleColumns(columnId, "all");
-            },
-            columnSortByValues: this.state.columnSortByValues["all"],
-            updateColumnSortByValues: (sortBy) => {
-                this.updateStateProp("columnSortByValues", sortBy, "all");
-            },
-            columnFilterValues: this.state.columnFilterValues["all"],
-            updateColumnFilterValues: (filter) => {
-                const {allDataLoaded, columnFilterValues} = this.state;
-
-                // Practice task: Check if user applied any filter (search task)
-                if (this.props.isPractice && filter && filter.length > 0) {
-                    this.completePracticeTask('search');
-                }
-
-                if (JSON.stringify(columnFilterValues["all"]) === JSON.stringify(filter)) {
-                    return;
-                }
-                if (!allDataLoaded) {
-                    // Only show spinner when loading from server
-                    this.setState({spinner: true, loadingText: 'Loading Data...'});
-                    this.setState(
-                        {
-                            dataAll: [],
-                            offset: 0,
-                            hasMoreData: true,
-                        },
-                        () => {
-                            this.loadMoreData(); // Load more data from the server
-                        }
-                    );
-                    // Update the column filter values
-                    this.updateStateProp("columnFilterValues", filter, "all");
-                } else {
-                    // Client-side filtering - no spinner needed
-                    // Update column filter values without resetting data or calling loadMoreData
-                    this.updateStateProp("columnFilterValues", filter, "all");
-
-                    // Apply filters locally to existing data
-                    const filteredData = this.applyLocalFilters(this.state.dataAll, filter);
-
-                    // console.log("filteredData", filteredData);
-                    this.setState((prevState) => {
-                        // Combine the existing IDs with the new ones, avoiding duplicates
-                        const newFilteredIDs = filteredData.map((paper) => paper.ID);
-                        const concatenatedFilteredIDs = Array.from(new Set([...prevState.dataFilteredID, ...newFilteredIDs]));
-                        return {
-                            dataFiltered: {
-                                ...prevState.dataFiltered,
-                                all: filteredData,
-                            },
-                            dataFilteredID: concatenatedFilteredIDs,
-                        };
-                    });
-                }
-            },
-            globalFilterValue: this.state.globalFilterValue["all"],
-            updateGlobalFilterValue: (filter) => {
-                const {allDataLoaded, columnFilterValues} = this.state;
-
-                // Practice task: Check if user used global search (search task)
-                if (this.props.isPractice && filter && filter.length > 0) {
-                    this.completePracticeTask('search');
-                }
-
-                if (JSON.stringify(columnFilterValues["all"]) === JSON.stringify(filter)) {
-                    return;
-                }
-                if (!allDataLoaded) {
-                    // Only show spinner when loading from server
-                    this.setState({spinner: true, loadingText: 'Loading Data...'});
-                    this.setState(
-                        {
-                            dataAll: [],
-                            offset: 0,
-                            hasMoreData: true,
-                        },
-                        () => {
-                            this.loadMoreData(); // Load more data from the server
-                        }
-                    );
-                    // Update the column filter values
-                    this.updateStateProp("columnFilterValues", filter, "all");
-                } else {
-                    // Client-side filtering - no spinner needed
-                    // Update column filter values without resetting data or calling loadMoreData
-                    this.updateStateProp("columnFilterValues", filter, "all");
-
-                    // Apply filters locally to existing data
-                    const filteredData = this.applyLocalFilters(this.state.dataAll, filter);
-                    // console.log("filteredData", filteredData);
-                    this.setState((prevState) => ({
-                        dataFiltered: {
-                            ...prevState.dataFiltered,
-                            all: filteredData,
-                        },
-                        dataFilteredID: filteredData.map((paper) => paper.ID),
-                    }));
-                }
-            },
-            columnFilterTypes: this.state.columnFilterTypes,
-
-            setFilteredPapers: (dataFiltered) => {
-                // updateKeywordCounts(dataFiltered);
-                // updateAuthorCounts(dataFiltered);
-                // updateSourcesCounts(dataFiltered);
-                // updateYearsCounts(dataFiltered);
-                // updateFilteredPaperIDs(dataFiltered);
-                // this.updateStateProp("dataFiltered", dataFiltered, "all");
-            },
-            scrollToPaperID: this.state.scrollToPaperID,
-            dataFiltered: this.state.dataFiltered["all"],
-            columnWidths: this.state.columnWidths,
-            tableControls: ["add", "save", "info", "locate"],
-            columnIds: this.state.columns["all"],
-            addToSavedPapers: addToSavedPapers,
-            addToSimilarInputPapers: addToSimilarInputPapers,
-            addToSelectNodeIDs: addToSelectNodeIDs,
-            isInSimilarInputPapers: isInSimilarInputPapers,
-            isInSavedPapers: isInSavedPapers,
-            openGScholar: openGScholar,
-            isInSelectedNodeIDs: isInSelectedNodeIDs,
-            dataAuthors: this.state.dataAuthors,
-            dataSources: this.state.dataSources,
-            dataKeywords: this.state.dataKeywords,
-            staticMinYear: this.state.minYear,   // Pass minYear to SmartTable
-            staticMaxYear: this.state.maxYear,
-            staticMinCitationCounts: this.state.minCitationCounts,   // Pass minYear to SmartTable
-            staticMaxCitationCounts: this.state.maxCitationCounts,
-            applyLocalFilters: this.applyLocalFilters,
-        }
-
-
         const setScrollToPaperID = (_ID) => {
             this.setState({
                 scrollToPaperID: _ID
@@ -2146,7 +2904,7 @@ class App extends React.Component<AppProps, AppState> {
                 // Save to localStorage if we're deleting from saved papers
                 if (data === 'dataSaved') {
                     try {
-                        localStorage.setItem('saved_papers', JSON.stringify(_property));
+                        sessionStorage.setItem('saved_papers', JSON.stringify(_property));
                     } catch (e) {
                         console.warn('Failed to update saved papers in localStorage:', e);
                     }
@@ -2207,18 +2965,6 @@ class App extends React.Component<AppProps, AppState> {
             isInSelectedNodeIDs: isInSelectedNodeIDs,
         }
 
-
-        const onChangeSearchTitle = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newText: string): void => {
-            this.setState({searchTitle: newText})
-        };
-
-        const onChangeSearchAbstract = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newText: string): void => {
-            this.setState({searchAbstract: newText})
-        };
-
-        const onChangeChatText = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newText: string): void => {
-            this.setState({chatText: newText})
-        };
 
         const updateYearsCounts = (papers) => {
             let _countsObj = {};
@@ -2409,184 +3155,105 @@ class App extends React.Component<AppProps, AppState> {
             isInSelectedNodeIDs: isInSelectedNodeIDs,
         }
 
-        const dialogProps = {
-            'addToSelectNodeIDs': addToSelectNodeIDs,
-            'addToSimilarInputPapers': addToSimilarInputPapers,
-            'addToSavedPapers': addToSavedPapers,
-        }
-
-        const _items: ICommandBarItemProps[] = [
-            {
-                key: 'brand',
-                commandBarButtonAs: () => (
-                    <div style={{color: "white"}}>
-                        {/* <Text variant="xLarge">vitaLITy</Text> */}
-                        <img height="30" title="VitaLITy Logo" src={logo} alt="VitaLITy Logo"/>
-                    </div>
-                )
-            },
-            {
-                key: 'description',
-                commandBarButtonAs: () => (
-                    <div style={{color: "white", marginLeft: 16, maxWidth: 280}}>
-                        <Text variant="small">VitaLITy 2: Reviewing Academic Literature using Large Language
-                            Models</Text>
-                    </div>
-                )
-            },
-            // {
-            //   key: 'conferencebrand',
-            //   commandBarButtonAs: () => (
-            //     <div style={{ color: "white" }}>
-            //       <img height="30" title="IEEE VIS Logo" src={visConferenceLogo} alt="IEEE VIS Logo" />
-            //     </div>
-            //   )
-            // },
-            // {
-            //   key: 'citeus',
-            //   commandBarButtonAs: () => (
-            //     <div style={{ color: "white", marginLeft: 16, paddingLeft: 4, paddingRight: 4 }}>
-            //       <DefaultButton id={"citationBtnId"} onClick={toggleIsCiteUsCalloutVisible} text={'Cite Us!'}></DefaultButton>
-            //       {this.state.isCiteUsCalloutVisible && (
-            //         <Callout
-            //           style={{
-            //             padding: '16px 16px',
-            //             width: 450
-            //           }}
-            //           target={`#citationBtnId`}
-            //           onDismiss={toggleIsCiteUsCalloutVisible}
-            //           role="status"
-            //           aria-live="assertive"
-            //         >
-            //           <DelayedRender>
-            //             <div>
-            //               <Text variant="medium">
-            //                 A. Narechania, A. Karduni, R. Wesslen and E. Wall, <strong>"vitaLITy: Promoting Serendipitous Discovery of Academic Literature with Transformers &amp; Visual Analytics,"</strong> <i>in IEEE Transactions on Visualization and Computer Graphics</i>, vol. 28, no. 1, pp. 486-496, Jan. 2022, doi: 10.1109/TVCG.2021.3114820.
-            //               </Text>
-            //               <br /><br />
-            //               <DefaultButton
-            //                 style={{ marginLeft: 4, marginRight: 4 }}
-            //                 onClick={() => {
-            //                   const citation = `@ARTICLE{9552447,  author={Narechania, Arpit and Karduni, Alireza and Wesslen, Ryan and Wall, Emily},  journal={IEEE Transactions on Visualization and Computer Graphics},   title={VITALITY: Promoting Serendipitous Discovery of Academic Literature with Transformers  amp; Visual Analytics},   year={2022},  volume={28},  number={1},  pages={486-496},  doi={10.1109/TVCG.2021.3114820}}`
-            //                   navigator.clipboard.writeText(citation);
-            //                 }}
-            //                 text={'Copy .BibTex'}>
-            //               </DefaultButton>
-            //               <DefaultButton
-            //                 style={{ marginLeft: 4, marginRight: 4 }}
-            //                 href="https://doi.org/10.1109/TVCG.2021.3114820"
-            //                 target="_blank"
-            //                 text="Other formats from IEEE TVCG'21"
-            //                 title="Other formats from IEEE TVCG'21"></DefaultButton>
-            //               <br />
-            //             </div>
-            //           </DelayedRender>
-            //         </Callout>
-            //       )}
-            //     </div>
-            //   )
-            // },
-            // {
-            //   key: 'affiliationbrands',
-            //   commandBarButtonAs: () => (
-            //     <div style={{ color: "white", marginLeft: 16, paddingLeft: 4, paddingRight: 4 }}>
-            //       <img height="30" src={gtLogo} title="Georgia Tech Logo" alt="Georgia Tech Logo" />
-            //       &nbsp;&nbsp;
-            //       <img height="30" src={northwesternLogo} title="Northwestern University Logo" alt="Northwestern University Logo" />
-            //       &nbsp;&nbsp;
-            //       <img height="30" src={unccLogo} title="University of North Carolina Charlotte Logo" alt="University of North Carolina Charlotte Logo" />
-            //       &nbsp;&nbsp;
-            //       <img height="30" src={emoryLogo} title="Emory University Logo" alt="Emory University Logo" />
-            //     </div>
-            //   )
-            // }
-        ];
-
-        const _farItems: ICommandBarItemProps[] = [
-            {
-                key: 'metaTableButton',
-                commandBarButtonAs: () => (
-                    <DefaultButton
-                        id = "metaTableButton"
-                        text="Metadata"
-                        iconProps={{iconName: "Table"}}
-                        onClick={() => {
-                            const wasOpen = this.state.isMetaTableModalOpen;
-                            this.setState({isMetaTableModalOpen: !this.state.isMetaTableModalOpen});
-                            
-                            // Meta table interaction
-                            Logger.logUIInteraction({
-                                component: 'App',
-                                action: 'meta_table_modal_toggle',
-                                elementId: 'metaTableButton',
-                                value: !wasOpen,
-                                modalName: 'metaTable'
-                            });
-                        }
-
-                        }
-                        // style={{marginLeft: 8}}
-                        
-                    />
-                ),
-            },
-            {
-                key: 'embedding',
-                commandBarButtonAs: () => (
-                    <>
-                        <Dropdown
-                            id="embeddingDropdownButton"
-                            label=""
-                            selectedKey={this.state.embeddingType.key}
-                            // eslint-disable-next-line react/jsx-no-bind
-                            onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => {
-                                const previousValue = this.state.embeddingType.key;
-                                this.setState({embeddingType: item});
-
-                                // Embedding type change
-                                Logger.logUIInteraction({
-                                    component: 'App',
-                                    action: 'embedding_type_change',
-                                    elementId: 'embeddingDropdownButton',
-                                    value: item?.key,
-                                });
-                            }}
-                            // disabled={true}
-                            options={embeddingTypeDropdownOptions}
-                            styles={{root: {zIndex: 2, paddingLeft: 4, paddingRight: 4, minWidth: 120}}}
-
-                        />
-                    </>
-                )
-            },
-            {
-                key: 'save',
-                commandBarButtonAs: () => (<DefaultButton id = "savedPapersButton" iconProps={{iconName: "ClipboardList"}} style={{
-                    float: "right",
-                    zIndex: 99,
-                    paddingLeft: 4,
-                    paddingRight: 4,
-                    
-                    borderRadius: 8
-                }}
-                 text={"Saved Papers (" + this.state.dataSaved.length + ")"}
-                 onClick={() => {
-                     this.setState({isPanelOpen: true});
-                     
-                     // Saved papers panel opening
-                     Logger.logUIInteraction({
-                         component: 'App',
-                         action: 'saved_papers_panel_open',
-                         elementId: 'savedPapersButton',
-                         panelName: 'savedPapers',
-                         savedPapersCount: this.state.dataSaved.length
-                     });
-                 }}/>)
-            },
-        ];
-
         const {tabs, activeKey, dialogStates} = this.state;
 
+        const handleCorpusAsk = (paper: PaperRow) => {
+            this.setState({
+                chatSidebarOpen: true,
+                corpusAskQueue: {
+                    id: paper.ID,
+                    title: paper.Title || "(No title)",
+                    token: Date.now(),
+                },
+            });
+            Logger.logUIInteraction({
+                component: "App",
+                action: "corpus_results_ask",
+                paperId: paper.ID,
+            });
+        };
+        const handleCorpusLocate = (paper: PaperRow) => {
+            addToSelectNodeIDs([paper.ID], "scatterplot");
+            Logger.logUIInteraction({
+                component: "App",
+                action: "corpus_results_locate",
+                paperId: paper.ID,
+            });
+        };
+        const handleCorpusSimilar = (paper: PaperRow) => {
+            const full = this.state.dataFiltered["all"].find((r: { ID: number }) => r.ID === paper.ID);
+            if (full) {
+                addToSimilarInputPapers(full);
+                Logger.logUIInteraction({
+                    component: "App",
+                    action: "corpus_results_add_similar",
+                    paperId: paper.ID,
+                });
+            }
+        };
+        const handleCorpusSimilarToggle = (paper: PaperRow) => {
+            const isAdded = this.state.dataSimilarPayloadID.includes(paper.ID);
+            if (isAdded) {
+                this.setState((prev) => ({
+                    dataSimilarPayload: (prev.dataSimilarPayload || []).filter(
+                        (p: { ID: number }) => p.ID !== paper.ID
+                    ),
+                    dataSimilarPayloadID: (prev.dataSimilarPayloadID || []).filter(
+                        (id: number) => id !== paper.ID
+                    ),
+                }));
+                Logger.logUIInteraction({
+                    component: "App",
+                    action: "corpus_results_remove_similar",
+                    paperId: paper.ID,
+                });
+                return;
+            }
+            handleCorpusSimilar(paper);
+        };
+        const handleCorpusSave = (paper: PaperRow) => {
+            const full = this.state.dataFiltered["all"].find((r: { ID: number }) => r.ID === paper.ID);
+            if (full) {
+                addToSavedPapers(full);
+                Logger.logUIInteraction({
+                    component: "App",
+                    action: "corpus_results_save",
+                    paperId: paper.ID,
+                });
+            }
+        };
+        const handleCorpusSaveToggle = (paper: PaperRow) => {
+            const isSaved = this.state.dataSavedID.includes(paper.ID);
+            if (isSaved) {
+                this.setState((prev) => {
+                    const nextSaved = (prev.dataSaved || []).filter(
+                        (p: { ID: number }) => p.ID !== paper.ID
+                    );
+                    return {
+                        dataSaved: nextSaved,
+                        dataSavedID: (prev.dataSavedID || []).filter(
+                            (id: number) => id !== paper.ID
+                        ),
+                    };
+                }, () => {
+                    try {
+                        sessionStorage.setItem(
+                            "saved_papers",
+                            JSON.stringify(this.state.dataSaved || [])
+                        );
+                    } catch (e) {
+                        console.warn("Failed to update saved papers in localStorage:", e);
+                    }
+                });
+                Logger.logUIInteraction({
+                    component: "App",
+                    action: "corpus_results_unsave",
+                    paperId: paper.ID,
+                });
+                return;
+            }
+            handleCorpusSave(paper);
+        };
 
         function _inputButtonRenderer(link: IPivotItemProps, defaultRenderer: (link: IPivotItemProps) => JSX.Element): JSX.Element {
             return (
@@ -2606,6 +3273,314 @@ class App extends React.Component<AppProps, AppState> {
             );
         }
 
+        const chatSidebarContent = (
+            <section
+                id="chatWindowsPanel"
+                className="app-chat-sidebar__body workspace-panel workspace-panel--chat p-md p-b-0"
+            >
+                <Nav variant="tabs" activeKey={activeKey} onSelect={(k) => this.setActiveKey(k)}>
+                    {tabs.map((tab) => (
+                        <Nav.Item key={tab.id}>
+                            <Nav.Link
+                                eventKey={tab.id}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    paddingRight: '8px'
+                                }}
+                            >
+                                <span>{tab.title}</span>
+                                <Button
+                                    variant="link"
+                                    className="p-0"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        this.removeTab(tab.id);
+                                    }}
+                                    aria-label="Close tab"
+                                    style={{
+                                        minWidth: 'auto',
+                                        padding: '0 4px',
+                                        marginLeft: '0'
+                                    }}
+                                >
+                                    <FontAwesomeIcon
+                                        icon={faTimes}
+                                        style={{
+                                            color: "grey",
+                                            fontSize: "0.9rem"
+                                        }}
+                                    />
+                                </Button>
+                            </Nav.Link>
+                        </Nav.Item>
+                    ))}
+                    <Nav.Item>
+                        <Button
+                            variant="link"
+                            className="add-button"
+                            onClick={this.addNewTab}
+                            aria-label="Add new tab"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="28px"
+                                height="28px"
+                                viewBox="0 0 24 24"
+                                className="add-icon"
+                            >
+                                <line x1="6" y1="12" x2="18" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                <line x1="12" y1="6" x2="12" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                            </svg>
+                        </Button>
+                    </Nav.Item>
+                </Nav>
+                <div className="dialog-container">
+                    {tabs.map((tab) => (
+                        <Tab.Content key={tab.id}>
+                            {activeKey === tab.id && (
+                                <div className="dialog-content">
+                                    <Dialog
+                                        props={{
+                                            ...dialogStates[tab.id],
+                                            tabId: tab.id,
+                                            updateDialogState: (updatedState) =>
+                                                this.updateDialogState(tab.id, updatedState),
+                                            addToSelectNodeIDs: addToSelectNodeIDs,
+                                            addToSimilarInputPapers: addToSimilarInputPapers,
+                                            addToSavedPapers: addToSavedPapers,
+                                            isInSimilarInputPapers: isInSimilarInputPapers,
+                                            isInSavedPapers: isInSavedPapers,
+                                            isInSelectedNodeIDs: isInSelectedNodeIDs,
+                                            queuedCorpusQuestionPaper:
+                                                activeKey === tab.id ? this.state.corpusAskQueue : null,
+                                            onConsumeQueuedCorpusQuestionPaper: () =>
+                                                this.setState({ corpusAskQueue: null }),
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </Tab.Content>
+                    ))}
+                </div>
+            </section>
+        );
+
+        const renderMainToolPanels = () => {
+            const {
+                similarityWorkspaceOpen,
+                visualizationWorkspaceOpen,
+                workspacePanelOrder,
+            } = this.state;
+            let openOrder = workspacePanelOrder.filter(
+                (k) =>
+                    (k === "similarity" && similarityWorkspaceOpen) ||
+                    (k === "visualization" && visualizationWorkspaceOpen)
+            );
+            if (similarityWorkspaceOpen && openOrder.indexOf("similarity") === -1) {
+                openOrder = [...openOrder, "similarity"];
+            }
+            if (visualizationWorkspaceOpen && openOrder.indexOf("visualization") === -1) {
+                openOrder = [...openOrder, "visualization"];
+            }
+            const n = openOrder.length;
+            const stackClass = (i: number) =>
+                n <= 1
+                    ? "workspace-panel--stack-only"
+                    : i === 0
+                      ? "workspace-panel--stack-first"
+                      : "workspace-panel--stack-second";
+
+            const similarityPanel = (sc: string) => (
+                <section
+                    key="similarity"
+                    id="similaritySearchPanel"
+                    className={`workspace-panel workspace-panel--similarity ${sc} p-md p-b-0`}
+                >
+                    <Stack horizontal horizontalAlign="space-between" verticalAlign="center"
+                           tokens={{childrenGap: 8}}>
+                        <Label style={{fontSize: "1.2rem"}}>Similarity Search</Label>
+                        <button
+                            type="button"
+                            className="workspace-panel-header__close-btn"
+                            title="Hide Similarity Search"
+                            aria-label="Close Similarity Search panel"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                this.setState((prev) => ({
+                                    similarityWorkspaceOpen: false,
+                                    workspacePanelOrder: prev.workspacePanelOrder.filter(
+                                        (k) => k !== "similarity"
+                                    ),
+                                }));
+                                Logger.logUIInteraction({
+                                    component: "App",
+                                    action: "similarity_workspace_panel_close",
+                                    elementId: "similarityWorkspaceClose",
+                                });
+                            }}
+                        >
+                            <FontAwesomeIcon icon={faTimes} aria-hidden />
+                        </button>
+                    </Stack>
+                    <div className="similarityPanelPivot">
+                        <Pivot linkSize={PivotLinkSize.normal} linkFormat={PivotLinkFormat.links}
+                               selectedKey={String(this.state.similarityPanelSelectedKey)}
+                               onLinkClick={(pivotItem: PivotItem) => this.setState({similarityPanelSelectedKey: pivotItem["key"].split(".")[1]})}>
+                            <PivotItem onRenderItemLink={_inputButtonRenderer} headerText={"By Papers"}
+                                       itemCount={this.state.dataSimilarPayload.length}>
+                                <div className="m-t-lg"></div>
+                                <React.Fragment>
+                                    <Stack horizontal verticalAlign="center" horizontalAlign="start" wrap={false}
+                                           tokens={{childrenGap: 6}} styles={{root: {flexWrap: 'nowrap'}}}>
+                                        <Label styles={{root: {minWidth: 'auto'}}}>Dimensions</Label>
+                                        <Dropdown
+                                            label=""
+                                            selectedKey={this.state.similarityType.key}
+                                            // eslint-disable-next-line react/jsx-no-bind
+                                            onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => {
+                                                this.setState({similarityType: item})
+                                            }}
+                                            options={similarityTypeDropdownOptions}
+                                            styles={{root: {zIndex: 2, minWidth: 80}}}
+                                        />
+                                        <Label styles={{root: {minWidth: 'auto'}}}>Count</Label>
+                                        <Dropdown
+                                            label=""
+                                            selectedKey={this.state.maxSimilarPapers.key}
+                                            // eslint-disable-next-line react/jsx-no-bind
+                                            onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => {
+                                                this.setState({maxSimilarPapers: item})
+                                            }}
+                                            options={maxSimilarPapersDropdownOptions}
+                                            styles={{root: {minWidth: 90}}}
+                                        />
+                                        {
+                                            this.state.dataSimilarPayload.length > 0 ?
+                                                <PrimaryButton text="Find Similar Papers"
+                                                               onClick={getSimilarPapers} allowDisabledFocus
+                                                               styles={{root: {minWidth: 'auto'}}}/> :
+                                                <PrimaryButton text="Find Similar Papers"
+                                                               onClick={getSimilarPapers} allowDisabledFocus
+                                                               disabled styles={{root: {minWidth: 'auto'}}}/>
+                                        }
+                                    </Stack>
+                                </React.Fragment>
+                                <div className="m-t-md"></div>
+                                <SmartTable props={similarPapersPayloadTableProps}
+                                            setSpinner={this.setSpinner}></SmartTable>
+                            </PivotItem>
+                            <PivotItem onRenderItemLink={_inputButtonRenderer} headerText="By Abstract">
+                                <SimilarityByAbstractPanel
+                                    key={String(this.state.embeddingType.key)}
+                                    seedTitle={this.state.searchTitle}
+                                    seedAbstract={this.state.searchAbstract}
+                                    embeddingIsAda={this.state.embeddingType.key === "ada"}
+                                    searchByAbstractLimit={this.state.searchByAbstractLimit}
+                                    maxSimilarPapersDropdownOptions={maxSimilarPapersDropdownOptions}
+                                    onLimitChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => {
+                                        if (item) {
+                                            this.setState({searchByAbstractLimit: item});
+                                        }
+                                    }}
+                                    onFindSimilar={(title, abstract) => {
+                                        this.setState(
+                                            {searchTitle: title, searchAbstract: abstract},
+                                            () => getSimilarPapersByAbstract()
+                                        );
+                                    }}
+                                />
+                            </PivotItem>
+                            <PivotItem onRenderItemLink={_outputButtonRenderer} headerText={"Output Similar"}
+                                       itemCount={this.state.dataSimilar.length}>
+                                <div className="m-t-lg"></div>
+                                <SmartTable props={similarPapersTableProps}
+                                            setSpinner={this.setSpinner}></SmartTable>
+                            </PivotItem>
+                        </Pivot>
+                    </div>
+                </section>
+            );
+
+            const visualizationPanel = (sc: string) => (
+                <section
+                    key="visualization"
+                    className={`workspace-panel workspace-panel--visualization ${sc} p-md p-b-0`}
+                >
+                    <Stack horizontal horizontalAlign="space-between" verticalAlign="center"
+                           tokens={{childrenGap: 8}}>
+                        <Label style={{fontSize: "1.2rem"}}>Visualization</Label>
+                        <button
+                            type="button"
+                            className="workspace-panel-header__close-btn"
+                            title="Hide Visualization"
+                            aria-label="Close Visualization panel"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                this.setState((prev) => ({
+                                    visualizationWorkspaceOpen: false,
+                                    workspacePanelOrder: prev.workspacePanelOrder.filter(
+                                        (k) => k !== "visualization"
+                                    ),
+                                }));
+                                Logger.logUIInteraction({
+                                    component: "App",
+                                    action: "visualization_workspace_panel_close",
+                                    elementId: "visualizationWorkspaceClose",
+                                });
+                            }}
+                        >
+                            <FontAwesomeIcon icon={faTimes} aria-hidden />
+                        </button>
+                    </Stack>
+                    {/* Mount only when open; hidden panels have 0×0 canvas and break regl-scatterplot */}
+                    <div className="workspace-panel__viz-body">
+                    {visualizationWorkspaceOpen &&
+                    this.state.pointsAll.length > 0 ? (
+                        <PaperScatter
+                            props={{
+                                setScrollToPaperID: setScrollToPaperID,
+                                addToSavedPapers: addToSavedPapers,
+                                addToSimilarInputPapers: addToSimilarInputPapers,
+                                isInSavedPapers: isInSavedPapers,
+                                isInSimilarInputPapers: isInSimilarInputPapers,
+                                isInFilteredPapers: isInFilteredPapers,
+                                isInSimilarPapers: isInSimilarPapers,
+                                dataFiltered: this.state.dataFiltered["all"],
+                                dataSaved: this.state.dataSaved,
+                                dataSimilarPayload: this.state.dataSimilarPayload,
+                                dataSimilar: this.state.dataSimilar,
+                                data: this.state.pointsAll,
+                                selectNodeIDs: this.state.selectNodeIDs,
+                                addToSelectNodeIDs: addToSelectNodeIDs,
+                                embeddingType: this.state.embeddingType.key as string,
+                                openGScholar: openGScholar,
+                                eventOrigin: this.state.eventOrigin,
+                            }}
+                        />
+                    ) : null}
+                    </div>
+                </section>
+            );
+
+            return (
+            <React.Fragment>
+                {openOrder.map((key, i) =>
+                    key === "similarity" ? similarityPanel(stackClass(i)) : visualizationPanel(stackClass(i))
+                )}
+                {!similarityWorkspaceOpen && !visualizationWorkspaceOpen ? (
+                    <div className="app-working-panels-empty" role="status">
+                        <Text variant="medium">Open Similarity search or Visualization from the bar above.</Text>
+                    </div>
+                ) : null}
+
+            </React.Fragment>
+            );
+        };
+
         const {metadataInitialized, spinner, loadingText} = this.state;
         if (!metadataInitialized) {
             return (
@@ -2620,10 +3595,67 @@ class App extends React.Component<AppProps, AppState> {
                     }}
                 >
                     {/* You can customize this as needed */}
-                    {/*<div>Loading, please wait...</div>*/}
                 </LoadingOverlay>
             );
         }
+
+        const mainWorkspace = (
+            <div className="app-detail-body">
+                <div
+                    className="app-workspace-scroll"
+                    role="region"
+                    aria-label="Visualization and similarity tools"
+                >
+                    <div className="app-working-panels">
+                        {renderMainToolPanels()}
+                    </div>
+                </div>
+            </div>
+        );
+
+        const detailColumn = this.state.chatSidebarOpen ? (
+            <Split
+                key={`chat-workspace-split-${this.state.resultsPanelOpen ? "with-results" : "full-width"}`}
+                className="app-detail-chat-split"
+                direction="horizontal"
+                sizes={[58, 42]}
+                minSize={[300, 280]}
+                gutterSize={12}
+            >
+                <main className="app-detail app-detail--with-chat-split">{mainWorkspace}</main>
+                <aside className="app-chat-sidebar" aria-label="Chat">
+                    <div className="app-chat-sidebar__header">
+                        <Text variant="large">Chat Windows</Text>
+                        <button
+                            type="button"
+                            className="app-master-header__close-btn"
+                            title="Hide chat"
+                            aria-label="Close chat panel"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                this.setState({chatSidebarOpen: false}, () => {
+                                    this.requestSplitRelayout();
+                                });
+                                Logger.logUIInteraction({
+                                    component: "App",
+                                    action: "chat_panel_close",
+                                    elementId: "chatPanelClose",
+                                });
+                            }}
+                        >
+                            <FontAwesomeIcon icon={faTimes} aria-hidden />
+                        </button>
+                    </div>
+                    {chatSidebarContent}
+                </aside>
+            </Split>
+        ) : (
+            <main className="app-detail" key={`detail-main-solo-${this.state.resultsPanelOpen ? "with-results" : "full-width"}`}>
+                {mainWorkspace}
+            </main>
+        );
+
         return (
             <>
                 <LoadingOverlay
@@ -2631,27 +3663,1041 @@ class App extends React.Component<AppProps, AppState> {
                     spinner
                     text={'Loading data'}
                     styles={{
-                        wrapper: {},
+                        wrapper: (base) => ({
+                            ...base,
+                            flex: 1,
+                            minHeight: 0,
+                            display: "flex",
+                            flexDirection: "column",
+                            boxSizing: "border-box",
+                        }),
                         overlay: (base) => ({...base, background: 'rgba(0, 0, 0, 0.5)'}),
                         content: (base) => ({...base, color: 'rgba(255, 255, 255, 1)'})
                     }}
                 >
-                    <CommandBar
-                        items={_items}
-                        farItems={_farItems}
+                    <div className="app-shell">
+                    <header className="app-top-bar" role="banner">
+                        <div className="app-top-bar__brand-block">
+                            <div className="app-top-bar__brand">
+                                <img height="32" title="VitaLITy" src={logo} alt="VitaLITy"/>
+                            </div>
+                            <p className="app-top-bar__tagline">
+                                Literature discovery with LLMs and visual analytics
+                            </p>
+                        </div>
+                        <div className="app-top-bar__right">
+                            <div className="app-top-bar__embedding">
+                                <Dropdown
+                                    ariaLabel="Embedding"
+                                    selectedKey={this.state.embeddingType.key}
+                                    onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => {
+                                        if (item) {
+                                            this.setState({embeddingType: item});
+                                            Logger.logUIInteraction({
+                                                component: "App",
+                                                action: "embedding_type_change",
+                                                elementId: "topBarEmbedding",
+                                                value: item?.key,
+                                            });
+                                        }
+                                    }}
+                                    options={embeddingTypeDropdownOptions}
+                                    styles={{root: {minWidth: 120, maxWidth: 160}}}
+                                />
+                            </div>
+                            <div className="app-top-bar__actions">
+                                <DefaultButton
+                                    id="metaTableButton"
+                                    text="Metadata"
+                                    iconProps={{iconName: "Table"}}
+                                    onClick={() => {
+                                        const wasOpen = this.state.isMetaTableModalOpen;
+                                        this.setState({isMetaTableModalOpen: !this.state.isMetaTableModalOpen});
+                                        Logger.logUIInteraction({
+                                            component: "App",
+                                            action: "meta_table_modal_toggle",
+                                            elementId: "metaTableButton",
+                                            value: !wasOpen,
+                                            modalName: "metaTable",
+                                        });
+                                    }}
+                                />
+                                <DefaultButton
+                                    id="savedPapersButton"
+                                    iconProps={{iconName: "ClipboardList"}}
+                                    text={"Literature Review (" + this.state.dataSaved.length + ")"}
+                                    onClick={() => {
+                                        this.setState({isPanelOpen: true});
+                                        Logger.logUIInteraction({
+                                            component: "App",
+                                            action: "saved_papers_panel_open",
+                                            elementId: "savedPapersButton",
+                                            panelName: "savedPapers",
+                                            savedPapersCount: this.state.dataSaved.length,
+                                        });
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </header>
+                    <div className="app-main-column">
+                    <div className="app-search-section">
+                        <MultiFunctionSearchBar
+                            corpusSearchInput={this.state.corpusSearchInput}
+                            dataTitles={this.state.dataTitles}
+                            authorsSummary={this.state.authorsSummary}
+                            sourcesSummary={this.state.sourcesSummary}
+                            onSubmitCorpusSearch={(q) =>
+                                this.setState({corpusSearchInput: q, resultsPanelOpen: true}, () =>
+                                    this.applyCorpusSearchFromBar()
+                                )
+                            }
+                            onClearSearch={this.clearCorpusSearchFromBar}
+                            similarityWorkspaceOpen={this.state.similarityWorkspaceOpen}
+                            visualizationWorkspaceOpen={this.state.visualizationWorkspaceOpen}
+                            chatSidebarOpen={this.state.chatSidebarOpen}
+                            onOpenWorkspacePanel={(tool) => {
+                                const isSimilarity = tool === "similarity";
+                                this.setState(
+                                    (prev) => {
+                                        const nextSim = isSimilarity
+                                            ? true
+                                            : prev.similarityWorkspaceOpen;
+                                        const nextViz = isSimilarity
+                                            ? prev.visualizationWorkspaceOpen
+                                            : true;
+                                        return {
+                                            similarityWorkspaceOpen: nextSim,
+                                            visualizationWorkspaceOpen: nextViz,
+                                            workspacePanelOrder: appendWorkspacePanelToOrder(
+                                                prev.workspacePanelOrder,
+                                                tool,
+                                                nextSim,
+                                                nextViz
+                                            ),
+                                        };
+                                    },
+                                    () => {
+                                        Logger.logUIInteraction({
+                                            component: "App",
+                                            action: "workspace_panel_open",
+                                            panelName: isSimilarity
+                                                ? "similarityWorkspace"
+                                                : "visualizationWorkspace",
+                                            isOpen: true,
+                                        });
+                                    }
+                                );
+                            }}
+                            onToggleChatSidebar={() => {
+                                this.setState((prev) => {
+                                    const next = !prev.chatSidebarOpen;
+                                    Logger.logUIInteraction({
+                                        component: "App",
+                                        action: "chat_sidebar_toggle",
+                                        value: next,
+                                    });
+                                    return {chatSidebarOpen: next};
+                                });
+                            }}
+                        />
+                    </div>
+                    <div
+                        className={`app-master-detail${
+                            this.state.resultsPanelOpen ? "" : " app-master-detail--no-results"
+                        }`}
+                    >
+                        {this.state.resultsPanelOpen ? (
+                            <Split
+                                className="app-results-detail-split"
+                                direction="horizontal"
+                                sizes={[28, 72]}
+                                minSize={[200, 300]}
+                                gutterSize={12}
+                            >
+                                <aside
+                                    ref={this.resultsSidebarRef}
+                                    className={`app-master${
+                                        this.state.resultsExploreInline
+                                            ? " app-master--explore-open"
+                                            : ""
+                                    }`}
+                                    aria-label="Corpus search results"
+                                >
+                                    {this.state.resultsLoading && (
+                                        <div
+                                            className="app-master-loading"
+                                            role="status"
+                                            aria-live="polite"
+                                        >
+                                            <div className="app-master-loading__spinner" />
+                                            <span className="app-master-loading__text">
+                                                Searching papers…
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div className="app-master-header">
+                                        {this.state.resultsExploreInline ? (
+                                            <div className="app-master-header__titles app-master-header__titles--explore">
+                                                <button
+                                                    type="button"
+                                                    className="app-master-back-to-list"
+                                                    onClick={() =>
+                                                        this.closeResultPaperExplore()
+                                                    }
+                                                >
+                                                    ← Results
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="app-master-header__titles">
+                                                <Text variant="large">Results</Text>
+                                                <span className="app-master-count">
+                                                    {corpusResultsFiltersOn
+                                                        ? `${corpusResultsFilteredList.length} of ${corpusResultsTotalUnfiltered} papers`
+                                                        : `${corpusResultsFilteredList.length} papers`}
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div className="app-master-header__actions">
+                                            <button
+                                                ref={this.resultsFilterButtonRef}
+                                                type="button"
+                                                className={`app-master-header__filter-btn${
+                                                    corpusResultsFiltersOn ? " is-active" : ""
+                                                }${this.state.resultsFilterPanelOpen ? " is-open" : ""}`}
+                                                title="Filter results"
+                                                aria-label="Filter results"
+                                                aria-expanded={this.state.resultsFilterPanelOpen}
+                                                aria-haspopup="dialog"
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    this.toggleResultsFilterPanel();
+                                                    Logger.logUIInteraction({
+                                                        component: "App",
+                                                        action: "results_filter_popover_toggle",
+                                                    });
+                                                }}
+                                            >
+                                                <FontAwesomeIcon
+                                                    icon={faFilter}
+                                                    className="app-master-header__filter-btn-icon"
+                                                    aria-hidden
+                                                />
+                                                <span className="app-master-header__filter-btn-text">
+                                                    <span className="app-master-header__filter-btn-label">
+                                                        Filter
+                                                    </span>
+                                                    <span className="app-master-header__filter-btn-hint">
+                                                        Year, citations, source…
+                                                    </span>
+                                                </span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="app-master-header__close-btn"
+                                                title="Hide results"
+                                                aria-label="Close results panel"
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    this.setState(
+                                                        {
+                                                            resultsPanelOpen: false,
+                                                            resultsFilterPanelOpen: false,
+                                                            resultsExploreInline: false,
+                                                        },
+                                                        () => {
+                                                            this.requestSplitRelayout();
+                                                        }
+                                                    );
+                                                    Logger.logUIInteraction({
+                                                        component: "App",
+                                                        action: "results_panel_close",
+                                                        elementId: "resultsPanelClose",
+                                                    });
+                                                }}
+                                            >
+                                                <FontAwesomeIcon icon={faTimes} aria-hidden />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="app-master-scroll">
+                                        {this.state.resultsExploreInline
+                                            ? (() => {
+                                                  const navList =
+                                                      this.state.resultPaperNavList;
+                                                  const navIdx =
+                                                      this.state.resultPaperNavIndex;
+                                                  const navLen = navList.length;
+                                                  const atStart =
+                                                      navLen === 0 || navIdx <= 0;
+                                                  const atEnd =
+                                                      navLen === 0 ||
+                                                      navIdx >= navLen - 1;
+                                                  const loading =
+                                                      this.state
+                                                          .loadingResultPaperInfo;
+                                                  const rp =
+                                                      this.state.resultPaperInfo;
+                                                  const refCount =
+                                                      rp?.ReferenceCounts ??
+                                                      rp?.References ??
+                                                      rp?.NumReferences;
+                                                  const hasRef =
+                                                      refCount != null &&
+                                                      refCount !== "" &&
+                                                      !Number.isNaN(
+                                                          Number(refCount)
+                                                      );
+                                                  return (
+                                                      <div
+                                                          className="app-master-explore"
+                                                          role="article"
+                                                      >
+                                                          <div className="result-paper-modal__nav result-paper-modal__nav--inline">
+                                                              <IconButton
+                                                                  iconProps={{
+                                                                      iconName:
+                                                                          "Cancel",
+                                                                  }}
+                                                                  ariaLabel="Back to results list"
+                                                                  title="Back to results list"
+                                                                  onClick={() =>
+                                                                      this.closeResultPaperExplore()
+                                                                  }
+                                                                  className="result-paper-modal__nav-close"
+                                                              />
+                                                              <DefaultButton
+                                                                  text="Previous"
+                                                                  disabled={
+                                                                      atStart ||
+                                                                      loading
+                                                                  }
+                                                                  iconProps={{
+                                                                      iconName:
+                                                                          "ChevronLeft",
+                                                                  }}
+                                                                  onClick={() =>
+                                                                      this.goResultPaperNav(
+                                                                          -1
+                                                                      )
+                                                                  }
+                                                                  className="result-paper-modal__nav-prev"
+                                                              />
+                                                              <span className="result-paper-modal__nav-spacer" />
+                                                              <DefaultButton
+                                                                  text="Next"
+                                                                  disabled={
+                                                                      atEnd ||
+                                                                      loading
+                                                                  }
+                                                                  iconProps={{
+                                                                      iconName:
+                                                                          "ChevronRight",
+                                                                  }}
+                                                                  onClick={() =>
+                                                                      this.goResultPaperNav(
+                                                                          1
+                                                                      )
+                                                                  }
+                                                                  className="result-paper-modal__nav-next"
+                                                              />
+                                                          </div>
+                                                          <div className="result-paper-modal__body result-paper-modal__body--inline">
+                                                              {loading ? (
+                                                                  <div className="result-paper-modal__loading">
+                                                                      Loading
+                                                                      details...
+                                                                  </div>
+                                                              ) : rp ? (
+                                                                  (() => {
+                                                                      const paperAsRow: PaperRow =
+                                                                          {
+                                                                              ID: rp.ID,
+                                                                              Title:
+                                                                                  rp.Title,
+                                                                              Authors:
+                                                                                  rp.Authors,
+                                                                              Year: rp.Year,
+                                                                              CitationCounts:
+                                                                                  rp.CitationCounts,
+                                                                              Source:
+                                                                                  rp.Source ||
+                                                                                  rp.Venue,
+                                                                          };
+                                                                      const highlightOps =
+                                                                          this.getResultHighlightOps(
+                                                                              rp.ID
+                                                                          );
+                                                                      const titleText =
+                                                                          rp.Title ||
+                                                                          "(No title)";
+                                                                      const yearText =
+                                                                          rp.Year !=
+                                                                          null
+                                                                              ? String(
+                                                                                    rp.Year
+                                                                                )
+                                                                              : "N/A";
+                                                                      const abstractText =
+                                                                          rp.Abstract ||
+                                                                          "N/A";
+                                                                      const keywordsText =
+                                                                          Array.isArray(
+                                                                              rp.Keywords
+                                                                          )
+                                                                              ? rp.Keywords.join(
+                                                                                    ", "
+                                                                                )
+                                                                              : rp.Keywords ||
+                                                                                "N/A";
+                                                                      const titleHighlightOps =
+                                                                          this.getResultHighlightOpsForField(
+                                                                              rp.ID,
+                                                                              "title"
+                                                                          );
+                                                                      const yearHighlightOps =
+                                                                          this.getResultHighlightOpsForField(
+                                                                              rp.ID,
+                                                                              "year"
+                                                                          );
+                                                                      const abstractHighlightOps =
+                                                                          this.getResultHighlightOpsForField(
+                                                                              rp.ID,
+                                                                              "abstract"
+                                                                          );
+                                                                      const keywordsHighlightOps =
+                                                                          this.getResultHighlightOpsForField(
+                                                                              rp.ID,
+                                                                              "keywords"
+                                                                          );
+                                                                      const hasHighlights =
+                                                                          highlightOps.length > 0;
+                                                                      return (
+                                                                          <div
+                                                                              ref={
+                                                                                  this
+                                                                                      .resultsExploreContentRef
+                                                                              }
+                                                                              className="result-paper-explore"
+                                                                          >
+                                                                              <div className="result-paper-explore__highlight-tools result-paper-explore__highlight-tools--sticky">
+                                                                                  <DefaultButton
+                                                                                      text="Highlight"
+                                                                                      iconProps={{
+                                                                                          iconName:
+                                                                                              "Edit",
+                                                                                      }}
+                                                                                      onClick={
+                                                                                          this
+                                                                                              .applyResultHighlight
+                                                                                      }
+                                                                                  />
+                                                                                  <DefaultButton
+                                                                                      text="Undo"
+                                                                                      iconProps={{
+                                                                                          iconName:
+                                                                                              "Undo",
+                                                                                      }}
+                                                                                      disabled={
+                                                                                          !hasHighlights
+                                                                                      }
+                                                                                      onClick={
+                                                                                          this
+                                                                                              .undoResultHighlight
+                                                                                      }
+                                                                                  />
+                                                                                  <DefaultButton
+                                                                                      text="Clear"
+                                                                                      iconProps={{
+                                                                                          iconName:
+                                                                                              "Clear",
+                                                                                      }}
+                                                                                      disabled={
+                                                                                          !hasHighlights
+                                                                                      }
+                                                                                      onClick={
+                                                                                          this
+                                                                                              .clearResultHighlights
+                                                                                      }
+                                                                                  />
+                                                                              </div>
+                                                                              <h2 className="result-paper-explore__headline">
+                                                                                  <span data-highlight-field="title">
+                                                                                      {this.renderHighlightedText(
+                                                                                          titleText,
+                                                                                          titleHighlightOps
+                                                                                      )}
+                                                                                  </span>
+                                                                              </h2>
+                                                                              <div className="result-paper-explore__detail-meta">
+                                                                                  <p>
+                                                                                      <b>
+                                                                                          Authors
+                                                                                      </b>
+                                                                                      :{" "}
+                                                                                      {Array.isArray(
+                                                                                          rp.Authors
+                                                                                      )
+                                                                                          ? rp.Authors.join(
+                                                                                                ", "
+                                                                                            )
+                                                                                          : rp.Authors ||
+                                                                                            "N/A"}
+                                                                                  </p>
+                                                                                  <p>
+                                                                                      <b>
+                                                                                          Source
+                                                                                      </b>
+                                                                                      :{" "}
+                                                                                      {rp.Source ||
+                                                                                          rp.Venue ||
+                                                                                          "N/A"}
+                                                                                  </p>
+                                                                                  <p>
+                                                                                      <b>
+                                                                                          Year
+                                                                                      </b>
+                                                                                      :{" "}
+                                                                                      <span data-highlight-field="year">
+                                                                                          {this.renderHighlightedText(
+                                                                                              yearText,
+                                                                                              yearHighlightOps
+                                                                                          )}
+                                                                                      </span>
+                                                                                  </p>
+                                                                                  <p>
+                                                                                      <b>
+                                                                                          No.
+                                                                                          of
+                                                                                          Citations
+                                                                                      </b>
+                                                                                      :{" "}
+                                                                                      {rp.CitationCounts ??
+                                                                                          "N/A"}
+                                                                                  </p>
+                                                                                  {hasRef ? (
+                                                                                      <p>
+                                                                                          <b>
+                                                                                              References
+                                                                                          </b>
+                                                                                          :{" "}
+                                                                                          {String(
+                                                                                              refCount
+                                                                                          )}
+                                                                                      </p>
+                                                                                  ) : null}
+                                                                              </div>
+                                                                              <div className="result-paper-explore__abstract-block">
+                                                                                  <b>
+                                                                                      Abstract
+                                                                                  </b>
+                                                                                  :{" "}
+                                                                                  <div
+                                                                                      data-highlight-field="abstract"
+                                                                                      className="result-paper-explore__abstract-content"
+                                                                                  >
+                                                                                      {this.renderHighlightedText(
+                                                                                          abstractText,
+                                                                                          abstractHighlightOps
+                                                                                      )}
+                                                                                  </div>
+                                                                              </div>
+                                                                              <div className="result-paper-explore__keywords-block">
+                                                                                  <b>
+                                                                                      Keywords
+                                                                                  </b>
+                                                                                  :{" "}
+                                                                                  <span data-highlight-field="keywords">
+                                                                                      {this.renderHighlightedText(
+                                                                                          keywordsText,
+                                                                                          keywordsHighlightOps
+                                                                                      )}
+                                                                                  </span>
+                                                                              </div>
+                                                                              <div className="result-paper-explore__actions">
+                                                                                  <DefaultButton
+                                                                                      text="Add"
+                                                                                      iconProps={{
+                                                                                          iconName:
+                                                                                              "Add",
+                                                                                      }}
+                                                                                      onClick={() =>
+                                                                                          handleCorpusSimilarToggle(
+                                                                                              paperAsRow
+                                                                                          )
+                                                                                      }
+                                                                                  />
+                                                                                  <DefaultButton
+                                                                                      text="Select"
+                                                                                      iconProps={{
+                                                                                          iconName:
+                                                                                              "Locate",
+                                                                                      }}
+                                                                                      onClick={() => {
+                                                                                          const id =
+                                                                                              rp?.ID;
+                                                                                          if (
+                                                                                              id !=
+                                                                                              null
+                                                                                          ) {
+                                                                                              addToSelectNodeIDs(
+                                                                                                  [
+                                                                                                      id,
+                                                                                                  ],
+                                                                                                  "table"
+                                                                                              );
+                                                                                          }
+                                                                                      }}
+                                                                                  />
+                                                                                  <DefaultButton
+                                                                                      text="Save"
+                                                                                      iconProps={{
+                                                                                          iconName:
+                                                                                              "Save",
+                                                                                      }}
+                                                                                      onClick={() =>
+                                                                                          handleCorpusSaveToggle(
+                                                                                              paperAsRow
+                                                                                          )
+                                                                                      }
+                                                                                  />
+                                                                                  <DefaultButton
+                                                                                      text="Google Scholar"
+                                                                                      iconProps={{
+                                                                                          iconName:
+                                                                                              "Link",
+                                                                                      }}
+                                                                                      onClick={() => {
+                                                                                          if (
+                                                                                              rp?.Title
+                                                                                          ) {
+                                                                                              openGScholar(
+                                                                                                  rp.Title
+                                                                                              );
+                                                                                          }
+                                                                                      }}
+                                                                                  />
+                                                                              </div>
+                                                                          </div>
+                                                                      );
+                                                                  })()
+                                                              ) : (
+                                                                  <div className="result-paper-modal__empty">
+                                                                      No paper
+                                                                      information
+                                                                      available.
+                                                                  </div>
+                                                              )}
+                                                          </div>
+                                                      </div>
+                                                  );
+                                              })()
+                                            : (
+                                                  <CorpusResultsList
+                                                      papers={
+                                                          corpusResultsFilteredList
+                                                      }
+                                                      paginationResetKey={`${this.state.corpusSearchInput}|${JSON.stringify(
+                                                          this.state
+                                                              .corpusResultsFilter
+                                                      )}`}
+                                                      selectedPaperId={
+                                                          this.state
+                                                              .selectedPaperId
+                                                      }
+                                                      onTitleClick={(paper) =>
+                                                          this.openResultPaperModalWithNav(
+                                                              paper,
+                                                              "explore",
+                                                              corpusResultsFilteredList
+                                                          )
+                                                      }
+                                                      onPaperInfoClick={(
+                                                          paper
+                                                      ) =>
+                                                          this.openResultPaperModalWithNav(
+                                                              paper,
+                                                              "summary",
+                                                              corpusResultsFilteredList
+                                                          )
+                                                      }
+                                                      paperActions={{
+                                                          onAsk: handleCorpusAsk,
+                                                          onLocate:
+                                                              handleCorpusLocate,
+                                                          onAddSimilar:
+                                                              handleCorpusSimilar,
+                                                          onSave: handleCorpusSave,
+                                                          isLocateDisabled: (
+                                                              p
+                                                          ) =>
+                                                              isInSelectedNodeIDs(
+                                                                  p.ID
+                                                              ),
+                                                          isSimilarDisabled: (
+                                                              p
+                                                          ) =>
+                                                              isInSimilarInputPapers(
+                                                                  {
+                                                                      ID: p.ID,
+                                                                  }
+                                                              ),
+                                                          isSaveDisabled: (p) =>
+                                                              isInSavedPapers({
+                                                                  ID: p.ID,
+                                                              }),
+                                                      }}
+                                                  />
+                                              )}
+                                    </div>
+                                </aside>
+                                <div className="app-master-detail__rest">{detailColumn}</div>
+                            </Split>
+                        ) : (
+                            detailColumn
+                        )}
+                    </div>
+                    </div>
+                    </div>
+                    {this.state.resultsFilterPanelOpen ? (
+                    <Callout
+                        className="app-results-filter-callout"
+                        target={this.resultsFilterButtonRef}
+                        directionalHint={DirectionalHint.bottomCenter}
+                        directionalHintFixed
+                        onDismiss={() => this.setState({resultsFilterPanelOpen: false})}
+                        setInitialFocus
+                        isBeakVisible
+                        gapSpace={8}
+                        beakWidth={12}
+                        preventDismissOnLostFocus={false}
+                        bounds={() => {
+                            const el = this.resultsSidebarRef.current;
+                            if (!el) {
+                                return undefined;
+                            }
+                            const r = el.getBoundingClientRect();
+                            return {
+                                top: r.top,
+                                left: r.left,
+                                bottom: r.bottom,
+                                right: r.right,
+                                width: r.width,
+                                height: r.height,
+                            };
+                        }}
+                        minPagePadding={4}
+                        layerProps={{
+                            styles: {root: {zIndex: 1000002}},
+                        }}
+                        onLayerMounted={() => {
+                            requestAnimationFrame(() => {
+                                window.dispatchEvent(new Event("resize"));
+                            });
+                        }}
                         styles={{
-                            root: {
-                                background: "rgba(0, 0, 0, 0.39)",
-                                padding: 8,
-                                paddingBottom: 0,
-                                marginTop: -7,
-                                borderBottom: "1px solid #ededed",
-                                height: 60,
-                                display: 'flex',
-                                alignItems: 'center',
+                            calloutMain: {
+                                borderRadius: 12,
+                                boxShadow: "0 8px 28px rgba(0, 0, 0, 0.14)",
+                                border: "1px solid #e1e5eb",
+                                maxWidth: 340,
+                                minWidth: 240,
+                                boxSizing: "border-box",
                             },
                         }}
-                    />
+                    >
+                        <div
+                            className="app-results-filter-popover"
+                            role="dialog"
+                            aria-label="Filter results"
+                        >
+                            <div className="app-results-filter-popover__header">
+                                <Text variant="mediumPlus" className="app-results-filter-popover__title">
+                                    Filter results
+                                </Text>
+                                <button
+                                    type="button"
+                                    className="app-results-filter-popover__clear-link"
+                                    onClick={() => {
+                                        this.clearCorpusResultsFilters();
+                                        Logger.logUIInteraction({
+                                            component: "App",
+                                            action: "results_filters_clear",
+                                        });
+                                    }}
+                                >
+                                    Clear all
+                                </button>
+                            </div>
+                            <Stack tokens={{childrenGap: 16}}>
+                                <div className="app-results-filter-popover__field">
+                                    <Label>Published between (year)</Label>
+                                    <Stack
+                                        horizontal
+                                        verticalAlign="end"
+                                        tokens={{childrenGap: 8}}
+                                        wrap
+                                    >
+                                        <TextField
+                                            ariaLabel="Minimum year"
+                                            placeholder="YYYY"
+                                            value={this.state.corpusResultsFilterDraft.yearMin}
+                                            onChange={(_, v) =>
+                                                this.setState((prev) => ({
+                                                    corpusResultsFilterDraft: {
+                                                        ...prev.corpusResultsFilterDraft,
+                                                        yearMin: v ?? "",
+                                                    },
+                                                }))
+                                            }
+                                            styles={{root: {flex: 1, minWidth: 88}}}
+                                        />
+                                        <span className="app-results-filter-popover__dash" aria-hidden>
+                                            –
+                                        </span>
+                                        <TextField
+                                            ariaLabel="Maximum year"
+                                            placeholder="YYYY"
+                                            value={this.state.corpusResultsFilterDraft.yearMax}
+                                            onChange={(_, v) =>
+                                                this.setState((prev) => ({
+                                                    corpusResultsFilterDraft: {
+                                                        ...prev.corpusResultsFilterDraft,
+                                                        yearMax: v ?? "",
+                                                    },
+                                                }))
+                                            }
+                                            styles={{root: {flex: 1, minWidth: 88}}}
+                                        />
+                                    </Stack>
+                                </div>
+                                <div className="app-results-filter-popover__field">
+                                    <Label>Citation count</Label>
+                                    <Stack
+                                        horizontal
+                                        verticalAlign="end"
+                                        tokens={{childrenGap: 8}}
+                                        wrap
+                                    >
+                                        <TextField
+                                            ariaLabel="Minimum citations"
+                                            placeholder="Min"
+                                            value={this.state.corpusResultsFilterDraft.citationsMin}
+                                            onChange={(_, v) =>
+                                                this.setState((prev) => ({
+                                                    corpusResultsFilterDraft: {
+                                                        ...prev.corpusResultsFilterDraft,
+                                                        citationsMin: v ?? "",
+                                                    },
+                                                }))
+                                            }
+                                            styles={{root: {flex: 1, minWidth: 88}}}
+                                        />
+                                        <span className="app-results-filter-popover__dash" aria-hidden>
+                                            –
+                                        </span>
+                                        <TextField
+                                            ariaLabel="Maximum citations"
+                                            placeholder="Max"
+                                            value={this.state.corpusResultsFilterDraft.citationsMax}
+                                            onChange={(_, v) =>
+                                                this.setState((prev) => ({
+                                                    corpusResultsFilterDraft: {
+                                                        ...prev.corpusResultsFilterDraft,
+                                                        citationsMax: v ?? "",
+                                                    },
+                                                }))
+                                            }
+                                            styles={{root: {flex: 1, minWidth: 88}}}
+                                        />
+                                    </Stack>
+                                </div>
+                                <div className="app-results-filter-popover__field">
+                                    <Label>Source (venue)</Label>
+                                    <TextField
+                                        ariaLabel="Venue or source contains"
+                                        placeholder="e.g. KDD, NeurIPS…"
+                                        value={this.state.corpusResultsFilterDraft.venue}
+                                        onChange={(_, v) =>
+                                            this.setState((prev) => ({
+                                                corpusResultsFilterDraft: {
+                                                    ...prev.corpusResultsFilterDraft,
+                                                    venue: v ?? "",
+                                                },
+                                            }))
+                                        }
+                                    />
+                                </div>
+                            </Stack>
+                            <PrimaryButton
+                                className="app-results-filter-popover__apply"
+                                text="Apply"
+                                onClick={() => {
+                                    this.applyCorpusResultsFilters();
+                                    Logger.logUIInteraction({
+                                        component: "App",
+                                        action: "results_filters_apply",
+                                    });
+                                }}
+                                styles={{root: {width: "100%", marginTop: 20}}}
+                            />
+                        </div>
+                    </Callout>
+                    ) : null}
+                    <Modal
+                        isOpen={this.state.isResultPaperModalOpen}
+                        onDismiss={this.closeResultPaperModal}
+                        isBlocking={false}
+                        layerProps={{ styles: { root: { zIndex: 1000005 } } }}
+                        styles={{
+                            main: {
+                                maxWidth: "720px",
+                                padding: "0",
+                                borderRadius: "16px",
+                                boxShadow: "0 16px 40px rgba(0,0,0,0.25)",
+                                overflow: "hidden",
+                            },
+                        }}
+                    >
+                        {(() => {
+                            const navList = this.state.resultPaperNavList;
+                            const navIdx = this.state.resultPaperNavIndex;
+                            const navLen = navList.length;
+                            const atStart = navLen === 0 || navIdx <= 0;
+                            const atEnd = navLen === 0 || navIdx >= navLen - 1;
+                            const loading = this.state.loadingResultPaperInfo;
+                            const rp = this.state.resultPaperInfo;
+                            return (
+                                <div className="result-paper-modal result-paper-modal--summary">
+                                    <div className="result-paper-modal__nav">
+                                        <IconButton
+                                            iconProps={{iconName: "Cancel"}}
+                                            ariaLabel="Close"
+                                            title="Close"
+                                            onClick={this.closeResultPaperModal}
+                                            className="result-paper-modal__nav-close"
+                                        />
+                                        <DefaultButton
+                                            text="Previous"
+                                            disabled={atStart || loading}
+                                            iconProps={{iconName: "ChevronLeft"}}
+                                            onClick={() => this.goResultPaperNav(-1)}
+                                            className="result-paper-modal__nav-prev"
+                                        />
+                                        <span className="result-paper-modal__nav-spacer" />
+                                        <DefaultButton
+                                            text="Next"
+                                            disabled={atEnd || loading}
+                                            iconProps={{iconName: "ChevronRight"}}
+                                            onClick={() => this.goResultPaperNav(1)}
+                                            className="result-paper-modal__nav-next"
+                                        />
+                                    </div>
+                                    <div className="result-paper-modal__body">
+                                        {loading ? (
+                                            <div className="result-paper-modal__loading">
+                                                Loading details...
+                                            </div>
+                                        ) : rp ? (
+                                            <div
+                                                className="result-paper-summary"
+                                                style={{
+                                                    maxHeight: "70vh",
+                                                    overflowY: "auto",
+                                                }}
+                                            >
+                                                <h2 className="result-paper-summary__title">
+                                                    {rp.Title}
+                                                </h2>
+                                                <div className="result-paper-summary__meta">
+                                                    <b>Authors</b>:{" "}
+                                                    {Array.isArray(rp.Authors)
+                                                        ? rp.Authors.join(", ")
+                                                        : rp.Authors || "N/A"}
+                                                    <br />
+                                                    <b>Source</b>:{" "}
+                                                    {rp.Source || rp.Venue || "N/A"}
+                                                    <br />
+                                                    <b>Year</b>: {rp.Year || "N/A"}
+                                                    <br />
+                                                    <b>No. of Citations</b>:{" "}
+                                                    {rp.CitationCounts || "N/A"}
+                                                </div>
+                                                <div className="result-paper-summary__block">
+                                                    <b>Abstract</b>: {rp.Abstract || "N/A"}
+                                                </div>
+                                                <div className="result-paper-summary__block">
+                                                    <b>Keywords</b>:{" "}
+                                                    {Array.isArray(rp.Keywords)
+                                                        ? rp.Keywords.join(", ")
+                                                        : rp.Keywords || "N/A"}
+                                                </div>
+                                                <div className="result-paper-summary__actions">
+                                                    <DefaultButton
+                                                        text="Select"
+                                                        iconProps={{iconName: "Locate"}}
+                                                        onClick={() => {
+                                                            const id = rp?.ID;
+                                                            if (id != null) {
+                                                                addToSelectNodeIDs(
+                                                                    [id],
+                                                                    "table"
+                                                                );
+                                                            }
+                                                        }}
+                                                    />
+                                                    <DefaultButton
+                                                        text="More Like This"
+                                                        iconProps={{
+                                                            iconName: "PlusCircle",
+                                                        }}
+                                                        disabled={isInSimilarInputPapers(
+                                                            rp
+                                                        )}
+                                                        onClick={() => {
+                                                            addToSimilarInputPapers(rp);
+                                                        }}
+                                                    />
+                                                    <DefaultButton
+                                                        text="Save"
+                                                        iconProps={{iconName: "Save"}}
+                                                        disabled={isInSavedPapers(rp)}
+                                                        onClick={() => {
+                                                            addToSavedPapers(rp);
+                                                        }}
+                                                    />
+                                                    <DefaultButton
+                                                        text="Google Scholar"
+                                                        iconProps={{iconName: "Link"}}
+                                                        onClick={() => {
+                                                            if (rp?.Title) {
+                                                                openGScholar(rp.Title);
+                                                            }
+                                                        }}
+                                                    />
+                                                    <DefaultButton
+                                                        text="Close"
+                                                        iconProps={{iconName: "Cancel"}}
+                                                        onClick={
+                                                            this.closeResultPaperModal
+                                                        }
+                                                    />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="result-paper-modal__empty">
+                                                No paper information available.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                    </Modal>
+
                     <Modal
                         styles={{
                             main: {
@@ -2716,12 +4762,24 @@ class App extends React.Component<AppProps, AppState> {
                             </div>
                         </div>
                     </Modal>
-                    <Panel
-                        headerText="Saved Papers"
+
+                    <LiteratureReviewPanel
                         isOpen={this.state.isPanelOpen}
                         onDismiss={() => {
-                            this.setState({isPanelOpen: false});
-                            
+                            // The paper detail modal renders on top of this panel. A single
+                            // dismiss (e.g. Escape / overlay click) can bubble to both layers,
+                            // so when the detail modal is open we only close that and keep the
+                            // Literature Review panel open.
+                            if (this.state.isResultPaperModalOpen) {
+                                this.closeResultPaperModal();
+                                return;
+                            }
+                            if (this.state.litReviewExploreOpen) {
+                                this.closeLitReviewExplore();
+                                return;
+                            }
+                            this.setState({isPanelOpen: false, litReviewExploreOpen: false});
+
                             // Panel dismiss
                             Logger.logUIInteraction({
                                 component: 'App',
@@ -2738,453 +4796,100 @@ class App extends React.Component<AppProps, AppState> {
                             //     contentLength: this.state.notesContent.length
                             // })
                         }}
-                        type={PanelType.large}
-                        closeButtonAriaLabel="Close"
-                    >
-                        <br/>
-                        <a ref={this.state.checkoutLinkRef}></a>
-                        <div id="savedPapersPanel">
-                            <div id="savedPapersSmartTable">
-                                <SmartTable props={savedPapersTableProps} setSpinner={this.setSpinner}></SmartTable>
-                            </div>
-
-
-
-                            <div style={{
-                                display: 'flex',
-                                flexDirection: 'row',
-                                gap: '20px',
-                                marginTop: '20px',
-                                }}>
-                                {/* LLM Output */}
-                                <div id="savedPapersLLMOutput" style={{
-                                flex: 1,
-                                padding: '16px',
-                                backgroundColor: '#ffffffba',
-                                border: '1px solid #878686ff',
-                                borderRadius: '4px',
-                                fontSize: '1.25em',
-                                lineHeight: '1.25em',
-                                minWidth: 0, // for flexbox overflow handling
-                                display: 'flex',
-                                flexDirection: 'column',
-                                }}>
-                                <h3
-                                style={{
-                                    margin: '0 0 12px 0',
-                                    fontSize: '16px',
-                                    fontWeight: 600,
-                                    color: '#323130',
-                                }}
-                                >
-                                LLM Output
-                                </h3>
-                                <div style={{
-                                    flex: 1,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    minHeight: '200px',
-                                    maxHeight: '400px',
-                                }}>
-                                    <div style={{
-                                        flex: 1,
-                                        overflow: 'auto',
-                                        border: '1px solid #d1d1d1',
-                                        borderRadius: '4px',
-                                        padding: '12px',
-                                        backgroundColor: '#ffffff',
-                                        minHeight: 300
-                                    }}>
-                                        <Markdown
-                                            components={{
-                                                // Disable hyperlinks - render as plain text
-                                                a: ({node, children, ...props}) => <span>{children}</span>,
-                                                // Keep bold text working
-                                                strong: ({node, children, ...props}) => <strong>{children}</strong>
-                                            }}
-                                        >
-                                            {this.formatLLMResponse(this.state.summarizeResponse)}
-                                        </Markdown>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Research Notes */}
-                            <div id="savedPapersResearchNotes" style={{
-                                flex: 1,
-                                padding: '16px',
-                                backgroundColor: '#ffffffba',
-                                border: '1px solid #878686ff',
-                                borderRadius: '4px',
-                                minWidth: 0, // for flexbox overflow handling
-                                display: 'flex',
-                                flexDirection: 'column',
-                            }}>
-                                <h3 style={{
-                                    margin: '0 0 12px 0',
-                                    fontSize: '16px',
-                                    fontWeight: 600,
-                                    color: '#323130'
-                                }}>
-                                Research Notes
-                                </h3>
-                                <div style={{
-                                    flex: 1,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    minHeight: '200px',
-                                    maxHeight: '400px',
-                                }}>
-                                    <div style={{
-                                        flex: 1,
-                                        overflow: 'auto',
-                                        border: '1px solid #d1d1d1',
-                                        borderRadius: '4px',
-                                        padding: 0,
-                                        backgroundColor: '#ffffff',
-                                        minHeight: 300,
-                                    }}>
-                                        <ReactQuill
-                                            value={this.state.notesContent}
-                                            onChange={this.handleNotesChange}
-                                            onFocus={this.handleQuillFocus}
-                                            onBlur={this.handleQuillBlur}
-                                            placeholder="Write your preliminary literature review here..."
-                                            style={{
-                                                height: '100%',
-                                                flex: 1,
-                                                border: 'none',
-                                            }}
-                                            modules={{
-                                                toolbar: [
-                                                    [{ 'header': [1, 2, false] }],
-                                                    ['bold', 'italic', 'underline'],
-                                                    ['link'],
-                                                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                                                ],
-                                            }}
-                                        />
-                                    </div>
-                                    {this.props.isPractice && (() => {
-                                        const plainText = this.state.notesContent.replace(/<[^>]+>/g, '').trim();
-                                        const charCount = plainText.length;
-                                        const minChars = 10;
-                                        const isComplete = charCount >= minChars;
-                                        return (
-                                            <div style={{
-                                                marginTop: '8px',
-                                                padding: '8px 12px',
-                                                backgroundColor: isComplete ? '#d4edda' : '#fff3cd',
-                                                border: `1px solid ${isComplete ? '#28a745' : '#ffc107'}`,
-                                                borderRadius: '4px',
-                                                fontSize: '13px',
-                                                color: isComplete ? '#155724' : '#856404',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '8px'
-                                            }}>
-                                                <span style={{ fontWeight: 600 }}>
-                                                    {isComplete ? '✓' : '⚠️'}
-                                                </span>
-                                                <span>
-                                                    {isComplete
-                                                        ? `Great! You've written ${charCount} characters.`
-                                                        : `Write at least ${minChars} characters to complete the note task (${charCount}/${minChars})`
-                                                    }
-                                                </span>
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-                            </div>
-
-
-                        </div>
-                        </div>
-
-                    </Panel>
-
-                    <div className="m-t-md p-md" style={{ 
-                        borderBottom: 'none', 
-                        overflow: 'hidden',
-                        border: 'none'
-                    }}>
-                        <div style={{ 
-                            borderBottom: 'none',
-                            border: 'none'
-                        }}>
-                            <SmartTable props={allPapersTableProps} setSpinner={this.setSpinner}></SmartTable>
-                        </div>
-                    </div>
-                    <Split
-                        sizes={[33, 39, 28]}
-                        direction="horizontal"
-                        expandToMin={false}
-                        gutterSize={0}
-                        gutterAlign="center"
-                        cursor="col-resize"
-                    >
-                        <div className="split p-md p-b-0" id="similaritySearchPanel" >
-                            <Stack horizontal horizontalAlign="space-between" verticalAlign="center"
-                                   tokens={{childrenGap: 8}}>
-                                <Label style={{fontSize: "1.2rem"}}>Similarity Search</Label>
-                            </Stack>
-                            <div className="similarityPanelPivot">
-                                <Pivot linkSize={PivotLinkSize.normal} linkFormat={PivotLinkFormat.links}
-                                       selectedKey={String(this.state.similarityPanelSelectedKey)}
-                                       onLinkClick={(pivotItem: PivotItem) => this.setState({similarityPanelSelectedKey: pivotItem["key"].split(".")[1]})}>
-                                    <PivotItem onRenderItemLink={_inputButtonRenderer} headerText={"By Papers"}
-                                               itemCount={this.state.dataSimilarPayload.length}>
-                                        <div className="m-t-lg"></div>
-                                        <React.Fragment>
-                                            <Stack horizontal verticalAlign="center" horizontalAlign="start" wrap={false}
-                                                   tokens={{childrenGap: 6}} styles={{root: {flexWrap: 'nowrap'}}}>
-                                                <Label styles={{root: {minWidth: 'auto'}}}>Dimensions</Label>
-                                                <Dropdown
-                                                    label=""
-                                                    selectedKey={this.state.similarityType.key}
-                                                    // eslint-disable-next-line react/jsx-no-bind
-                                                    onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => {
-                                                        this.setState({similarityType: item})
-                                                    }}
-                                                    options={similarityTypeDropdownOptions}
-                                                    styles={{root: {zIndex: 2, minWidth: 80}}}
-                                                />
-                                                <Label styles={{root: {minWidth: 'auto'}}}>Count</Label>
-                                                <Dropdown
-                                                    label=""
-                                                    selectedKey={this.state.maxSimilarPapers.key}
-                                                    // eslint-disable-next-line react/jsx-no-bind
-                                                    onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => {
-                                                        this.setState({maxSimilarPapers: item})
-                                                    }}
-                                                    options={maxSimilarPapersDropdownOptions}
-                                                    styles={{root: {minWidth: 90}}}
-                                                />
-                                                {
-                                                    this.state.dataSimilarPayload.length > 0 ?
-                                                        <PrimaryButton text="Find Similar Papers"
-                                                                       onClick={getSimilarPapers} allowDisabledFocus
-                                                                       styles={{root: {minWidth: 'auto'}}}/> :
-                                                        <PrimaryButton text="Find Similar Papers"
-                                                                       onClick={getSimilarPapers} allowDisabledFocus
-                                                                       disabled styles={{root: {minWidth: 'auto'}}}/>
-                                                }
-                                            </Stack>
-                                        </React.Fragment>
-                                        <div className="m-t-md"></div>
-                                        <SmartTable props={similarPapersPayloadTableProps}
-                                                    setSpinner={this.setSpinner}></SmartTable>
-                                    </PivotItem>
-                                    <PivotItem onRenderItemLink={_inputButtonRenderer} headerText="By Abstract">
-                                        <div className="m-t-lg"></div>
-                                        <Stack horizontal tokens={{childrenGap: 8}}>
-                                            <Label>Count</Label>
-                                            <Dropdown
-                                                label=""
-                                                selectedKey={this.state.searchByAbstractLimit.key}
-                                                // eslint-disable-next-line react/jsx-no-bind
-                                                onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => {
-                                                    this.setState({searchByAbstractLimit: item})
-                                                }}
-                                                options={maxSimilarPapersDropdownOptions}
-                                                styles={{root: {minWidth: 90}}}
-                                            />
-                                            <PrimaryButton style={{zIndex: 2}} text="Find Similar Papers"
-                                                           onClick={getSimilarPapersByAbstract} allowDisabledFocus
-                                                           disabled={(!this.state.searchAbstract || this.state.searchAbstract.trim().length === 0) && (!this.state.searchTitle || this.state.searchTitle.trim().length === 0)}/>
-                                        </Stack>
-                                        <div className="m-t-md"></div>
-                                        {/* Do not show title when switch to 'ada' embedding */}
-                                        {this.state.embeddingType.key == 'ada' ||
-                                            <TextField value={this.state.searchTitle || ''}
-                                                       placeholder="Enter your own title here"
-                                                       onChange={onChangeSearchTitle} defaultValue={""}/>}
-                                        <div className="m-t-md"></div>
-                                        <TextField value={this.state.searchAbstract || ''}
-                                                   placeholder="Enter your own abstract here" multiline rows={15}
-                                                   onChange={onChangeSearchAbstract} defaultValue={""}/>
-                                        <div className="m-t-md"></div>
-                                    </PivotItem>
-                                    <PivotItem onRenderItemLink={_outputButtonRenderer} headerText={"Output Similar"}
-                                               itemCount={this.state.dataSimilar.length}>
-                                        <div className="m-t-lg"></div>
-                                        <SmartTable props={similarPapersTableProps}
-                                                    setSpinner={this.setSpinner}></SmartTable>
-                                    </PivotItem>
-                                </Pivot>
-                            </div>
-                        </div>
-                        <div className="split p-md p-b-0">
-                            {this.state.dataFiltered["all"].length > 0 && this.state.dataAll.length > 0
-                                ?
-                                <PaperScatter props={
-                                    {
-                                        setScrollToPaperID: setScrollToPaperID,
-                                        addToSavedPapers: addToSavedPapers,
-                                        addToSimilarInputPapers: addToSimilarInputPapers,
-                                        isInSavedPapers: isInSavedPapers,
-                                        isInSimilarInputPapers: isInSimilarInputPapers,
-                                        isInFilteredPapers: isInFilteredPapers,
-                                        isInSimilarPapers: isInSimilarPapers,
-                                        dataFiltered: this.state.dataFiltered["all"],
-                                        dataSaved: this.state.dataSaved,
-                                        dataSimilarPayload: this.state.dataSimilarPayload,
-                                        dataSimilar: this.state.dataSimilar,
-                                        // data: this.state.dataAll,
-                                        data: this.state.pointsAll,
-                                        selectNodeIDs: this.state.selectNodeIDs,
-                                        addToSelectNodeIDs: addToSelectNodeIDs,
-                                        embeddingType: this.state.embeddingType.key as string,
-                                        openGScholar: openGScholar,
-                                        eventOrigin: this.state.eventOrigin,
+                        checkoutLinkRef={this.state.checkoutLinkRef}
+                        savedPapers={(this.state.dataSaved || []) as PaperRow[]}
+                        chatProps={{
+                            ...this.state.dialogStates['litReview'],
+                            tabId: 'litReview',
+                            updateDialogState: (updatedState: any) =>
+                                this.updateDialogState('litReview', updatedState),
+                            addToSelectNodeIDs: addToSelectNodeIDs,
+                            addToSimilarInputPapers: addToSimilarInputPapers,
+                            addToSavedPapers: addToSavedPapers,
+                            isInSimilarInputPapers: isInSimilarInputPapers,
+                            isInSavedPapers: isInSavedPapers,
+                            isInSelectedNodeIDs: isInSelectedNodeIDs,
+                            queuedCorpusQuestionPaper: this.state.litReviewAskQueue,
+                            onConsumeQueuedCorpusQuestionPaper: () =>
+                                this.setState({ litReviewAskQueue: null }),
+                        }}
+                        savedActions={{
+                            onAsk: (paper: PaperRow) =>
+                                this.setState({
+                                    litReviewAskQueue: {
+                                        id: paper.ID,
+                                        title: paper.Title || "(No title)",
+                                        token: Date.now(),
+                                    },
+                                }),
+                            onSummarize: (paper: PaperRow) =>
+                                this.summarizeSinglePaper(paper),
+                            onDelete: (paper: PaperRow) =>
+                                this.removeSavedPaper(paper),
+                        }}
+                        canUndoDelete={this.state.deletedSavedPaperUndoStack.length > 0}
+                        undoCount={this.state.deletedSavedPaperUndoStack.length}
+                        onUndoDelete={this.undoRemoveSavedPaper}
+                        onShowPaperDetail={(paper: PaperRow, navList: PaperRow[]) =>
+                            this.openResultPaperModalWithNav(paper, "summary", navList)
+                        }
+                        onExplorePaper={(paper: PaperRow, navList: PaperRow[]) =>
+                            this.openLitReviewExplore(paper, navList)
+                        }
+                        isExploring={this.state.litReviewExploreOpen}
+                        exploreView={
+                            this.state.litReviewExploreOpen ? (
+                                <ResultPaperExplore
+                                    rp={this.state.litReviewPaperInfo}
+                                    loading={this.state.litReviewLoadingPaperInfo}
+                                    atStart={
+                                        this.state.litReviewNavList.length === 0 ||
+                                        this.state.litReviewNavIndex <= 0
                                     }
-                                }
-                                ></PaperScatter>
-                                : null
-                            }
-                        </div>
-                        {/*<div className="split p-md p-b-0">*/}
-                        {/*    <Stack horizontal horizontalAlign="space-between" verticalAlign="center"*/}
-                        {/*           tokens={{childrenGap: 8}}>*/}
-                        {/*        <Label style={{fontSize: "1.2rem"}}>Meta</Label>*/}
-                        {/*    </Stack>*/}
-                        {/*    <Pivot linkSize={PivotLinkSize.normal} linkFormat={PivotLinkFormat.links}>*/}
-                        {/*        <PivotItem headerText={"Keywords"}>*/}
-                        {/*            <div className="m-t-lg"></div>*/}
-                        {/*            <SmartTable props={keywordTableProps}></SmartTable>*/}
-                        {/*        </PivotItem>*/}
-                        {/*        <PivotItem headerText={"Authors"}>*/}
-                        {/*            <div className="m-t-lg"></div>*/}
-                        {/*            <SmartTable props={authorTableProps}></SmartTable>*/}
-                        {/*        </PivotItem>*/}
-                        {/*        <PivotItem headerText={"Source"}>*/}
-                        {/*            <div className="m-t-lg"></div>*/}
-                        {/*            <SmartTable props={sourceTableProps}></SmartTable>*/}
-                        {/*        </PivotItem>*/}
-                        {/*        <PivotItem headerText={"Year"}>*/}
-                        {/*            <div className="m-t-lg"></div>*/}
-                        {/*            <SmartTable props={yearTableProps}></SmartTable>*/}
-                        {/*        </PivotItem>*/}
-                        {/*    </Pivot>*/}
-                        {/*</div>*/}
-                        <div id = "chatWindowsPanel" className="split p-md p-b-0" >
-                            <div>
-                                <label style={{fontSize: "1.2rem"}}>Chat Windows</label>
-                            </div>
-                            <Nav variant="tabs" activeKey={activeKey} onSelect={(k) => this.setActiveKey(k)}>
-                                {tabs.map((tab) => (
-                                    <Nav.Item key={tab.id}>
-                                        <Nav.Link
-                                            eventKey={tab.id}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '8px',
-                                                paddingRight: '8px'
-                                            }}
-                                        >
-                                            <span>{tab.title}</span>
-                                            <Button
-                                                variant="link"
-                                                className="p-0"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    this.removeTab(tab.id);
-                                                }}
-                                                aria-label="Close tab"
-                                                style={{
-                                                    minWidth: 'auto',
-                                                    padding: '0 4px',
-                                                    marginLeft: '0'
-                                                }}
-                                            >
-                                                <FontAwesomeIcon
-                                                    icon={faTimes}
-                                                    style={{
-                                                        color: "grey",
-                                                        fontSize: "0.9rem"
-                                                    }}
-                                                />
-                                            </Button>
-                                        </Nav.Link>
-                                    </Nav.Item>
-                                ))}
-                                {/* Add button next to the last tab */}
-                                <Nav.Item>
-                                    <Button
-                                        variant="link"
-                                        className="add-button"
-                                        onClick={this.addNewTab}
-                                        aria-label="Add new tab"
-                                    >
-                                        {/* Larger "+" sign */}
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            width="28px"
-                                            height="28px"
-                                            viewBox="0 0 24 24"
-                                            className="add-icon"
-                                        >
-                                            <line x1="6" y1="12" x2="18" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                                            <line x1="12" y1="6" x2="12" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                                        </svg>
-                                    </Button>
-                                </Nav.Item>
-                            </Nav>
-                            {/*<div className="tab-content mt-3">*/}
-                            <div className="dialog-container">
-                                {tabs.map((tab) => (
-                                    <Tab.Content key={tab.id}>
-                                        {activeKey === tab.id && (
-                                            <div className="dialog-content">
-                                                <Dialog
-                                                    props={{
-                                                        ...dialogStates[tab.id],
-                                                        updateDialogState: (updatedState) =>
-                                                            this.updateDialogState(tab.id, updatedState),
-                                                        addToSelectNodeIDs: addToSelectNodeIDs,
-                                                        addToSimilarInputPapers: addToSimilarInputPapers,
-                                                        addToSavedPapers: addToSavedPapers,
-                                                        isInSimilarInputPapers: isInSimilarInputPapers,
-                                                        isInSavedPapers: isInSavedPapers,
-                                                        isInSelectedNodeIDs: isInSelectedNodeIDs,
-                                                    }}
-                                                />
-                                            </div>
-                                        )}
-                                    </Tab.Content>
-                                ))}
-                            </div>
-
-                            {/*</div>*/}
-                        </div>
-                    </Split>
-                    {/*<div className="split p-md p-b-0">*/}
-                    {/*    <Stack horizontal horizontalAlign="space-between" verticalAlign="center"*/}
-                    {/*           tokens={{childrenGap: 8}}>*/}
-                    {/*        <Label style={{fontSize: "1.2rem"}}>Meta</Label>*/}
-                    {/*    </Stack>*/}
-                    {/*    <Pivot linkSize={PivotLinkSize.normal} linkFormat={PivotLinkFormat.links}>*/}
-                    {/*        <PivotItem headerText={"Keywords"}>*/}
-                    {/*            <div className="m-t-lg"></div>*/}
-                    {/*            <MetaTable props={keywordTableProps}></MetaTable>*/}
-                    {/*        </PivotItem>*/}
-                    {/*        <PivotItem headerText={"Authors"}>*/}
-                    {/*            <div className="m-t-lg"></div>*/}
-                    {/*            <MetaTable props={authorTableProps}></MetaTable>*/}
-                    {/*        </PivotItem>*/}
-                    {/*        <PivotItem headerText={"Source"}>*/}
-                    {/*            <div className="m-t-lg"></div>*/}
-                    {/*            <MetaTable props={sourceTableProps}></MetaTable>*/}
-                    {/*        </PivotItem>*/}
-                    {/*        <PivotItem headerText={"Year"}>*/}
-                    {/*            <div className="m-t-lg"></div>*/}
-                    {/*            <MetaTable props={yearTableProps}></MetaTable>*/}
-                    {/*        </PivotItem>*/}
-                    {/*    </Pivot>*/}
-                    {/*</div>*/}
-
+                                    atEnd={
+                                        this.state.litReviewNavList.length === 0 ||
+                                        this.state.litReviewNavIndex >=
+                                            this.state.litReviewNavList.length - 1
+                                    }
+                                    onClose={() => this.closeLitReviewExplore()}
+                                    onPrev={() => this.goLitReviewNav(-1)}
+                                    onNext={() => this.goLitReviewNav(1)}
+                                    contentRef={this.resultsExploreContentRef}
+                                    getHighlightOps={(id) => this.getResultHighlightOps(id)}
+                                    getHighlightOpsForField={(id, f) =>
+                                        this.getResultHighlightOpsForField(
+                                            id,
+                                            f as ResultHighlightOp["field"]
+                                        )
+                                    }
+                                    renderHighlightedText={(t, o) =>
+                                        this.renderHighlightedText(
+                                            t,
+                                            o as ResultHighlightOp[]
+                                        )
+                                    }
+                                    onHighlight={this.applyResultHighlight}
+                                    onUndo={this.undoResultHighlight}
+                                    onClear={this.clearResultHighlights}
+                                    onAsk={(p) =>
+                                        this.setState({
+                                            litReviewAskQueue: {
+                                                id: p.ID,
+                                                title: p.Title || "(No title)",
+                                                token: Date.now(),
+                                            },
+                                        })
+                                    }
+                                    onSummarize={(p) => this.summarizeSinglePaper(p)}
+                                    onDelete={(p) => {
+                                        this.removeSavedPaper(p);
+                                        this.closeLitReviewExplore();
+                                    }}
+                                    onGScholar={(t) => openGScholar(t)}
+                                />
+                            ) : null
+                        }
+                    />
 
                 </LoadingOverlay>
             </>
